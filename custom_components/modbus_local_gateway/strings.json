@@ -1,0 +1,49 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Configure the connection parameters",
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]",
+          "port": "[%key:common::config_flow::data::port%]",
+          "slave_id": "Slave ID"
+        }
+      },
+      "device_type": {
+        "description": "Select the device type to configure",
+        "data": {
+          "device_type": "Device Type"
+        }
+      },
+      "inverter_param": {
+        "description": "Configure the inverter parameters",
+        "data": {
+          "num_strings": "Number of PV strings"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Update device parameters",
+        "data": {
+          "host": "[%key:common::config_flow::data::host%]",
+          "port": "[%key:common::config_flow::data::port%]",
+          "slave_id": "Slave ID"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    }
+  }
+}

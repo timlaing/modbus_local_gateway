@@ -1,0 +1,198 @@
+device:
+  manufacturer: Eastron
+  model: SDM-230
+
+entities:
+  Total system power demand:
+    address: 84
+    title: Total system power demand
+    unit_of_measurement: Watts
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Maximum total system power demand:
+    address: 86
+    title: Maximum total system power demand
+    unit_of_measurement: Watts
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Current system import power demand:
+    address: 88
+    title: Current system import power demand
+    unit_of_measurement: Watts
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Maximum system import power demand:
+    address: 90
+    title: Maximum system import power demand
+    unit_of_measurement: Watts
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Current system export power demand:
+    address: 92
+    title: Current system export power demand
+    unit_of_measurement: Watts
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Maximum system export power demand:
+    address: 94
+    title: Maximum system export power demand
+    unit_of_measurement: Watts
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Current demand:
+    address: 258
+    title: Current demand
+    unit_of_measurement: Amps
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Voltage:
+    address: 0
+    title: Voltage
+    unit_of_measurement: Volts
+    precision: 2
+    float: True
+    size: 2
+
+  Current:
+    address: 6
+    title: Current
+    unit_of_measurement: Amps
+    precision: 2
+    float: True
+    size: 2
+
+  Active Power:
+    address: 12
+    title: Active Power
+    unit_of_measurement: Watts
+    precision: 2
+    float: True
+    size: 2
+
+  Apparent Power:
+    address: 18
+    title: Apparent Power
+    unit_of_measurement: VoltAmps
+    precision: 2
+    float: True
+    size: 2
+
+  Reactive Power:
+    address: 24
+    title: Reactive Power
+    unit_of_measurement: VAr
+    precision: 2
+    float: True
+    size: 2
+
+  Power Factor:
+    address: 30
+    title: Power Factor
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Phase Angle:
+    address: 36
+    title: Phase Angle
+    unit_of_measurement: Degrees
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Frequency:
+    address: 70
+    title: Frequency
+    unit_of_measurement: Hz
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Import Active Energy:
+    address: 72
+    title: Import Active Energy
+    unit_of_measurement: kWh
+    precision: 2
+    float: True
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Export Active Energy:
+    address: 74
+    title: Export Active Energy
+    unit_of_measurement: kWh
+    precision: 2
+    float: True
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Import Reactive Energy:
+    address: 76
+    title: Import Reactive Energy
+    unit_of_measurement: kVArh
+    precision: 2
+    float: True
+    state_class: total_increasing
+    size: 2
+
+  Maximum current Demand:
+    address: 264
+    title: Maximum current Demand
+    unit_of_measurement: Amps
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
+  Export Reactive Energy:
+    address: 78
+    title: Export Reactive Energy
+    unit_of_measurement: kVArh
+    precision: 2
+    float: True
+    size: 2
+
+  Total Active Energy:
+    address: 342
+    title: Total Active Energy
+    unit_of_measurement: kWh
+    precision: 2
+    float: True
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Total Reactive Energy:
+    address: 344
+    title: Total Reactive Energy
+    unit_of_measurement: kVArh
+    precision: 2
+    float: True
+    state_class: total_increasing
+    size: 2

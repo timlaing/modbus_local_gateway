@@ -1,0 +1,176 @@
+device:
+  manufacturer: Growatt
+  model: MIC 2500TL-X
+  max_register_read: 5
+  hw_version:
+    title: Firmware version
+    address: 9
+    size: 3
+    string: true
+  sw_version:
+    title: Control firmware version
+    address: 12
+    size: 3
+    string: true
+  serial_no:
+    title: Serial Number
+    address: 3001
+    size: 14
+    string: true
+
+entities:
+  status:
+    title: Inverter Status
+    address: 3000
+    map:
+        0: Standby
+        1: Normal
+        3: Fault
+  Vpv1:
+    title: PV1 voltage
+    address: 3003
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  PV1Curr:
+    title: PV1 input current
+    address: 3004
+    unit_of_measurement: Amps
+    precision: 2
+    multiplier: 0.1
+  Vpv2:
+    title: PV2 voltage
+    address: 3007
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  PV2Curr:
+    title: PV2 input current
+    address: 3008
+    unit_of_measurement: Amps
+    precision: 2
+    multiplier: 0.1
+  Fac:
+    title: Grid frequency
+    address: 3025
+    unit_of_measurement: Hz
+    precision: 3
+    multiplier: 0.01
+  Epv1_today:
+    title: PV1Energy today
+    address: 3055
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+  Epv2_today:
+    title: PV2Energy today
+    address: 3059
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+  Epv1_total:
+    title: PV1Energy total
+    address: 3057
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+  Epv2_total:
+    title: PV2Energy total
+    address: 3061
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+  Epv_total:
+    title: PV Energy total
+    address: 3053
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+  Etouser_today:
+    title: Today energy to user
+    address: 3067
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+    icon: mdi:transmission-tower-import
+  Etouser_total:
+    title: Total energy to user
+    address: 3069
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+    icon: mdi:transmission-tower-import
+  Etogrid_today:
+    title: Today energy to grid
+    address: 3071
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+    icon: mdi:transmission-tower-export
+  Etogrid_total:
+    title: Total energy to grid
+    address: 3073
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+    icon: mdi:transmission-tower-export
+  Eload_today:
+    title: Today energy of user load
+    address: 3075
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+    icon: mdi:solar-power-variant
+  Eload_total:
+    title: Total energy of user load
+    address: 3077
+    unit_of_measurement: kWh
+    precision: 2
+    size: 2
+    multiplier: 0.1
+    state_class: total_increasing
+    icon: mdi:solar-power-variant
+  Temp1:
+    title: Inverter temperature
+    address: 3093
+    unit_of_measurement: Celsius
+    precision: 2
+    multiplier: 0.1
+  Temp2:
+    title: IPM Inverter temperature
+    address: 3094
+    unit_of_measurement: Celsius
+    precision: 2
+    multiplier: 0.1
+  Temp3:
+    title: Boost temperature
+    address: 3095
+    unit_of_measurement: Celsius
+    precision: 2
+    multiplier: 0.1
+  Fault:
+    title: Fault code
+    address: 3105
+  Warning:
+    title: Warning code
+    address: 3106

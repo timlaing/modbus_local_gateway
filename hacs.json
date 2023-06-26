@@ -1,0 +1,6 @@
+{
+    "name": "Integration for Modbus TCP Gateways",
+    "domains": "modbus_local_gateway",
+    "iot_class": "Local Polling",
+    "render_readme": true
+}
