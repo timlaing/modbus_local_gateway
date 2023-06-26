@@ -1,4 +1,4 @@
-"""Growatt Local sensors"""
+"""Modbus Local Gateway sensors"""
 from __future__ import annotations
 
 import logging
@@ -27,7 +27,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the Growatt sensor."""
+    """Set up the Modbus Local Gateway sensor."""
     config = {**config_entry.data}
     _LOGGER.debug(config)
     coordinator: ModbusCoordinator = hass.data[DOMAIN][get_gateway_key(config_entry)]

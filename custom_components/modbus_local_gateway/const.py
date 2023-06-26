@@ -1,7 +1,7 @@
-"""Constants for the Growatt Modbus Local integration."""
+"""Constants for the Modbus Local Gateway integration."""
 from homeassistant.const import Platform
 
-DOMAIN = "growatt_modbus_local"
+DOMAIN = "modbus_local_gateway"
 
 PLATFORMS = [Platform.SENSOR]
 

@@ -1,4 +1,4 @@
-"""Config flow for Growatt Modbus Local integration."""
+"""Config flow for Modbus Local Gateway integration."""
 from __future__ import annotations
 from collections.abc import Mapping
 
@@ -62,12 +62,12 @@ class OptionsFlowHandler(OptionsFlow):
 
 
 class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Growatt Modbus Local."""
+    """Handle a config flow for Modbus Local Gateway."""
 
     VERSION = 1
 
     def __init__(self) -> None:
-        """Initialise growatt server flow."""
+        """Initialise Modbus Local Gateway flow."""
         self.client: AsyncModbusTcpClientGateway = None
         self.data = {}
 
