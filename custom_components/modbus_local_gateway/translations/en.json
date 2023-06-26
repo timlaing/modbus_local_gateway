@@ -10,15 +10,9 @@
         "step": {
             "device_type": {
                 "data": {
-                    "device_type": "Device Type"
+                    "filename": "Device"
                 },
                 "description": "Select the device type to configure"
-            },
-            "inverter_param": {
-                "data": {
-                    "num_strings": "Number of PV strings"
-                },
-                "description": "Configure the inverter parameters"
             },
             "user": {
                 "data": {
@@ -31,19 +25,15 @@
         }
     },
     "options": {
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "unknown": "Unexpected error"
-        },
+
         "step": {
             "init": {
+                "description": "Update device parameters",
                 "data": {
-                    "host": "Host",
-                    "port": "Port",
-                    "slave_id": "Slave ID"
-                },
-                "description": "Update device parameters"
-            }
+                  "refresh": "Update frequency"
+                }
+              }
+
         }
     }
 }

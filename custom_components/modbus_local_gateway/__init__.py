@@ -1,5 +1,4 @@
-"""The Growatt server PV inverter sensor integration."""
-import logging
+"""The Modbus local gateway sensor integration."""
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.core import HomeAssistant

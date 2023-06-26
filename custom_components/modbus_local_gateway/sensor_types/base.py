@@ -1,4 +1,4 @@
-"""Sensor Entity Description for the Growatt integration."""
+"""Sensor Entity Description for the Modbus local gateway integration."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,7 +17,7 @@ class ModbusRequiredKeysMixin:
 class ModbusSensorEntityDescription(
     SensorEntityDescription, ModbusRequiredKeysMixin
 ):
-    """Describes Growatt sensor entity."""
+    """Describes Modbus sensor entity."""
 
     precision: int | None = None
     currency: bool = False

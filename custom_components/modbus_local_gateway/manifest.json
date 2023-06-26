@@ -3,7 +3,7 @@
   "name": "Modbus Local Gateway",
   "codeowners": ["@timlaing"],
   "config_flow": true,
-  "documentation": "https://www.laingcorp.co.uk/modbus_local_gateway/",
+  "documentation": "https://github.com/timlaing/modbus_local_gateway",
   "iot_class": "local_polling",
   "loggers": ["ModbusLocalGateway"],
   "requirements": ["pymodbus==3.3.1"],

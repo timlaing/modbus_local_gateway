@@ -1,1 +1,1 @@
-"""Sensor types for supported Growatt systems."""
+"""Sensor types for supported Modbus local gateway."""
