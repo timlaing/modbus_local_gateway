@@ -14,9 +14,7 @@ class ModbusRequiredKeysMixin:
 
 
 @dataclass
-class ModbusSensorEntityDescription(
-    SensorEntityDescription, ModbusRequiredKeysMixin
-):
+class ModbusSensorEntityDescription(SensorEntityDescription, ModbusRequiredKeysMixin):
     """Describes Modbus sensor entity."""
 
     precision: int | None = None

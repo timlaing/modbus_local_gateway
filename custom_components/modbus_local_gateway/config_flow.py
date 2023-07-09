@@ -1,39 +1,37 @@
 """Config flow for Modbus Local Gateway integration."""
 from __future__ import annotations
-from collections.abc import Mapping
 
+import datetime
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-
-from homeassistant.core import callback
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
+from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_FILENAME
-
 from .const import (
-    DOMAIN,
-    CONF_SLAVE_ID,
     CONF_DEFAULT_PORT,
     CONF_DEFAULT_SLAVE_ID,
+    CONF_SLAVE_ID,
+    DOMAIN,
+    OPTIONS_DEFAULT_REFRESH,
     OPTIONS_REFRESH,
-    OPTIONS_DEFAULT_REFRESH
 )
-
+from .coordinator import ModbusCoordinator
 from .helpers import get_gateway_key
 from .sensor_types.device_loader import load_devices
 from .sensor_types.modbus_device_info import ModbusDeviceInfo
-from .coordinator import ModbusCoordinator
 from .tcp_client import AsyncModbusTcpClientGateway
-
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class OptionsFlowHandler(OptionsFlow):
     """Class to support the options flow"""
+
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
@@ -43,8 +41,12 @@ class OptionsFlowHandler(OptionsFlow):
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
-            coordinator: ModbusCoordinator = self.hass.data[DOMAIN][get_gateway_key(self.config_entry)]
-            coordinator.update_interval = user_input.get(OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH)
+            coordinator: ModbusCoordinator = self.hass.data[DOMAIN][
+                get_gateway_key(self.config_entry)
+            ]
+            coordinator.update_interval = datetime.timedelta(
+                seconds=user_input.get(OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH)
+            )
 
             return self.async_create_entry(title="", data=user_input)
 
@@ -54,7 +56,9 @@ class OptionsFlowHandler(OptionsFlow):
                 {
                     vol.Required(
                         OPTIONS_REFRESH,
-                        default=self.config_entry.options.get(OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH),
+                        default=self.config_entry.options.get(
+                            OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
+                        ),
                     ): int
                 }
             ),
@@ -81,7 +85,9 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         slave_opts = {"default": CONF_DEFAULT_SLAVE_ID}
 
         if user_input is not None:
-            self.client = await AsyncModbusTcpClientGateway.async_get_client_connection(self.hass, user_input)
+            self.client = await AsyncModbusTcpClientGateway.async_get_client_connection(
+                self.hass, user_input
+            )
             await self.client.connect()
             if self.client.connected:
                 self.client.close()
@@ -102,10 +108,12 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_SLAVE_ID, **slave_opts): int,
                 }
             ),
-            errors=errors
+            errors=errors,
         )
 
-    async def async_step_device_type(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_device_type(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Handle the device type step."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -113,15 +121,13 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             return await self.async_create()
 
         devices = await load_devices()
-        devices_data = { dev: devices[dev].model for dev in devices }
+        devices_data = {dev: devices[dev].model for dev in devices}
 
-        return self.async_show_form(step_id="device_type",
-                                    data_schema=vol.Schema(
-                                        {
-                                            vol.Required(CONF_FILENAME): vol.In(devices_data)
-                                        }
-                                    ),
-                                    errors=errors)
+        return self.async_show_form(
+            step_id="device_type",
+            data_schema=vol.Schema({vol.Required(CONF_FILENAME): vol.In(devices_data)}),
+            errors=errors,
+        )
 
     async def async_create(self) -> FlowResult:
         """Create the entry if we can"""
@@ -129,11 +135,14 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_create_entry(title=device_info.model, data=self.data)
 
-
-    def async_abort(self, *, reason: str, description_placeholders: Mapping[str, str] | None = None) -> FlowResult:
+    def async_abort(
+        self, *, reason: str, description_placeholders: Mapping[str, str] | None = None
+    ) -> FlowResult:
         """Aborting the setup"""
         self.client.close()
-        return super().async_abort(reason=reason, description_placeholders=description_placeholders)
+        return super().async_abort(
+            reason=reason, description_placeholders=description_placeholders
+        )
 
     def async_show_progress_done(self, *, next_step_id: str) -> FlowResult:
         """Setup complete"""

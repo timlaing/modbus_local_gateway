@@ -1,0 +1,9 @@
+black
+fuzzywuzzy
+isort
+levenshtein
+pytest-homeassistant-custom-component==0.13.23
+pytest
+pytest-asyncio
+pytest-cov
+pylint

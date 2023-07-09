@@ -2,19 +2,17 @@
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
+    DEGREE,
+    POWER_VOLT_AMPERE_REACTIVE,
     StrEnum,
+    UnitOfApparentPower,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfFrequency,
     UnitOfPower,
     UnitOfTemperature,
-    UnitOfApparentPower,
-    POWER_VOLT_AMPERE_REACTIVE,
-    DEGREE,
-
 )
-
 
 MODEL = "model"
 MANUFACTURER = "manufacturer"
@@ -40,6 +38,7 @@ DEFAULT_STATE_CLASS = SensorStateClass.MEASUREMENT
 
 class Units(StrEnum):
     """Valid unit types for yaml definition"""
+
     CELSIUS = "Celsius"
     VOLTS = "Volts"
     AMPS = "Amps"
@@ -55,20 +54,20 @@ class Units(StrEnum):
 UOM_MAPPING = {
     Units.CELSIUS: {
         UNIT: UnitOfTemperature.CELSIUS,
-        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE
+        DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
     },
     Units.VOLTS: {
         UNIT: UnitOfElectricPotential.VOLT,
-        DEVICE_CLASS: SensorDeviceClass.VOLTAGE
+        DEVICE_CLASS: SensorDeviceClass.VOLTAGE,
     },
     Units.AMPS: {
         UNIT: UnitOfElectricCurrent.AMPERE,
-        DEVICE_CLASS: SensorDeviceClass.CURRENT
+        DEVICE_CLASS: SensorDeviceClass.CURRENT,
     },
     Units.KWH: {
         UNIT: UnitOfEnergy.KILO_WATT_HOUR,
         DEVICE_CLASS: SensorDeviceClass.ENERGY,
-        STATE_CLASS: SensorStateClass.TOTAL_INCREASING
+        STATE_CLASS: SensorStateClass.TOTAL_INCREASING,
     },
     Units.HZ: {
         UNIT: UnitOfFrequency.HERTZ,

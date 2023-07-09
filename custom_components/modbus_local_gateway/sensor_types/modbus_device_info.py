@@ -1,38 +1,37 @@
 """Module for the ModbusDeviceInfo class"""
 from __future__ import annotations
 
-from typing import Any
 import logging
 from os.path import join
+from typing import Any
 
 from homeassistant.util.yaml import load_yaml
 
 from ..devices import CONFIG_DIR
 from .base import ModbusSensorEntityDescription
 from .const import (
+    DEFAULT_STATE_CLASS,
     DEVICE,
-    MANUFACTURER,
-    MODEL,
-    MAX_READ_DEFAULT,
-    MAX_READ,
     DEVICE_CLASS,
-    UNIT,
-    STATE_CLASS,
-    UOM_MAPPING,
+    ENTITIES,
+    ICON,
+    IS_FLOAT,
+    IS_STRING,
+    MANUFACTURER,
+    MAX_READ,
+    MAX_READ_DEFAULT,
+    MODEL,
+    PRECISION,
     REGISTER_ADDRESS,
     REGISTER_COUNT,
     REGISTER_MAP,
-    IS_FLOAT,
-    IS_STRING,
-    PRECISION,
-    TITLE,
-    ENTITIES,
     REGISTER_MULTIPLIER,
+    STATE_CLASS,
+    TITLE,
+    UNIT,
     UOM,
-    DEFAULT_STATE_CLASS,
-    ICON,
+    UOM_MAPPING,
 )
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -80,14 +79,15 @@ class ModbusDeviceInfo:
         return {
             "native_unit_of_measurement": unit,
             "device_class": device_class,
-            "state_class": state_class}
+            "state_class": state_class,
+        }
 
     @property
     def entity_desciptions(self) -> tuple[ModbusSensorEntityDescription, ...]:
         """Get the entity descriptions for the device"""
         descriptions: list[ModbusSensorEntityDescription] = []
         for entity in self._config[ENTITIES]:
-            _data:dict[str, Any] = self._config[ENTITIES][entity]
+            _data: dict[str, Any] = self._config[ENTITIES][entity]
 
             uom = self.get_uom(_data)
 
@@ -102,7 +102,7 @@ class ModbusDeviceInfo:
                 precision=_data.get(PRECISION),
                 string=_data.get(IS_STRING, False),
                 float=_data.get(IS_FLOAT, False),
-                **uom
+                **uom,
             )
 
             descriptions.append(desc)
@@ -115,24 +115,24 @@ class ModbusDeviceInfo:
         descriptions: list[ModbusSensorEntityDescription] = []
         for entity in self._config[DEVICE]:
             if isinstance(self._config[DEVICE][entity], dict):
-                _data:dict[str, Any] = self._config[DEVICE][entity]
+                _data: dict[str, Any] = self._config[DEVICE][entity]
 
                 uom = self.get_uom(_data)
 
                 desc = ModbusSensorEntityDescription(
-                        key=entity,
-                        name=_data.get(TITLE, entity),
-                        register_address=_data[REGISTER_ADDRESS],
-                        register_count=_data.get(REGISTER_COUNT),
-                        register_multiplier=_data.get(REGISTER_MULTIPLIER),
-                        register_map=_data.get(REGISTER_MAP),
-                        icon=_data.get(ICON),
-                        precision=_data.get(PRECISION),
-                        string=_data.get(IS_STRING, False),
-                        holding_register=True,
-                        float=_data.get(IS_FLOAT, False),
-                        **uom
-                    )
+                    key=entity,
+                    name=_data.get(TITLE, entity),
+                    register_address=_data[REGISTER_ADDRESS],
+                    register_count=_data.get(REGISTER_COUNT),
+                    register_multiplier=_data.get(REGISTER_MULTIPLIER),
+                    register_map=_data.get(REGISTER_MAP),
+                    icon=_data.get(ICON),
+                    precision=_data.get(PRECISION),
+                    string=_data.get(IS_STRING, False),
+                    holding_register=True,
+                    float=_data.get(IS_FLOAT, False),
+                    **uom,
+                )
 
                 descriptions.append(desc)
 

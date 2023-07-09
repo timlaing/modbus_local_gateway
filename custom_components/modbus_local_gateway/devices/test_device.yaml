@@ -1,0 +1,31 @@
+device:
+  manufacturer: Test
+  model: MyModel
+  max_register_read: 5
+  hw_version:
+    title: Firmware version
+    address: 10
+    size: 3
+    string: true
+  serial_no:
+    title: Serial Number
+    address: 20
+    size: 14
+    string: true
+
+entities:
+  status:
+    title: Status
+    address: 1000
+  float_val:
+    title: Float
+    address: 1010
+    float: true
+    precision: 2
+    multiplier: 0.1
+  soc:
+    title: SoC
+    address: 1020
+    unit_of_measurement: "%"
+    precision: 2
+    device_class: battery
