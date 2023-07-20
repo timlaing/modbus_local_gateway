@@ -12,7 +12,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_SLAVE_ID, DOMAIN
+from .const import CONF_SLAVE_ID, CONF_PREFIX, DOMAIN
 from .coordinator import ModbusContext, ModbusCoordinator
 from .helpers import get_gateway_key
 from .sensor_types.base import ModbusSensorEntityDescription
@@ -53,7 +53,7 @@ async def async_setup_entry(
             ModbusSensorEntity(
                 coordinator=coordinator,
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
-                device=device,
+                device=CONF_PREFIX+device,
             )
             for desc in device_info.entity_desciptions
         ],
@@ -64,7 +64,7 @@ async def async_setup_entry(
             ModbusSensorEntity(
                 coordinator=coordinator,
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
-                device=device,
+                device=CONF_PREFIX+device,
             )
             for desc in device_info.properties
         ],
