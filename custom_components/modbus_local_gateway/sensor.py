@@ -53,7 +53,7 @@ async def async_setup_entry(
             ModbusSensorEntity(
                 coordinator=coordinator,
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
-                device=CONF_PREFIX+device,
+                device=f"{CONF_PREFIX}-{device}",
             )
             for desc in device_info.entity_desciptions
         ],
@@ -64,7 +64,7 @@ async def async_setup_entry(
             ModbusSensorEntity(
                 coordinator=coordinator,
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
-                device=CONF_PREFIX+device,
+                device=f"{CONF_PREFIX}-{device}",
             )
             for desc in device_info.properties
         ],
