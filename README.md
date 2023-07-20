@@ -47,6 +47,7 @@ connect to the device.
 * IP address / hostname
 * TCP Port number
 * Modbus Slave ID
+* Prefix for Sensors
 
 ### Stage Two
 
