@@ -12,6 +12,7 @@ from homeassistant.const import (
     UnitOfFrequency,
     UnitOfPower,
     UnitOfTemperature,
+    UnitOfTime,
 )
 
 MODEL = "model"
@@ -49,6 +50,7 @@ class Units(StrEnum):
     HZ = "Hz"
     WATTS = "Watts"
     VA = "VoltAmps"
+    SECONDS = "Seconds"
 
 
 UOM_MAPPING = {
@@ -90,5 +92,9 @@ UOM_MAPPING = {
     Units.VA: {
         UNIT: UnitOfApparentPower.VOLT_AMPERE,
         DEVICE_CLASS: SensorDeviceClass.APPARENT_POWER,
+    },
+    Units.SECONDS: {
+        UNIT: UnitOfTime.SECONDS,
+        DEVICE_CLASS: SensorDeviceClass.DURATION,
     },
 }

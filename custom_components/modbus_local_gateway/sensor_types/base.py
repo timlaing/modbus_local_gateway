@@ -22,7 +22,7 @@ class ModbusSensorEntityDescription(SensorEntityDescription, ModbusRequiredKeysM
     previous_value_drop_threshold: float | None = None
     never_resets: bool = False
     register_count: int | None = 1
-    register_multiplier: float | None = 0.1
+    register_multiplier: float | None = 1
     register_map: dict[int, str] | None = None
     icon: str | None = None
     string: bool | None = False
