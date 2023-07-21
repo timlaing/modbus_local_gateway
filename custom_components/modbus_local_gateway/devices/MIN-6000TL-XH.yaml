@@ -323,7 +323,7 @@ entities:
     multiplier: 0.1
   StandbyFlag:
     title: Inverter standby flag
-    addresss: 3104
+    address: 3104
   Fault:
     title: Fault code
     address: 3105
