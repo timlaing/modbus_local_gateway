@@ -40,7 +40,7 @@ async def async_setup_entry(
 
     device = DeviceInfo(
         identifiers=identifiers,
-        default_name=device_info.model,
+        default_name=f"{CONF_PREFIX}-{device_info.model}",
         manufacturer=device_info.manufacturer,
         model=device_info.model,
         via_device=list(coordinator.gateway_device.identifiers)[0],
