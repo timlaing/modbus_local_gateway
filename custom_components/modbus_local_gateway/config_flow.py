@@ -84,7 +84,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         host_opts = {}
         port_opts = {"default": CONF_DEFAULT_PORT}
         slave_opts = {"default": CONF_DEFAULT_SLAVE_ID}
-        prefix_opts = {"default": CONF_DEFAULT_PREFIX}
+        prefix_opts = {"default": CONF_PREFIX}
 
         if user_input is not None:
             self.client = await AsyncModbusTcpClientGateway.async_get_client_connection(
