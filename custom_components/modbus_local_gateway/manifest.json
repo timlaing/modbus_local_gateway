@@ -6,8 +6,8 @@
   ],
   "config_flow": true,
   "documentation": "https://github.com/timlaing/modbus_local_gateway",
-  "issue_tracker": "https://github.com/timlaing/modbus_local_gateway",
   "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/timlaing/modbus_local_gateway",
   "loggers": [
     "ModbusLocalGateway"
   ],
