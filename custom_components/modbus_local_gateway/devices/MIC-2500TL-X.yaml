@@ -78,7 +78,6 @@ entities:
     title: Output power
     unit_of_measurement: Watts
     precision: 2
-    float: True
     size: 2
     multiplier: 0.1
   Fac:
