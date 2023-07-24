@@ -7,6 +7,7 @@ from homeassistant.helpers import device_registry as dr
 
 from .const import (
     CONF_SLAVE_ID,
+    CONF_PREFIX,
     DOMAIN,
     OPTIONS_DEFAULT_REFRESH,
     OPTIONS_REFRESH,
