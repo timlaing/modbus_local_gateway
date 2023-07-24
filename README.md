@@ -1,4 +1,4 @@
-# Modbus Local Gateway component
+# Modbus Local Gateway component with Prefix
 
 This is a Home Assistant integration to support modbus devices running behind a Modbus TCP gateway.
 
