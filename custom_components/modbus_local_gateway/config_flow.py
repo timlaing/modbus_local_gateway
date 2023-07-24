@@ -131,7 +131,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             step_id="device_type",
             data_schema=vol.Schema({vol.Required(CONF_FILENAME): vol.In(devices_data)}),
             errors=errors,
-        )
+        ) 
 
     async def async_create(self) -> FlowResult:
         """Create the entry if we can"""
