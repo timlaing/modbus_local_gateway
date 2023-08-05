@@ -130,7 +130,7 @@ entities:
   TimeTotal:
     title: Work time total
     address: 3047
-    unit_of_measurement: S
+    unit_of_measurement: Seconds
     precision: 2
     size: 2
     multiplier: 0.5
