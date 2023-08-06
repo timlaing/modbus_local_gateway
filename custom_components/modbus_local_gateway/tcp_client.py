@@ -8,7 +8,6 @@ from typing import Any
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.constants import Defaults
 from pymodbus.exceptions import ConnectionException, ModbusException
 from pymodbus.framer import ModbusFramer
 from pymodbus.framer.socket_framer import ModbusSocketFramer
@@ -27,7 +26,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     def __init__(
         self,
         host: str,
-        port: int = Defaults.TcpPort,
+        port: int = 502,
         framer: type[ModbusFramer] = ModbusSocketFramer,
         source_address: tuple[str, int] = None,
         **kwargs: Any,
@@ -41,27 +40,37 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         remaining_registers: int = count
         address_to_read: int = address
 
-        while remaining_registers > 0:
-            read_count: int = (
-                max_read_size
-                if remaining_registers > max_read_size
-                else remaining_registers
+        try:
+            while remaining_registers > 0:
+                read_count: int = (
+                    max_read_size
+                    if remaining_registers > max_read_size
+                    else remaining_registers
+                )
+
+                modbus_response_temp: ModbusResponse = await func(
+                    address=address_to_read,
+                    count=read_count,
+                    slave=slave,
+                )
+
+                remaining_registers -= read_count
+                address_to_read += read_count
+
+                if modbus_response is None:
+                    modbus_response = modbus_response_temp
+                else:
+                    _LOGGER.debug("Appending registers to existing response")
+                    modbus_response.registers += modbus_response_temp.registers
+
+        except ModbusException:
+            _LOGGER.debug(
+                "We had an exception reading registers %d slave: %d",
+                address_to_read,
+                slave,
+                exc_info=1,
             )
-
-            modbus_response_temp: ModbusResponse = await func(
-                address=address_to_read,
-                count=read_count,
-                slave=slave,
-            )
-
-            remaining_registers -= read_count
-            address_to_read += read_count
-
-            if modbus_response is None:
-                modbus_response = modbus_response_temp
-            else:
-                _LOGGER.debug("Appending registers to existing response")
-                modbus_response.registers += modbus_response_temp.registers
+            modbus_response = None
 
         return modbus_response
 
@@ -108,7 +117,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_address,
                         entity.desc.register_count,
                     )
-                    await asyncio.sleep(1)
+                    # await asyncio.sleep(1)
 
             _LOGGER.debug("Closing connection - Update completed %s", self)
 
@@ -116,7 +125,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     @classmethod
     async def async_get_client_connection(
-        cls: AsyncModbusTcpClientGateway, hass: HomeAssistant, data: dict[str, Any]
+        cls: AsyncModbusTcpClientGateway,
+        hass: HomeAssistant,  # pylint: disable=unused-argument
+        data: dict[str, Any],
     ):
         """Gets a modbus client object"""
         key = f"{data[CONF_HOST]}:{data[CONF_PORT]}"

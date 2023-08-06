@@ -57,7 +57,7 @@ async def async_setup_entry(
             )
             for desc in device_info.entity_desciptions
         ],
-        update_before_add=True,
+        update_before_add=False,
     )
     async_add_entities(
         [
@@ -68,7 +68,7 @@ async def async_setup_entry(
             )
             for desc in device_info.properties
         ],
-        update_before_add=True,
+        update_before_add=False,
     )
 
 

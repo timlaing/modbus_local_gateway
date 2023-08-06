@@ -1,5 +1,5 @@
 {
-	"name": "Tuya Local Dev",
+	"name": "Modbus Local Dev",
 	"image": "mcr.microsoft.com/devcontainers/python:1-3.11-bullseye",
 	"postCreateCommand": "pip3 install --user -r requirements.txt",
 	"containerEnv": {
