@@ -40,37 +40,27 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         remaining_registers: int = count
         address_to_read: int = address
 
-        try:
-            while remaining_registers > 0:
-                read_count: int = (
-                    max_read_size
-                    if remaining_registers > max_read_size
-                    else remaining_registers
-                )
-
-                modbus_response_temp: ModbusResponse = await func(
-                    address=address_to_read,
-                    count=read_count,
-                    slave=slave,
-                )
-
-                remaining_registers -= read_count
-                address_to_read += read_count
-
-                if modbus_response is None:
-                    modbus_response = modbus_response_temp
-                else:
-                    _LOGGER.debug("Appending registers to existing response")
-                    modbus_response.registers += modbus_response_temp.registers
-
-        except ModbusException:
-            _LOGGER.debug(
-                "We had an exception reading registers %d slave: %d",
-                address_to_read,
-                slave,
-                exc_info=1,
+        while remaining_registers > 0:
+            read_count: int = (
+                max_read_size
+                if remaining_registers > max_read_size
+                else remaining_registers
             )
-            modbus_response = None
+
+            modbus_response_temp: ModbusResponse = await func(
+                address=address_to_read,
+                count=read_count,
+                slave=slave,
+            )
+
+            remaining_registers -= read_count
+            address_to_read += read_count
+
+            if modbus_response is None:
+                modbus_response = modbus_response_temp
+            else:
+                _LOGGER.debug("Appending registers to existing response")
+                modbus_response.registers += modbus_response_temp.registers
 
         return modbus_response
 
@@ -82,7 +72,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         async with self.lock:
             await self.connect()
             if not self.connected:
-                raise ConnectionException(f"Failed to connect to gateway - {self}")
+                _LOGGER.warning("Failed to connect to gateway - %s", self)
+                return data
 
             entity: ModbusContext
             for entity in entities:
@@ -117,7 +108,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_address,
                         entity.desc.register_count,
                     )
-                    # await asyncio.sleep(1)
+                    await asyncio.sleep(1)
 
             _LOGGER.debug("Closing connection - Update completed %s", self)
 
