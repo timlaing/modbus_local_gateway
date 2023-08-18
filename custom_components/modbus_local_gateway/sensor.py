@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -12,7 +13,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_SLAVE_ID, DOMAIN
+from .const import CONF_PREFIX, CONF_SLAVE_ID, DOMAIN
 from .coordinator import ModbusContext, ModbusCoordinator
 from .helpers import get_gateway_key
 from .sensor_types.base import ModbusSensorEntityDescription
@@ -21,13 +22,21 @@ from .sensor_types.modbus_device_info import ModbusDeviceInfo
 _LOGGER = logging.getLogger(__name__)
 
 
+def get_prefix(config: dict[str, Any]) -> str:
+    """Gets the sensor entity id prefix"""
+    prefix = config.get(CONF_PREFIX, "")
+    if prefix != "":
+        return f"{prefix}-"
+    return prefix
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Modbus Local Gateway sensor."""
-    config = {**config_entry.data}
+    config: dict[str, Any] = {**config_entry.data}
     _LOGGER.debug(config)
     coordinator: ModbusCoordinator = hass.data[DOMAIN][get_gateway_key(config_entry)]
     device_info: ModbusDeviceInfo = ModbusDeviceInfo(config[CONF_FILENAME])
@@ -40,7 +49,7 @@ async def async_setup_entry(
 
     device = DeviceInfo(
         identifiers=identifiers,
-        name=device_info.model,
+        name=f"{get_prefix(config)}{device_info.model}",
         manufacturer=device_info.manufacturer,
         model=device_info.model,
         via_device=list(coordinator.gateway_device.identifiers)[0],
@@ -76,13 +85,16 @@ class ModbusSensorEntity(CoordinatorEntity, SensorEntity):
     """Sensor entity for Modbus gateway"""
 
     def __init__(
-        self, coordinator: ModbusCoordinator, ctx: ModbusContext, device: DeviceInfo
+        self,
+        coordinator: ModbusCoordinator,
+        ctx: ModbusContext,
+        device: DeviceInfo,
     ) -> None:
         """Initialize a PVOutput sensor."""
         super().__init__(coordinator, context=ctx)
         self.entity_description: ModbusSensorEntityDescription = ctx.desc
-        self._attr_unique_id = f"{ctx.slave_id}-{ctx.desc.key}"
-        self._attr_device_info = device
+        self._attr_unique_id: str = f"{ctx.slave_id}-{ctx.desc.key}"
+        self._attr_device_info: DeviceInfo = device
 
     @callback
     def _handle_coordinator_update(self) -> None:

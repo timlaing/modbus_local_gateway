@@ -15,6 +15,7 @@ from homeassistant.data_entry_flow import FlowResult
 from .const import (
     CONF_DEFAULT_PORT,
     CONF_DEFAULT_SLAVE_ID,
+    CONF_PREFIX,
     CONF_SLAVE_ID,
     DOMAIN,
     OPTIONS_DEFAULT_REFRESH,
@@ -83,6 +84,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         host_opts = {}
         port_opts = {"default": CONF_DEFAULT_PORT}
         slave_opts = {"default": CONF_DEFAULT_SLAVE_ID}
+        prefix_opts = {"default": ""}
 
         if user_input is not None:
             self.client = await AsyncModbusTcpClientGateway.async_get_client_connection(
@@ -98,6 +100,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             host_opts["default"] = user_input[CONF_HOST]
             port_opts["default"] = user_input[CONF_PORT]
             slave_opts["default"] = user_input[CONF_SLAVE_ID]
+            prefix_opts["default"] = user_input[CONF_PREFIX]
 
         return self.async_show_form(
             step_id="user",
@@ -106,6 +109,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_HOST, **host_opts): str,
                     vol.Required(CONF_PORT, **port_opts): int,
                     vol.Required(CONF_SLAVE_ID, **slave_opts): int,
+                    vol.Optional(CONF_PREFIX, **prefix_opts): str,
                 }
             ),
             errors=errors,

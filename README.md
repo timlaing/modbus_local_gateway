@@ -10,7 +10,8 @@ Slave devices for testing have been:
 * Growatt MIN-6000-TL-XH
 * Growatt MIC-2500-TL-X
 * Eastron SDM230
-* Eastron SDM630 (in progress)
+* Finder 7M.38
+* Finder 7M.24
 
 Note that devices sometimes get firmware upgrades, or incompatible versions are sold under the same model name, so it is possible that the device will not work despite being listed.
 
@@ -47,6 +48,7 @@ connect to the device.
 * IP address / hostname
 * TCP Port number
 * Modbus Slave ID
+* Prefix for Sensors
 
 ### Stage Two
 

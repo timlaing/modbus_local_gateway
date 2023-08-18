@@ -1,0 +1,191 @@
+device:
+  manufacturer: Finder
+  model: 7M.24
+
+entities:
+  Voltage:
+    address: 2500
+    title: Voltage
+    unit_of_measurement: V
+    precision: 2
+    float: True
+    device_class: voltage
+    state_class: measurement
+    size: 2
+  
+  Current:
+    address: 2516
+    title: Current
+    unit_of_measurement: A
+    precision: 2
+    float: True
+    device_class: current
+    state_class: measurement
+    size: 2  
+
+  Active Power:
+    address: 2530
+    title: Active Power 
+    unit_of_measurement: W
+    precision: 2
+    float: True
+    device_class: power
+    state_class: measurement
+    size: 2  
+    
+  Apparent Power:
+    address: 2546
+    title: Apparent Power 
+    unit_of_measurement: VA
+    precision: 2
+    float: True
+    device_class: apparent_power
+    state_class: measurement
+    size: 2  
+    
+  Reactive Power:
+    address: 2538
+    title: Reactive Power 
+    unit_of_measurement: var
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2  
+    
+  Frequency:
+    address: 2498
+    title: Frequency 
+    unit_of_measurement: Hz
+    precision: 2
+    float: True
+    device_class: frequency
+    state_class: measurement
+    size: 2  
+    
+  Power Factor:
+    address: 2554
+    title: Power Factor 
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+    
+  Counter N1:
+    address: 462
+    title: Counter N1 
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter N2:
+    address: 464
+    title: Counter N2 
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter N3:
+    address: 466
+    title: Counter N3
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter N4:
+    address: 468
+    title: Counter N4 
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C1:
+    address: 470
+    title: Counter C1 
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C2:
+    address: 472
+    title: Counter C2
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C3:
+    address: 474
+    title: Counter C3 
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C4:
+    address: 476
+    title: Counter C4 
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C5:
+    address: 478
+    title: Counter C5 
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C6:
+    address: 480
+    title: Counter C6
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C7:
+    address: 482
+    title: Counter C7
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
+
+  Counter C8:
+    address: 484
+    title: Counter C8
+    unit_of_measurement: Wh
+    precision: 3
+    float: False
+    device_class: energy
+    state_class: total_increasing
+    size: 2
