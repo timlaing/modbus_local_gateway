@@ -23,8 +23,8 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Test with pytest
         run: pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml
-      - name: SonarCloud scan
-        uses: sonarsource/sonarcloud-github-action@master
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
         if: (github.event.sender.login == github.event.repository.owner.login) && (github.repository == 'timlaing/modbus_local_gateway') && (github.ref == 'main')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
