@@ -73,7 +73,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         """Initialise Modbus Local Gateway flow."""
-        self.client: AsyncModbusTcpClientGateway = None
+        self.client: AsyncModbusTcpClientGateway
         self.data = {}
 
     async def async_step_user(

@@ -30,7 +30,7 @@ class ModbusCoordinator(DataUpdateCoordinator):
         """Initialise the coordinator"""
         self.client: AsyncModbusTcpClientGateway = client
         self._gateway: str = gateway
-        self._max_read_size: int = None
+        self._max_read_size: int
         self._gateway_device = gateway_device
 
         super().__init__(
