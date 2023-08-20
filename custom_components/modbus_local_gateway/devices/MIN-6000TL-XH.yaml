@@ -105,7 +105,62 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
-  # 3030 - 3040 (Three Phase)
+  Vac2:
+    title: Three phase grid voltage (2)
+    address: 3030
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Iac2:
+    title: Three phase grid output current (2)
+    address: 3031
+    unit_of_measurement: Amps
+    precision: 2
+    multiplier: 0.1
+  Pac2:
+    title: Three phase grid output power (2)
+    address: 3032
+    unit_of_measurement: VoltAmps
+    precision: 2
+    size: 2
+    multiplier: 0.1
+  Vac3:
+    title: Three phase grid voltage (3)
+    address: 3034
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Iac3:
+    title: Three phase grid output current (3)
+    address: 3035
+    unit_of_measurement: Amps
+    precision: 2
+    multiplier: 0.1
+  Pac3:
+    title: Three phase grid output power (3)
+    address: 3036
+    unit_of_measurement: VoltAmps
+    precision: 2
+    size: 2
+    multiplier: 0.1
+  Vac_RS:
+    title: Three phase grid voltage (RS)
+    address: 3038
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Vac_ST:
+    title: Three phase grid voltage (ST)
+    address: 3039
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Vac_TR:
+    title: Three phase grid voltage (TR)
+    address: 3040
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
   PtouserTotal:
     title: Total forward power
     address: 3041
@@ -309,7 +364,7 @@ entities:
     state_class: measurement
   RealOPPercent:
     title: Real output power percent
-    address: 3102
+    address: 3101
     unit_of_measurement: "%"
     precision: 2
     register_multiplier: 1
@@ -401,3 +456,17 @@ entities:
     unit_of_measurement: "%"
     precision: 2
     device_class: battery
+  pdischr:
+    title: Discharge power
+    address: 3178
+    unit_of_measurement: Watts
+    multiplier: 0.1
+    precision: 2
+    size: 2
+  pchr:
+    title: Charge power
+    address: 3180
+    unit_of_measurement: Watts
+    multiplier: 0.1
+    precision: 2
+    size: 2
