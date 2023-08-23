@@ -33,6 +33,9 @@ STATE_CLASS = "state_class"
 TITLE = "title"
 UNIT = "unit"
 MAX_READ = "max_register_read"
+BITS = "bits"
+SHIFT = "shift_bits"
+FLAGS = "flags"
 MAX_READ_DEFAULT = 8
 DEFAULT_STATE_CLASS = SensorStateClass.MEASUREMENT
 

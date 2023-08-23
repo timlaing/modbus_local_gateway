@@ -5,24 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Debug Tests",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "purpose": [
+                "debug-test"
+            ],
+            // "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        {
             "name": "Home Assistant",
             "type": "python",
             "request": "launch",
             "module": "homeassistant",
-            "justMyCode": true,
+            "justMyCode": false,
             "args": [
                 "-v"
-            ]
-        },
-        {
-            "name": "Pytest",
-            "type": "python",
-            "request": "launch",
-            "module": "pytest",
-            "justMyCode": true,
-            "args": [
-                "--disable-socket",
-                "--allow-unix-socket"
             ]
         }
     ]
