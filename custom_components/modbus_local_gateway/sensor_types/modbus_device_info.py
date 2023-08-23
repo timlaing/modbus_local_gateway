@@ -10,10 +10,13 @@ from homeassistant.util.yaml import load_yaml
 from ..devices import CONFIG_DIR
 from .base import ModbusSensorEntityDescription
 from .const import (
+    BITS,
+    CATEGORY,
     DEFAULT_STATE_CLASS,
     DEVICE,
     DEVICE_CLASS,
     ENTITIES,
+    FLAGS,
     ICON,
     IS_FLOAT,
     IS_STRING,
@@ -26,6 +29,7 @@ from .const import (
     REGISTER_COUNT,
     REGISTER_MAP,
     REGISTER_MULTIPLIER,
+    SHIFT,
     STATE_CLASS,
     TITLE,
     UNIT,
@@ -82,58 +86,60 @@ class ModbusDeviceInfo:
             "state_class": state_class,
         }
 
-    @property
-    def entity_desciptions(self) -> tuple[ModbusSensorEntityDescription, ...]:
-        """Get the entity descriptions for the device"""
+    def _create_descriptions(
+        self, config: dict[str, Any]
+    ) -> tuple[ModbusSensorEntityDescription, ...]:
+        """Create the entity descriptions for the device"""
         descriptions: list[ModbusSensorEntityDescription] = []
-        for entity in self._config[ENTITIES]:
-            _data: dict[str, Any] = self._config[ENTITIES][entity]
-
-            uom = self.get_uom(_data)
-
-            desc = ModbusSensorEntityDescription(
-                key=entity,
-                name=_data.get(TITLE, entity),
-                register_address=_data[REGISTER_ADDRESS],
-                register_count=_data.get(REGISTER_COUNT, 1),
-                register_multiplier=_data.get(REGISTER_MULTIPLIER, 1),
-                register_map=_data.get(REGISTER_MAP),
-                icon=_data.get(ICON),
-                precision=_data.get(PRECISION),
-                string=_data.get(IS_STRING, False),
-                float=_data.get(IS_FLOAT, False),
-                **uom,
-            )
-
-            descriptions.append(desc)
-
-        return tuple(descriptions)
-
-    @property
-    def properties(self) -> tuple[ModbusSensorEntityDescription, ...]:
-        """Get device properties descriptions"""
-        descriptions: list[ModbusSensorEntityDescription] = []
-        for entity in self._config[DEVICE]:
-            if isinstance(self._config[DEVICE][entity], dict):
-                _data: dict[str, Any] = self._config[DEVICE][entity]
+        for entity in config:
+            if isinstance(config[entity], dict):
+                _data: dict[str, Any] = config[entity]
 
                 uom = self.get_uom(_data)
 
-                desc = ModbusSensorEntityDescription(
-                    key=entity,
-                    name=_data.get(TITLE, entity),
-                    register_address=_data[REGISTER_ADDRESS],
-                    register_count=_data.get(REGISTER_COUNT),
-                    register_multiplier=_data.get(REGISTER_MULTIPLIER),
-                    register_map=_data.get(REGISTER_MAP),
-                    icon=_data.get(ICON),
-                    precision=_data.get(PRECISION),
-                    string=_data.get(IS_STRING, False),
-                    holding_register=True,
-                    float=_data.get(IS_FLOAT, False),
+                params: dict[str, Any] = {
+                    "key": entity,
+                    "name": _data.get(TITLE, entity),
+                    "register_address": _data.get(REGISTER_ADDRESS),
+                    "register_count": _data.get(REGISTER_COUNT),
+                    "register_multiplier": _data.get(REGISTER_MULTIPLIER),
+                    "register_map": _data.get(REGISTER_MAP),
+                    "icon": _data.get(ICON),
+                    "precision": _data.get(PRECISION),
+                    "string": _data.get(IS_STRING),
+                    "float": _data.get(IS_FLOAT),
+                    "bits": _data.get(BITS),
+                    "bit_shift": _data.get(SHIFT),
+                    "flags": _data.get(FLAGS),
+                    "entity_category": _data.get(CATEGORY),
                     **uom,
-                )
+                }
+
+                try:
+                    desc = ModbusSensorEntityDescription(
+                        **{k: params[k] for k in params if params[k] is not None}
+                    )
+                except TypeError:
+                    _LOGGER.error(
+                        "Unable to create entry %s: missing required values",
+                        entity,
+                        exc_info=True,
+                    )
+                    continue
+
+                if not desc.validate():
+                    continue
 
                 descriptions.append(desc)
 
         return tuple(descriptions)
+
+    @property
+    def entity_desciptions(self) -> tuple[ModbusSensorEntityDescription, ...]:
+        """Get the entity descriptions for the device"""
+        return self._create_descriptions(self._config[ENTITIES])
+
+    @property
+    def properties(self) -> tuple[ModbusSensorEntityDescription, ...]:
+        """Get device properties descriptions"""
+        return self._create_descriptions(self._config[DEVICE])

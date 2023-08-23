@@ -19,14 +19,29 @@ device:
     string: true
 
 entities:
-  status:
-    title: Inverter Status
+  machine_status:
+    title: Inverter Machine Status
     address: 3000
-    map:
+    register_map:
       0: Standby
       1: Normal
       3: Fault
       4: Flash
+    bits: 8
+  run_status:
+    title: Inverter Machine Status
+    address: 3000
+    register_map:
+      0: Waiting module
+      1: Self-test
+      3: SysFault module
+      4: Flash module
+      5: PVBATOnline module
+      6: BatOnline module
+      7: PVOffline mode
+      8: BatOffline mode
+    shift_bits: 8
+    bits: 8
   Ppv:
     address: 3001
     title: PV total power

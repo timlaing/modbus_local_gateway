@@ -11,6 +11,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from pymodbus.pdu import ModbusResponse
 
 from .context import ModbusContext
+from .sensor_types.conversion import Conversion
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,58 +79,33 @@ class ModbusCoordinator(DataUpdateCoordinator):
         )
         return await self._update_device(entities=entities)
 
-    async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
+    async def _update_device(self, entities: list[ModbusContext]):
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
         resp: dict[str, ModbusResponse] = await self.client.update_slave(
             entities, max_read_size=self._max_read_size
         )
         data: dict[str, Any] = {}
+        conversion: Conversion = Conversion(self.client)
 
         entity: ModbusContext
         for entity in entities:
             if entity.desc.key in resp:
                 modbus_response: ModbusResponse = resp[entity.desc.key]
-                value = self.translate_data(ctx=entity, response=modbus_response)
-                data[entity.desc.key] = value
-                _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
-
-        return data
+                try:
+                    value = conversion.convert_from_registers(
+                        desc=entity.desc, registers=modbus_response.registers
+                    )
+                    data[entity.desc.key] = value
+                    _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
+                except Exception:  # pylint: disable=broad-exception-caught
+                    _LOGGER.debug(
+                        "Data not available for key: %s (%d)",
+                        entity.desc.key,
+                        entity.slave_id,
+                    )
 
     def get_data(self, ctx: ModbusContext) -> str | int | None:
         """returns the pre-retrieved data"""
         if self.data and ctx.desc.key in self.data:
             return self.data[ctx.desc.key]
-
-    def translate_data(
-        self, ctx: ModbusContext, response: ModbusResponse
-    ) -> str | int | None:
-        """returns the value of the registers"""
-        try:
-            if ctx.desc.string:
-                value: str = self.client.convert_from_registers(
-                    response.registers, data_type=self.client.DATATYPE.STRING
-                ).split("\0")[0]
-                return value
-            if ctx.desc.float:
-                value: float = self.client.convert_from_registers(
-                    response.registers, data_type=self.client.DATATYPE.FLOAT32
-                )
-                return value
-
-            if ctx.desc.register_map:
-                value: int = ctx.desc.register_map[response.registers[0]]
-
-                return value
-
-            num = self.client.convert_from_registers(
-                response.registers,
-                data_type=self.client.DATATYPE.INT32
-                if ctx.desc.register_count == 2
-                else self.client.DATATYPE.INT16,
-            )
-
-            return num * ctx.desc.register_multiplier
-        except Exception:  # pylint: disable=broad-exception-caught
-            _LOGGER.debug(
-                "Data not available for key: %s (%d)", ctx.desc.key, ctx.slave_id
-            )
+        return None
