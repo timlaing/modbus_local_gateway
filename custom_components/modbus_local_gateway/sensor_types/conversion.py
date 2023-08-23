@@ -31,7 +31,7 @@ class Conversion:
 
     def _convert_to_enum(
         self, registers: list, desc: ModbusSensorEntityDescription
-    ) -> str:
+    ) -> str | None:
         """Convert to a enum type"""
         int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
         if int_val in desc.register_map:
@@ -42,7 +42,7 @@ class Conversion:
 
     def _convert_to_flags(
         self, registers: list, desc: ModbusSensorEntityDescription
-    ) -> str:
+    ) -> str | None:
         """Convert to a flags type"""
 
         int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
