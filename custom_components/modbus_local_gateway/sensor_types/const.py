@@ -1,5 +1,4 @@
 """Sensor type constants"""
-
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     DEGREE,
@@ -37,6 +36,7 @@ BITS = "bits"
 SHIFT = "shift_bits"
 FLAGS = "flags"
 MAX_READ_DEFAULT = 8
+CATEGORY = "category"
 DEFAULT_STATE_CLASS = SensorStateClass.MEASUREMENT
 
 

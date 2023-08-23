@@ -11,6 +11,7 @@ from ..devices import CONFIG_DIR
 from .base import ModbusSensorEntityDescription
 from .const import (
     BITS,
+    CATEGORY,
     DEFAULT_STATE_CLASS,
     DEVICE,
     DEVICE_CLASS,
@@ -110,6 +111,7 @@ class ModbusDeviceInfo:
                     "bits": _data.get(BITS),
                     "bit_shift": _data.get(SHIFT),
                     "flags": _data.get(FLAGS),
+                    "entity_category": _data.get(CATEGORY),
                     **uom,
                 }
 
