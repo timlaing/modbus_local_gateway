@@ -79,7 +79,7 @@ class ModbusCoordinator(DataUpdateCoordinator):
         )
         return await self._update_device(entities=entities)
 
-    async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
+    async def _update_device(self, entities: list[ModbusContext]):
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
         resp: dict[str, ModbusResponse] = await self.client.update_slave(
             entities, max_read_size=self._max_read_size
