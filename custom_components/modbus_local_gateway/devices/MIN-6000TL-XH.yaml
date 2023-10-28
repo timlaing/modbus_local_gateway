@@ -1,7 +1,7 @@
 device:
   manufacturer: Growatt
   model: MIN 6000TL-XH
-
+  max_register_read: 5
   hw_version:
     title: Firmware version
     address: 9
@@ -204,6 +204,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.5
+    never_resets: True
   EacToday:
     title: Today generate energy
     address: 3049
@@ -218,6 +219,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
+    never_resets: True
   Epv_total:
     title: PV Energy total
     address: 3053
@@ -226,6 +228,7 @@ entities:
     size: 2
     multiplier: 0.1
     state_class: total_increasing
+    never_resets: True
   Epv1_today:
     title: PV1Energy today
     address: 3055
@@ -242,6 +245,7 @@ entities:
     size: 2
     multiplier: 0.1
     state_class: total_increasing
+    never_resets: True
   Epv2_today:
     title: PV2Energy today
     address: 3059
@@ -258,6 +262,7 @@ entities:
     size: 2
     multiplier: 0.1
     state_class: total_increasing
+    never_resets: True
   # 3063 - 3066 PV3
   Etouser_today:
     title: Today energy to user
@@ -277,6 +282,7 @@ entities:
     multiplier: 0.1
     state_class: total_increasing
     icon: mdi:transmission-tower-import
+    never_resets: True
   Etogrid_today:
     title: Today energy to grid
     address: 3071
@@ -295,6 +301,7 @@ entities:
     multiplier: 0.1
     state_class: total_increasing
     icon: mdi:transmission-tower-export
+    never_resets: True
   Eload_today:
     title: Today energy of user load
     address: 3075
@@ -313,6 +320,7 @@ entities:
     multiplier: 0.1
     state_class: total_increasing
     icon: mdi:solar-power-variant
+    never_resets: True
   # 3079 - 3085 - Reserved
   DeratingMode:
     title: Derating Mode
@@ -420,6 +428,7 @@ entities:
     device_class: energy
     state_class: total_increasing
     icon: mdi:battery-negative
+    never_resets: True
   Echr_today:
     title: Today charge energy
     address: 3129
@@ -440,6 +449,7 @@ entities:
     state_class: total_increasing
     device_class: energy
     icon: mdi:battery-positive
+    never_resets: True
   priority:
     title: Work mode
     address: 3144

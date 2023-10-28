@@ -19,5 +19,6 @@
   "python.terminal.focusAfterLaunch": true,
   "python.testing.pytestArgs": [
     "-p no:homeassistant",
-  ]
+  ],
+  "python.formatting.provider": "none"
 }

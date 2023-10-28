@@ -24,6 +24,7 @@ from .const import (
     MAX_READ,
     MAX_READ_DEFAULT,
     MODEL,
+    NEVER_RESETS,
     PRECISION,
     REGISTER_ADDRESS,
     REGISTER_COUNT,
@@ -111,6 +112,7 @@ class ModbusDeviceInfo:
                     "bits": _data.get(BITS),
                     "bit_shift": _data.get(SHIFT),
                     "flags": _data.get(FLAGS),
+                    "never_resets": _data.get(NEVER_RESETS, False),
                     "entity_category": _data.get(CATEGORY),
                     **uom,
                 }

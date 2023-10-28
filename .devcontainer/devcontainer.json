@@ -36,12 +36,10 @@
 				"ms-python.black-formatter",
 				"ms-python.isort",
 				"ms-python.python",
-				"ryanluker.vscode-coverage-gutters"
+				"ryanluker.vscode-coverage-gutters",
+				"donjayamanne.git-extension-pack"
 			],
 			"settings": {
-				"python.linting.enabled": true,
-				"python.linting.pylintEnabled": true,
-				"python.formatting.provider": "black",
 				"python.testing.pytestArgs": [
 					"--no-cov"
 				],
@@ -68,8 +66,5 @@
 			}
 		}
 	},
-	"remoteUser": "vscode",
-	"features": {
-		"rust": "latest"
-	}
+	"remoteUser": "vscode"
 }
