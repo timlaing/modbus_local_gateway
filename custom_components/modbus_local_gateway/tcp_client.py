@@ -105,7 +105,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         _LOGGER.warning(
                             "Closing connection - Device not available %s [%d]",
                             self,
-                            entity.slave_id
+                            entity.slave_id,
                         )
                         return data
 

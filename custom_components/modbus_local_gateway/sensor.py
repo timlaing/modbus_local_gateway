@@ -1,7 +1,7 @@
 """Modbus Local Gateway sensors"""
 from __future__ import annotations
-import datetime
 
+import datetime
 import logging
 from typing import Any
 
@@ -114,7 +114,6 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
                     and self.state_class == STATE_CLASS_TOTAL_INCREASING
                     and self.native_value > value
                 ):
-
                     if self.entity_description.never_resets:
                         return
 
