@@ -88,7 +88,6 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                 self.async_contexts(), key=lambda x: x.slave_id
             )
             return await self._update_device(entities=entities)
-        return
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)

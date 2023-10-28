@@ -138,8 +138,6 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
 
-        return
-
     @property
     def native_value(self):
         """Return the state of the sensor."""
