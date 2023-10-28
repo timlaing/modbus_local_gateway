@@ -20,6 +20,7 @@ entities:
     float: True
     state_class: measurement
     size: 2
+    never_resets: True
 
   Current system import power demand:
     address: 88
@@ -38,6 +39,7 @@ entities:
     float: True
     state_class: measurement
     size: 2
+    never_resets: True
 
   Current system export power demand:
     address: 92
@@ -56,6 +58,7 @@ entities:
     float: True
     state_class: measurement
     size: 2
+    never_resets: True
 
   Current demand:
     address: 258
@@ -141,6 +144,7 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    never_resets: True
 
   Export Active Energy:
     address: 74
@@ -151,6 +155,7 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    never_resets: True
 
   Import Reactive Energy:
     address: 76
@@ -160,6 +165,7 @@ entities:
     float: True
     state_class: total_increasing
     size: 2
+    never_resets: True
 
   Maximum current Demand:
     address: 264
@@ -169,6 +175,7 @@ entities:
     float: True
     state_class: measurement
     size: 2
+    never_resets: True
 
   Export Reactive Energy:
     address: 78
@@ -177,6 +184,7 @@ entities:
     precision: 2
     float: True
     size: 2
+    never_resets: True
 
   Total Active Energy:
     address: 342
@@ -187,6 +195,7 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    never_resets: True
 
   Total Reactive Energy:
     address: 344
@@ -196,3 +205,4 @@ entities:
     float: True
     state_class: total_increasing
     size: 2
+    never_resets: True

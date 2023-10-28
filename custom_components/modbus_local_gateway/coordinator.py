@@ -5,9 +5,10 @@ import logging
 from datetime import timedelta
 from typing import Any
 
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import TimestampDataUpdateCoordinator
 from pymodbus.pdu import ModbusResponse
 
 from .context import ModbusContext
@@ -17,7 +18,7 @@ from .tcp_client import AsyncModbusTcpClientGateway
 _LOGGER = logging.getLogger(__name__)
 
 
-class ModbusCoordinator(DataUpdateCoordinator):
+class ModbusCoordinator(TimestampDataUpdateCoordinator):
     """Update coordinator for modbus entries"""
 
     def __init__(
@@ -33,13 +34,21 @@ class ModbusCoordinator(DataUpdateCoordinator):
         self._gateway: str = gateway
         self._max_read_size: int
         self._gateway_device = gateway_device
+        self.started = False
 
         super().__init__(
             hass,
             logger=_LOGGER,
             name=f"Modbus Coordinator - {self._gateway}",
             update_interval=timedelta(seconds=update_interval),
+            always_update=False,
         )
+
+        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._async_enable_sync)
+
+    async def _async_enable_sync(self, data) -> None:
+        """Allow sync of devices after startup"""
+        self.started = True
 
     @property
     def gateway_device(self) -> dr.DeviceEntry:
@@ -72,14 +81,15 @@ class ModbusCoordinator(DataUpdateCoordinator):
             log_failures, raise_on_auth_failed, scheduled, raise_on_entry_error
         )
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict[str, Any]:
         """Updated all values for devices"""
-        entities: list[ModbusContext] = sorted(
-            self.async_contexts(), key=lambda x: x.slave_id
-        )
-        return await self._update_device(entities=entities)
+        if self.started:
+            entities: list[ModbusContext] = sorted(
+                self.async_contexts(), key=lambda x: x.slave_id
+            )
+            return await self._update_device(entities=entities)
 
-    async def _update_device(self, entities: list[ModbusContext]):
+    async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
         resp: dict[str, ModbusResponse] = await self.client.update_slave(
             entities, max_read_size=self._max_read_size
@@ -103,6 +113,8 @@ class ModbusCoordinator(DataUpdateCoordinator):
                         entity.desc.key,
                         entity.slave_id,
                     )
+
+        return data
 
     def get_data(self, ctx: ModbusContext) -> str | int | None:
         """returns the pre-retrieved data"""

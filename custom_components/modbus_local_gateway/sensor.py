@@ -1,10 +1,12 @@
 """Modbus Local Gateway sensors"""
 from __future__ import annotations
 
+import datetime
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import RestoreSensor
+from homeassistant.components.sensor.const import STATE_CLASS_TOTAL_INCREASING
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_FILENAME
 from homeassistant.core import HomeAssistant, callback
@@ -57,6 +59,8 @@ async def async_setup_entry(
 
     _LOGGER.debug(device)
 
+    await coordinator.async_config_entry_first_refresh()
+
     async_add_entities(
         [
             ModbusSensorEntity(
@@ -65,11 +69,8 @@ async def async_setup_entry(
                 device=device,
             )
             for desc in device_info.entity_desciptions
-        ],
-        update_before_add=False,
-    )
-    async_add_entities(
-        [
+        ]
+        + [
             ModbusSensorEntity(
                 coordinator=coordinator,
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
@@ -81,7 +82,7 @@ async def async_setup_entry(
     )
 
 
-class ModbusSensorEntity(CoordinatorEntity, SensorEntity):
+class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
     """Sensor entity for Modbus gateway"""
 
     def __init__(
@@ -96,12 +97,28 @@ class ModbusSensorEntity(CoordinatorEntity, SensorEntity):
         self._attr_unique_id: str = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo = device
 
+    async def async_added_to_hass(self) -> None:
+        """Restore the state when sensor is added."""
+        await super().async_added_to_hass()
+        await self.async_get_last_state()
+        await self.async_get_last_sensor_data()
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
             value = self.coordinator.get_data(self.coordinator_context)
             if value is not None:
+                if (
+                    self.native_value is not None
+                    and self.state_class == STATE_CLASS_TOTAL_INCREASING
+                    and self.native_value > value
+                ):
+                    if self.entity_description.never_resets:
+                        return
+
+                    self.last_reset = datetime.datetime.now()
+
                 self._attr_native_value = value
                 self.async_write_ha_state()
 

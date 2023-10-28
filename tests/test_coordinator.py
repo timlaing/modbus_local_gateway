@@ -28,6 +28,7 @@ async def test_update_single():
 
     response = {"test": MagicMock()}
     coordinator.max_read_size = 1
+    coordinator.started = True
     future = asyncio.Future()
     future.set_result(response)
     client.update_slave.return_value = future
@@ -69,6 +70,7 @@ async def test_update_multiple():
 
     response = {"test1": MagicMock(), "test2": MagicMock()}
     coordinator.max_read_size = 1
+    coordinator.started = True
     future = asyncio.Future()
     future.set_result(response)
     client.update_slave.return_value = future
@@ -108,6 +110,7 @@ async def test_update_exception():
 
     response = {"test1": MagicMock(), "test2": MagicMock()}
     coordinator.max_read_size = 1
+    coordinator.started = True
     future = asyncio.Future()
     future.set_result(response)
     client.update_slave.return_value = future

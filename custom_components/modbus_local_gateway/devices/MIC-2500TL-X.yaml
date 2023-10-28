@@ -19,14 +19,29 @@ device:
     string: true
 
 entities:
-  status:
-    title: Inverter Status
+  machine_status:
+    title: Inverter Machine Status
     address: 3000
-    map:
+    register_map:
       0: Standby
       1: Normal
       3: Fault
       4: Flash
+    bits: 8
+  run_status:
+    title: Inverter Machine Status
+    address: 3000
+    register_map:
+      0: Waiting module
+      1: Self-test
+      3: SysFault module
+      4: Flash module
+      5: PVBATOnline module
+      6: BatOnline module
+      7: PVOffline mode
+      8: BatOffline mode
+    shift_bits: 8
+    bits: 8
   Ppv:
     address: 3001
     title: PV total power
@@ -105,7 +120,62 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
-  # 3030 - 3040 (Three Phase)
+  Vac2:
+    title: Three phase grid voltage (2)
+    address: 3030
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Iac2:
+    title: Three phase grid output current (2)
+    address: 3031
+    unit_of_measurement: Amps
+    precision: 2
+    multiplier: 0.1
+  Pac2:
+    title: Three phase grid output power (2)
+    address: 3032
+    unit_of_measurement: VoltAmps
+    precision: 2
+    size: 2
+    multiplier: 0.1
+  Vac3:
+    title: Three phase grid voltage (3)
+    address: 3034
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Iac3:
+    title: Three phase grid output current (3)
+    address: 3035
+    unit_of_measurement: Amps
+    precision: 2
+    multiplier: 0.1
+  Pac3:
+    title: Three phase grid output power (3)
+    address: 3036
+    unit_of_measurement: VoltAmps
+    precision: 2
+    size: 2
+    multiplier: 0.1
+  Vac_RS:
+    title: Three phase grid voltage (RS)
+    address: 3038
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Vac_ST:
+    title: Three phase grid voltage (ST)
+    address: 3039
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Vac_TR:
+    title: Three phase grid voltage (TR)
+    address: 3040
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
   PtouserTotal:
     title: Total forward power
     address: 3041
@@ -134,6 +204,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.5
+    never_resets: True
   EacToday:
     title: Today generate energy
     address: 3049
@@ -148,6 +219,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
+    never_resets: True
   Epv_total:
     title: PV Energy total
     address: 3053
@@ -156,6 +228,7 @@ entities:
     size: 2
     multiplier: 0.1
     state_class: total_increasing
+    never_resets: True
   Epv1_today:
     title: PV1Energy today
     address: 3055
@@ -172,6 +245,7 @@ entities:
     size: 2
     multiplier: 0.1
     state_class: total_increasing
+    never_resets: True
   Epv2_today:
     title: PV2Energy today
     address: 3059
@@ -188,6 +262,7 @@ entities:
     size: 2
     multiplier: 0.1
     state_class: total_increasing
+    never_resets: True
   # 3063 - 3066 PV3
   Etouser_today:
     title: Today energy to user
@@ -207,6 +282,7 @@ entities:
     multiplier: 0.1
     state_class: total_increasing
     icon: mdi:transmission-tower-import
+    never_resets: True
   Etogrid_today:
     title: Today energy to grid
     address: 3071
@@ -225,6 +301,7 @@ entities:
     multiplier: 0.1
     state_class: total_increasing
     icon: mdi:transmission-tower-export
+    never_resets: True
   Eload_today:
     title: Today energy of user load
     address: 3075
@@ -243,6 +320,7 @@ entities:
     multiplier: 0.1
     state_class: total_increasing
     icon: mdi:solar-power-variant
+    never_resets: True
   # 3079 - 3085 - Reserved
   DeratingMode:
     title: Derating Mode

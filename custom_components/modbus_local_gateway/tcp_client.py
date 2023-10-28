@@ -8,7 +8,7 @@ from typing import Any
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ConnectionException, ModbusException
+from pymodbus.exceptions import ModbusException
 from pymodbus.framer import ModbusFramer
 from pymodbus.framer.socket_framer import ModbusSocketFramer
 from pymodbus.pdu import ModbusResponse
@@ -76,7 +76,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 return data
 
             entity: ModbusContext
-            for entity in entities:
+            for idx, entity in enumerate(entities):
                 try:
                     _LOGGER.debug(
                         "Reading slave: %d, register (%s): %d, %d",
@@ -101,6 +101,14 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     data[entity.desc.key] = modbus_response
 
                 except (ModbusException, asyncio.TimeoutError):
+                    if idx == 0:
+                        _LOGGER.warning(
+                            "Closing connection - Device not available %s [%d]",
+                            self,
+                            entity.slave_id,
+                        )
+                        return data
+
                     _LOGGER.warning(
                         "Unable to retrieve value for slave %d, register (%s): %d, %d",
                         entity.slave_id,
@@ -108,6 +116,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_address,
                         entity.desc.register_count,
                     )
+
                     await asyncio.sleep(1)
 
             _LOGGER.debug("Closing connection - Update completed %s", self)

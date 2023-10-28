@@ -37,6 +37,7 @@ SHIFT = "shift_bits"
 FLAGS = "flags"
 MAX_READ_DEFAULT = 8
 CATEGORY = "category"
+NEVER_RESETS = "never_resets"
 DEFAULT_STATE_CLASS = SensorStateClass.MEASUREMENT
 
 
