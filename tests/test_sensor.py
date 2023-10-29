@@ -1,24 +1,21 @@
 """Sensor tests"""
 
 
-from magic import Magic
-from mock import AsyncMock, patch, MagicMock, PropertyMock
 from homeassistant.components.sensor.const import STATE_CLASS_TOTAL_INCREASING
+from magic import Magic
+from mock import AsyncMock, MagicMock, PropertyMock, patch
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-
-from custom_components.modbus_local_gateway.sensor import async_setup_entry
-from pytest_homeassistant_custom_component.common import (
-    MockConfigEntry,
-)
 from custom_components.modbus_local_gateway.const import DOMAIN
+from custom_components.modbus_local_gateway.sensor import (
+    ModbusSensorEntity,
+    async_setup_entry,
+)
 from custom_components.modbus_local_gateway.sensor_types.base import (
     ModbusSensorEntityDescription,
 )
 from custom_components.modbus_local_gateway.sensor_types.modbus_device_info import (
     ModbusDeviceInfo,
-)
-from custom_components.modbus_local_gateway.sensor import (
-    ModbusSensorEntity,
 )
 
 
