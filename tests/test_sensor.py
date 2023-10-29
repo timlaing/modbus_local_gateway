@@ -1,8 +1,7 @@
 """Sensor tests"""
-
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from homeassistant.components.sensor.const import STATE_CLASS_TOTAL_INCREASING
-from mock import AsyncMock, MagicMock, PropertyMock, patch
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import DOMAIN
