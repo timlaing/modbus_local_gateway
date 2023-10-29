@@ -88,7 +88,7 @@ class ModbusDeviceInfo:
         }
 
     def _create_descriptions(
-        self, config: dict[str, Any]
+        self, config: dict[str, Any], holding=False
     ) -> tuple[ModbusSensorEntityDescription, ...]:
         """Create the entity descriptions for the device"""
         descriptions: list[ModbusSensorEntityDescription] = []
@@ -114,6 +114,7 @@ class ModbusDeviceInfo:
                     "flags": _data.get(FLAGS),
                     "never_resets": _data.get(NEVER_RESETS, False),
                     "entity_category": _data.get(CATEGORY),
+                    "holding_register": holding,
                     **uom,
                 }
 
@@ -144,4 +145,4 @@ class ModbusDeviceInfo:
     @property
     def properties(self) -> tuple[ModbusSensorEntityDescription, ...]:
         """Get device properties descriptions"""
-        return self._create_descriptions(self._config[DEVICE])
+        return self._create_descriptions(self._config[DEVICE], holding=True)

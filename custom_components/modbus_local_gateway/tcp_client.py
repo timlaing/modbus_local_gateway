@@ -85,8 +85,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_address,
                         entity.desc.register_count,
                     )
-                    if entity.slave_id not in data:
-                        data[entity.slave_id] = {}
 
                     modbus_response: ModbusResponse = await self.read_registers(
                         func=self.read_holding_registers
