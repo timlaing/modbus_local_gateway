@@ -59,7 +59,7 @@ class ModbusSensorEntityDescription(SensorEntityDescription, ModbusRequiredKeysM
             self.bit_shift
             or self.bits
             or self.precision
-            or self.register_multiplier != 1.0
+            or int(self.register_multiplier) != 1
         ) and self.string:
             _LOGGER.warning(
                 "Unable for create entity for %s, %s, %s, %s and %s not valid for %s",
@@ -73,7 +73,7 @@ class ModbusSensorEntityDescription(SensorEntityDescription, ModbusRequiredKeysM
             valid = False
 
         elif (
-            self.bit_shift or self.bits or self.register_multiplier != 1.0
+            self.bit_shift or self.bits or int(self.register_multiplier) != 1
         ) and self.float:
             _LOGGER.warning(
                 "Unable for create entity for %s, %s, %s and %s not valid for %s",
