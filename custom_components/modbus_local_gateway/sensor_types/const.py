@@ -61,14 +61,17 @@ UOM_MAPPING = {
     Units.CELSIUS: {
         UNIT: UnitOfTemperature.CELSIUS,
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.VOLTS: {
         UNIT: UnitOfElectricPotential.VOLT,
         DEVICE_CLASS: SensorDeviceClass.VOLTAGE,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.AMPS: {
         UNIT: UnitOfElectricCurrent.AMPERE,
         DEVICE_CLASS: SensorDeviceClass.CURRENT,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.KWH: {
         UNIT: UnitOfEnergy.KILO_WATT_HOUR,
@@ -78,27 +81,34 @@ UOM_MAPPING = {
     Units.HZ: {
         UNIT: UnitOfFrequency.HERTZ,
         DEVICE_CLASS: SensorDeviceClass.FREQUENCY,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.WATTS: {
         UNIT: UnitOfPower.WATT,
         DEVICE_CLASS: SensorDeviceClass.POWER,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.DEGREES: {
         UNIT: DEGREE,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.KVARH: {
         UNIT: "kVArh",
+        STATE_CLASS: SensorStateClass.TOTAL_INCREASING,
     },
     Units.VAR: {
         UNIT: POWER_VOLT_AMPERE_REACTIVE,
         DEVICE_CLASS: SensorDeviceClass.REACTIVE_POWER,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.VA: {
         UNIT: UnitOfApparentPower.VOLT_AMPERE,
         DEVICE_CLASS: SensorDeviceClass.APPARENT_POWER,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
     Units.SECONDS: {
         UNIT: UnitOfTime.SECONDS,
         DEVICE_CLASS: SensorDeviceClass.DURATION,
+        STATE_CLASS: SensorStateClass.TOTAL_INCREASING,
     },
 }
