@@ -22,7 +22,7 @@ entities:
   machine_status:
     title: Inverter Machine Status
     address: 3000
-    map:
+    register_map:
       0: Standby
       1: Normal
       3: Fault
