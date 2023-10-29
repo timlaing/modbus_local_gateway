@@ -1,8 +1,7 @@
 """Tcp Client tests"""
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, PropertyMock, patch
 
 from homeassistant.const import CONF_HOST, CONF_PORT
-from mock import PropertyMock
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu import ModbusResponse
 
