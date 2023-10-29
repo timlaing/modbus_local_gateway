@@ -34,7 +34,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self._gateway: str = gateway
         self._max_read_size: int
         self._gateway_device = gateway_device
-        self.started = False
+        self.started = hass.is_running
 
         super().__init__(
             hass,
@@ -46,7 +46,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
 
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._async_enable_sync)
 
-    async def _async_enable_sync(self, data) -> None:
+    async def _async_enable_sync(self, _) -> None:
         """Allow sync of devices after startup"""
         self.started = True
 

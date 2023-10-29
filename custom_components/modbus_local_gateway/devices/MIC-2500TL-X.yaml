@@ -22,16 +22,16 @@ entities:
   machine_status:
     title: Inverter Machine Status
     address: 3000
-    register_map:
+    map:
       0: Standby
       1: Normal
       3: Fault
       4: Flash
     bits: 8
   run_status:
-    title: Inverter Machine Status
+    title: Inverter Run Status
     address: 3000
-    register_map:
+    map:
       0: Waiting module
       1: Self-test
       3: SysFault module

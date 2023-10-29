@@ -18,22 +18,21 @@
                 "data": {
                     "host": "Host",
                     "port": "Port",
-                    "slave_id": "Slave ID"
+                    "slave_id": "Slave ID",
+                    "prefix": "Prefix"
                 },
                 "description": "Configure the connection parameters"
             }
         }
     },
     "options": {
-
         "step": {
             "init": {
                 "description": "Update device parameters",
                 "data": {
-                  "refresh": "Update frequency"
+                    "refresh": "Update frequency"
                 }
-              }
-
+            }
         }
     }
 }
