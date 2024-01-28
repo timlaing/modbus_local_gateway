@@ -1,4 +1,5 @@
 """Tcp Client tests"""
+
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from homeassistant.const import CONF_HOST, CONF_PORT

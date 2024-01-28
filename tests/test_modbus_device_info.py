@@ -1,4 +1,5 @@
 """Device info Tests"""
+
 from unittest.mock import patch
 
 import yaml

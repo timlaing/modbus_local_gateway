@@ -1,4 +1,5 @@
 """Constants for the Modbus Local Gateway integration."""
+
 from homeassistant.const import Platform
 
 DOMAIN = "modbus_local_gateway"

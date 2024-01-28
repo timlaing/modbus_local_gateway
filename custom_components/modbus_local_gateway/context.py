@@ -1,4 +1,5 @@
 """Representation of Modbus Gateway Context"""
+
 from __future__ import annotations
 
 import logging

@@ -1,7 +1,8 @@
 """Sensor tests"""
+
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
-from homeassistant.components.sensor.const import STATE_CLASS_TOTAL_INCREASING
+from homeassistant.components.sensor import SensorStateClass
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import DOMAIN
@@ -144,7 +145,9 @@ async def test_update_reset():
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).native_value = PropertyMock(return_value=2)
-    type(entity).state_class = PropertyMock(return_value=STATE_CLASS_TOTAL_INCREASING)
+    type(entity).state_class = PropertyMock(
+        return_value=SensorStateClass.TOTAL_INCREASING
+    )
     type(entity).entity_description = PropertyMock(
         return_value=ModbusSensorEntityDescription(key="key", register_address=1)
     )
@@ -182,7 +185,9 @@ async def test_update_never_reset():
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).native_value = PropertyMock(return_value=2)
-    type(entity).state_class = PropertyMock(return_value=STATE_CLASS_TOTAL_INCREASING)
+    type(entity).state_class = PropertyMock(
+        return_value=SensorStateClass.TOTAL_INCREASING
+    )
     type(entity).entity_description = PropertyMock(
         return_value=ModbusSensorEntityDescription(
             key="key", register_address=1, never_resets=True
@@ -224,7 +229,9 @@ async def test_update_deviceupdate():
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).hass = PropertyMock(return_value=hass)
     type(entity).native_value = PropertyMock(return_value=2)
-    type(entity).state_class = PropertyMock(return_value=STATE_CLASS_TOTAL_INCREASING)
+    type(entity).state_class = PropertyMock(
+        return_value=SensorStateClass.TOTAL_INCREASING
+    )
     type(entity).entity_description = PropertyMock(
         return_value=ModbusSensorEntityDescription(key="hw_version", register_address=1)
     )

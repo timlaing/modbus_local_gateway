@@ -1,4 +1,5 @@
 """Tcp Client for Modbus Local Gateway integration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -87,9 +88,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     )
 
                     modbus_response: ModbusResponse = await self.read_registers(
-                        func=self.read_holding_registers
-                        if entity.desc.holding_register
-                        else self.read_input_registers,
+                        func=(
+                            self.read_holding_registers
+                            if entity.desc.holding_register
+                            else self.read_input_registers
+                        ),
                         address=entity.desc.register_address,
                         count=entity.desc.register_count,
                         slave=entity.slave_id,

@@ -1,4 +1,5 @@
 """Config flow for Modbus Local Gateway integration."""
+
 from __future__ import annotations
 
 import datetime

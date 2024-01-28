@@ -1,4 +1,5 @@
 """The Modbus local gateway sensor integration."""
+
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.const import CONF_HOST
