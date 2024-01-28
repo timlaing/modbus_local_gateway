@@ -20,7 +20,6 @@
   "python.testing.pytestArgs": [
     "-p no:homeassistant",
   ],
-  "python.formatting.provider": "none",
   "sonarlint.connectedMode.project": {
     "connectionId": "timlaing",
     "projectKey": "timlaing_modbus_local_gateway"

@@ -1,4 +1,5 @@
 """Module for the ModbusDeviceInfo class"""
+
 from __future__ import annotations
 
 import logging

@@ -1,4 +1,5 @@
 """Sensor type constants"""
+
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     DEGREE,

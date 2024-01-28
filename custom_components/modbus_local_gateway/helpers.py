@@ -1,4 +1,5 @@
 """Helper functions for Modbus Local Gateway integration."""
+
 from __future__ import annotations
 
 import logging

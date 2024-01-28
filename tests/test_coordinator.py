@@ -1,4 +1,5 @@
 """Coordinator tests"""
+
 import asyncio
 from unittest.mock import MagicMock, patch
 

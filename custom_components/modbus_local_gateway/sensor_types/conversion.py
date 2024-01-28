@@ -63,9 +63,11 @@ class Conversion:
         """Convert to a int type"""
         num = self.client.convert_from_registers(
             registers,
-            data_type=self.client.DATATYPE.UINT32
-            if desc.register_count == 2
-            else self.client.DATATYPE.UINT16,
+            data_type=(
+                self.client.DATATYPE.UINT32
+                if desc.register_count == 2
+                else self.client.DATATYPE.UINT16
+            ),
         )
 
         if desc.bit_shift:

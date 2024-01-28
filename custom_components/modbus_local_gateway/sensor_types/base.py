@@ -1,4 +1,5 @@
 """Sensor Entity Description for the Modbus local gateway integration."""
+
 from __future__ import annotations
 
 import logging

@@ -6,8 +6,7 @@ import datetime
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import RestoreSensor
-from homeassistant.components.sensor import SensorStateClass
+from homeassistant.components.sensor import RestoreSensor, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_FILENAME
 from homeassistant.core import HomeAssistant, callback

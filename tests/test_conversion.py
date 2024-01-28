@@ -1,4 +1,5 @@
 """Conversion Tests"""
+
 from custom_components.modbus_local_gateway.sensor_types.base import (
     ModbusSensorEntityDescription,
 )
