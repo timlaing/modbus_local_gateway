@@ -1,4 +1,5 @@
 """Modbus Local Gateway sensors"""
+
 from __future__ import annotations
 
 import datetime
@@ -6,7 +7,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.sensor import RestoreSensor
-from homeassistant.components.sensor.const import STATE_CLASS_TOTAL_INCREASING
+from homeassistant.components.sensor import SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_FILENAME
 from homeassistant.core import HomeAssistant, callback
@@ -111,7 +112,7 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
             if value is not None:
                 if (
                     self.native_value is not None
-                    and self.state_class == STATE_CLASS_TOTAL_INCREASING
+                    and self.state_class == SensorStateClass.TOTAL_INCREASING
                     and self.native_value > value
                 ):
                     if self.entity_description.never_resets:
