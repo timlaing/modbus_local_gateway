@@ -65,6 +65,30 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         return modbus_response
 
+    async def write_holding_registers(
+        self, value: list[int] | int, entity: ModbusContext
+    ) -> ModbusResponse:
+        """Updates the value of an entity"""
+        _LOGGER.debug(
+            "Writing slave: %d, register (%s): %d, %d",
+            entity.slave_id,
+            entity.desc.key,
+            entity.desc.register_address,
+            entity.desc.register_count,
+        )
+
+        if (isinstance(value, list) and len(value) == entity.desc.register_count) or (
+            isinstance(value, int) and entity.desc.register_count == 1
+        ):
+
+            return await super().write_registers(
+                entity.desc.register_address,
+                value,
+                entity.slave_id,
+            )
+        else:
+            raise ModbusException("Incorrect number of registers")
+
     async def update_slave(
         self, entities: list[ModbusContext], max_read_size: int
     ) -> dict[str, ModbusResponse]:

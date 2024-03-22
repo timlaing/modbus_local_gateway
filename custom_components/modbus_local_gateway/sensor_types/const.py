@@ -35,11 +35,23 @@ UNIT = "unit"
 MAX_READ = "max_register_read"
 BITS = "bits"
 SHIFT = "shift_bits"
+CONTROL_TYPE = "control"
 FLAGS = "flags"
 MAX_READ_DEFAULT = 8
 CATEGORY = "category"
 NEVER_RESETS = "never_resets"
 DEFAULT_STATE_CLASS = SensorStateClass.MEASUREMENT
+OPTIONS = "options"
+
+
+class ControlType(StrEnum):
+    """Valid control types"""
+
+    SENSOR = "sensor"
+    SWITCH = "switch"
+    SELECT = "select"
+    TEXT = "text"
+    NUMBER = "number"
 
 
 class Units(StrEnum):

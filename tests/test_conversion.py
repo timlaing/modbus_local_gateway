@@ -20,6 +20,21 @@ async def test_int16():
     assert 1 == value
 
 
+async def test_from_int16():
+    """Test from int16 conversion"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    registers = client.convert_to_registers(123, data_type=client.DATATYPE.UINT16)
+
+    value = conversion.convert_to_registers(
+        value=123,
+        desc=ModbusSensorEntityDescription(register_address=1, key="test"),
+    )
+
+    assert registers == value
+
+
 async def test_int16_bitshift():
     """Test int16 conversion"""
     client = AsyncModbusTcpClient
@@ -48,6 +63,23 @@ async def test_int16_multiplier():
     assert 0.8 == value
 
 
+async def test_from_int16_multiplier():
+    """Test from int16 conversion"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    registers = client.convert_to_registers(8, data_type=client.DATATYPE.UINT16)
+
+    value = conversion.convert_to_registers(
+        value=0.8,
+        desc=ModbusSensorEntityDescription(
+            register_address=1, key="test", register_multiplier=0.1
+        ),
+    )
+
+    assert registers == value
+
+
 async def test_int32():
     """Test in32 conversion"""
     client = AsyncModbusTcpClient
@@ -61,6 +93,23 @@ async def test_int32():
     )
 
     assert 65537 == value
+
+
+async def test_from_int32():
+    """Test from int32 conversion"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    registers = client.convert_to_registers(123, data_type=client.DATATYPE.UINT32)
+
+    value = conversion.convert_to_registers(
+        value=123,
+        desc=ModbusSensorEntityDescription(
+            register_address=1, key="test", register_count=2
+        ),
+    )
+
+    assert registers == value
 
 
 async def test_float():
@@ -78,6 +127,23 @@ async def test_float():
     assert 1.0 == value
 
 
+async def test_from_float():
+    """Test from float conversion"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    registers = client.convert_to_registers(123.1, data_type=client.DATATYPE.FLOAT32)
+
+    value = conversion.convert_to_registers(
+        value=123.1,
+        desc=ModbusSensorEntityDescription(
+            register_address=1, key="test", register_count=2, float=True
+        ),
+    )
+
+    assert registers == value
+
+
 async def test_string():
     """Test string conversion"""
     client = AsyncModbusTcpClient
@@ -93,6 +159,25 @@ async def test_string():
     )
 
     assert "HelloWorld" == value
+
+
+async def test_from_string():
+    """Test from string conversion"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    registers = client.convert_to_registers(
+        "HelloWorld", data_type=client.DATATYPE.STRING
+    )
+
+    value = conversion.convert_to_registers(
+        value="HelloWorld",
+        desc=ModbusSensorEntityDescription(
+            register_address=1, key="test", string=True, register_count=5
+        ),
+    )
+
+    assert registers == value
 
 
 async def test_enum():
