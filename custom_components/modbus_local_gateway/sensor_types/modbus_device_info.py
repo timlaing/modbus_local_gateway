@@ -34,6 +34,7 @@ from .const import (
     MAX_READ_DEFAULT,
     MODEL,
     NEVER_RESETS,
+    OPTIONS,
     PRECISION,
     REGISTER_ADDRESS,
     REGISTER_COUNT,
@@ -45,7 +46,6 @@ from .const import (
     UNIT,
     UOM,
     UOM_MAPPING,
-    OPTIONS,
     ControlType,
 )
 

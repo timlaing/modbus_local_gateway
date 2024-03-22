@@ -21,9 +21,20 @@ device:
     title: Remote On/Off
     address: 0
     control: switch
+    icon: mdi:power
     switch:
       'off': 0
       'on': 1
+  max_output_active:
+    title: Max output active power
+    address: 3
+    control: number
+    icon: mdi:flash
+    precision: 0
+    number:
+      min: 0
+      max: 100
+    unit_of_measurement: "%"
   language:
     title: LCD language
     address: 15
@@ -38,6 +49,15 @@ device:
       6: Polish
       7: Portugues
       8: Hungary
+  com_address:
+    title: Communicate address
+    address: 30
+    control: number
+    icon: mdi:serial-port
+    precision: 0
+    number:
+      min: 1
+      max: 254
 
 entities:
   machine_status:

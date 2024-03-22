@@ -9,6 +9,10 @@ from .base import ModbusSensorEntityDescription
 _LOGGER = logging.getLogger(__name__)
 
 
+class NotSupportedError(Exception):
+    """Unsupported functionality"""
+
+
 class Conversion:
     """Register conversion class"""
 
@@ -22,12 +26,26 @@ class Conversion:
         ).split("\0")[0]
         return value
 
+    def _convert_from_string(self, value: str) -> list[int]:
+        """Convert from a string type"""
+        registers: list[int] = self.client.convert_to_registers(
+            value, data_type=self.client.DATATYPE.STRING
+        )
+        return registers
+
     def _convert_to_float(self, registers: list) -> float:
         """Convert to a float type"""
         value: float = self.client.convert_from_registers(
             registers, data_type=self.client.DATATYPE.FLOAT32
         )
         return value
+
+    def _convert_from_float(self, value: float) -> list[int]:
+        """Convert from a float type"""
+        registers: list[int] = self.client.convert_to_registers(
+            value, data_type=self.client.DATATYPE.FLOAT32
+        )
+        return registers
 
     def _convert_to_enum(
         self, registers: list, desc: ModbusSensorEntityDescription
@@ -78,6 +96,29 @@ class Conversion:
 
         return num * desc.register_multiplier
 
+    def _convert_from_decimal(
+        self, num: float, desc: ModbusSensorEntityDescription
+    ) -> list[int]:
+        """Convert from a decimal to registers"""
+        raw_value: float = num / desc.register_multiplier
+
+        if desc.bits:
+            raise NotSupportedError("Setting of bit fields is not supported")
+
+        if desc.bit_shift:
+            raise NotSupportedError("Setting of bit fields is not supported")
+
+        registers: list[int] = self.client.convert_to_registers(
+            raw_value,
+            data_type=(
+                self.client.DATATYPE.UINT32
+                if desc.register_count == 2
+                else self.client.DATATYPE.UINT16
+            ),
+        )
+
+        return registers
+
     def convert_from_registers(
         self, desc: ModbusSensorEntityDescription, registers: list
     ) -> str | float | int:
@@ -96,3 +137,22 @@ class Conversion:
             value = self._convert_to_decimal(registers, desc)
 
         return value
+
+    def convert_to_registers(
+        self, desc: ModbusSensorEntityDescription, value: str | float | int
+    ) -> list[int] | int:
+        """Entry point for conversion from registers"""
+        registers: list[int] | None = None
+
+        if desc.string:
+            raise NotSupportedError("Setting of string is not supported")
+        elif desc.float:
+            registers = self._convert_from_float(value)
+        elif desc.register_map:
+            raise NotSupportedError("Setting of maps is not supported")
+        elif desc.flags:
+            raise NotSupportedError("Setting of flags is not supported")
+        else:
+            registers = self._convert_from_decimal(value, desc)
+
+        return registers

@@ -1,11 +1,11 @@
-"""Modbus Local Gateway selects"""
+"""Modbus Local Gateway text control"""
 
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from homeassistant.components.select import SelectEntity
+from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_FILENAME
 from homeassistant.core import HomeAssistant, callback
@@ -16,7 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import CONF_PREFIX, CONF_SLAVE_ID, DOMAIN
 from .coordinator import ModbusContext, ModbusCoordinator
 from .helpers import get_gateway_key
-from .sensor_types.base import ModbusSelectEntityDescription
+from .sensor_types.base import ModbusTextEntityDescription
 from .sensor_types.const import ControlType
 from .sensor_types.conversion import Conversion
 from .sensor_types.modbus_device_info import ModbusDeviceInfo
@@ -63,20 +63,20 @@ async def async_setup_entry(
 
     async_add_entities(
         [
-            ModbusSelectEntity(
+            ModbusTextEntity(
                 coordinator=coordinator,
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
                 device=device,
             )
             for desc in device_info.properties
-            if desc.control_type == ControlType.SELECT
+            if desc.control_type == ControlType.TEXT
         ],
         update_before_add=False,
     )
 
 
-class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
-    """Select entity for Modbus gateway"""
+class ModbusTextEntity(CoordinatorEntity, TextEntity):
+    """Text entity for Modbus gateway"""
 
     def __init__(
         self,
@@ -84,13 +84,11 @@ class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
         ctx: ModbusContext,
         device: DeviceInfo,
     ) -> None:
-        """Initialize a PVOutput Select."""
+        """Initialize a PVOutput string."""
         super().__init__(coordinator, context=ctx)
-        self.entity_description: ModbusSelectEntityDescription = ctx.desc
+        self.entity_description: ModbusTextEntityDescription = ctx.desc
         self._attr_unique_id: str = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo = device
-        self._attr_options: list[str] = list(ctx.desc.options.values())
-        self._attr_current_option = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -98,22 +96,19 @@ class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
         try:
             value = self.coordinator.get_data(self.coordinator_context)
             if value is not None:
-                self._attr_current_option = self.entity_description.options[value]
+                self._attr_state = value
                 self.async_write_ha_state()
 
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
 
-    def select_option(self, option: str) -> None:
-        """Change the selected option."""
+    def set_value(self, value: str) -> None:
+        """Set new value."""
         raise NotImplementedError()
 
-    async def async_select_option(self, option: str) -> None:
-        """Change the selected option."""
+    async def async_set_value(self, value: str) -> None:
+        """Set new value."""
         if isinstance(self.coordinator, ModbusCoordinator):
-            value: int = list(self.entity_description.options.keys())[
-                list(self.entity_description.options.values()).index(option)
-            ]
             registers = Conversion(self.coordinator.client).convert_to_registers(
                 value=value, desc=self.entity_description
             )

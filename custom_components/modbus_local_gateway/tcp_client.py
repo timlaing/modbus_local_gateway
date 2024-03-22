@@ -76,11 +76,18 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             entity.desc.register_address,
             entity.desc.register_count,
         )
-        return await super().write_registers(
-            entity.desc.register_address,
-            value,
-            entity.slave_id,
-        )
+
+        if (isinstance(value, list) and len(value) == entity.desc.register_count) or (
+            isinstance(value, int) and entity.desc.register_count == 1
+        ):
+
+            return await super().write_registers(
+                entity.desc.register_address,
+                value,
+                entity.slave_id,
+            )
+        else:
+            raise ModbusException("Incorrect number of registers")
 
     async def update_slave(
         self, entities: list[ModbusContext], max_read_size: int
