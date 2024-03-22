@@ -109,7 +109,7 @@ class Conversion:
             raise NotSupportedError("Setting of bit fields is not supported")
 
         registers: list[int] = self.client.convert_to_registers(
-            raw_value,
+            int(raw_value),
             data_type=(
                 self.client.DATATYPE.UINT32
                 if desc.register_count == 2
@@ -145,7 +145,7 @@ class Conversion:
         registers: list[int] | None = None
 
         if desc.string:
-            raise NotSupportedError("Setting of string is not supported")
+            registers = self._convert_from_string(value)
         elif desc.float:
             registers = self._convert_from_float(value)
         elif desc.register_map:
