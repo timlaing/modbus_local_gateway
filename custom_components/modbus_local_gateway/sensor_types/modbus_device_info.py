@@ -9,10 +9,18 @@ from typing import Any
 from homeassistant.util.yaml import load_yaml
 
 from ..devices import CONFIG_DIR
-from .base import ModbusSensorEntityDescription
+from .base import (
+    ModbusEntityDescription,
+    ModbusNumberEntityDescription,
+    ModbusSelectEntityDescription,
+    ModbusSensorEntityDescription,
+    ModbusSwitchEntityDescription,
+    ModbusTextEntityDescription,
+)
 from .const import (
     BITS,
     CATEGORY,
+    CONTROL_TYPE,
     DEFAULT_STATE_CLASS,
     DEVICE,
     DEVICE_CLASS,
@@ -37,6 +45,8 @@ from .const import (
     UNIT,
     UOM,
     UOM_MAPPING,
+    OPTIONS,
+    ControlType,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -116,11 +126,27 @@ class ModbusDeviceInfo:
                     "never_resets": _data.get(NEVER_RESETS, False),
                     "entity_category": _data.get(CATEGORY),
                     "holding_register": holding,
+                    "control_type": _data.get(CONTROL_TYPE, ControlType.SENSOR),
                     **uom,
                 }
 
                 try:
-                    desc = ModbusSensorEntityDescription(
+                    cls = ModbusSensorEntityDescription
+                    if holding:
+                        match (params["control_type"]):
+                            case ControlType.SWITCH:
+                                cls = ModbusSwitchEntityDescription
+                                params.update(_data.get(ControlType.SWITCH))
+                            case ControlType.SELECT:
+                                cls = ModbusSelectEntityDescription
+                                params.update({"options": _data.get(OPTIONS)})
+                            case ControlType.TEXT:
+                                cls = ModbusTextEntityDescription
+                            case ControlType.NUMBER:
+                                cls = ModbusNumberEntityDescription
+                                params.update(_data.get(ControlType.NUMBER))
+
+                    desc = cls(
                         **{k: params[k] for k in params if params[k] is not None}
                     )
                 except TypeError:
@@ -144,6 +170,6 @@ class ModbusDeviceInfo:
         return self._create_descriptions(self._config[ENTITIES])
 
     @property
-    def properties(self) -> tuple[ModbusSensorEntityDescription, ...]:
+    def properties(self) -> tuple[ModbusEntityDescription, ...]:
         """Get device properties descriptions"""
         return self._create_descriptions(self._config[DEVICE], holding=True)

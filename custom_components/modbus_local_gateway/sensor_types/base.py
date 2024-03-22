@@ -5,7 +5,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from homeassistant.components.number import NumberEntityDescription
+from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
+from homeassistant.components.switch import SwitchEntityDescription
+from homeassistant.components.text import TextEntityDescription
+from homeassistant.helpers.entity import EntityDescription
 
 from .const import (
     BITS,
@@ -15,6 +20,7 @@ from .const import (
     REGISTER_COUNT,
     REGISTER_MULTIPLIER,
     SHIFT,
+    ControlType,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -28,7 +34,7 @@ class ModbusRequiredKeysMixin:
 
 
 @dataclass(kw_only=True, frozen=True)
-class ModbusSensorEntityDescription(SensorEntityDescription, ModbusRequiredKeysMixin):
+class ModbusEntityDescription(EntityDescription, ModbusRequiredKeysMixin):
     """Describes Modbus sensor entity."""
 
     precision: int | None = None
@@ -45,6 +51,7 @@ class ModbusSensorEntityDescription(SensorEntityDescription, ModbusRequiredKeysM
     flags: dict[int, str] | None = None
     bit_shift: int | None = None
     bits: int | None = None
+    control_type: str | None = ControlType.SENSOR
 
     def validate(self) -> bool:
         """Validation the entity description"""
@@ -96,3 +103,36 @@ class ModbusSensorEntityDescription(SensorEntityDescription, ModbusRequiredKeysM
             valid = False
 
         return valid
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusSensorEntityDescription(SensorEntityDescription, ModbusEntityDescription):
+    """Describes Modbus sensor register entity."""
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusSwitchEntityDescription(SwitchEntityDescription, ModbusEntityDescription):
+    """Describes Modbus switch holding register entity."""
+
+    on: int
+    off: int
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusSelectEntityDescription(SelectEntityDescription, ModbusEntityDescription):
+    """Describes Modbus select holding register entity."""
+
+    options: dict[int, str]
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusTextEntityDescription(TextEntityDescription, ModbusEntityDescription):
+    """Describes Modbus text holding register entity."""
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusNumberEntityDescription(NumberEntityDescription, ModbusEntityDescription):
+    """Describes Modbus number holding register entity."""
+
+    max: int
+    min: int

@@ -1,16 +1,14 @@
-"""Modbus Local Gateway sensors"""
+"""Modbus Local Gateway selects"""
 
 from __future__ import annotations
 
-import datetime
 import logging
 from typing import Any
 
-from homeassistant.components.sensor import RestoreSensor, SensorStateClass
+from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_FILENAME
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -18,7 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import CONF_PREFIX, CONF_SLAVE_ID, DOMAIN
 from .coordinator import ModbusContext, ModbusCoordinator
 from .helpers import get_gateway_key
-from .sensor_types.base import ModbusSensorEntityDescription
+from .sensor_types.base import ModbusSelectEntityDescription
 from .sensor_types.const import ControlType
 from .sensor_types.modbus_device_info import ModbusDeviceInfo
 
@@ -64,28 +62,20 @@ async def async_setup_entry(
 
     async_add_entities(
         [
-            ModbusSensorEntity(
-                coordinator=coordinator,
-                ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
-                device=device,
-            )
-            for desc in device_info.entity_desciptions
-        ]
-        + [
-            ModbusSensorEntity(
+            ModbusSelectEntity(
                 coordinator=coordinator,
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
                 device=device,
             )
             for desc in device_info.properties
-            if desc.control_type == ControlType.SENSOR
+            if desc.control_type == ControlType.SELECT
         ],
         update_before_add=False,
     )
 
 
-class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
-    """Sensor entity for Modbus gateway"""
+class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
+    """Select entity for Modbus gateway"""
 
     def __init__(
         self,
@@ -93,17 +83,13 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
         ctx: ModbusContext,
         device: DeviceInfo,
     ) -> None:
-        """Initialize a PVOutput sensor."""
+        """Initialize a PVOutput Select."""
         super().__init__(coordinator, context=ctx)
-        self.entity_description: ModbusSensorEntityDescription = ctx.desc
+        self.entity_description: ModbusSelectEntityDescription = ctx.desc
         self._attr_unique_id: str = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo = device
-
-    async def async_added_to_hass(self) -> None:
-        """Restore the state when sensor is added."""
-        await super().async_added_to_hass()
-        self._attr_state = await self.async_get_last_state()
-        await self.async_get_last_sensor_data()
+        self._attr_options: list[str] = list(ctx.desc.options.values())
+        self._attr_current_option = None
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -111,39 +97,22 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
         try:
             value = self.coordinator.get_data(self.coordinator_context)
             if value is not None:
-                if (
-                    self.native_value is not None
-                    and self.state_class == SensorStateClass.TOTAL_INCREASING
-                    and self.native_value > value
-                ):
-                    if self.entity_description.never_resets:
-                        return
-
-                    self.last_reset = datetime.datetime.now()
-
-                self._attr_native_value = value
+                self._attr_current_option = self.entity_description.options[value]
                 self.async_write_ha_state()
-
-                if self.entity_description.key in ["hw_version", "sw_version"]:
-                    attr: dict[str, str] = {self.entity_description.key: value}
-                    _LOGGER.debug(
-                        "Updating device with %s as %s",
-                        self.entity_description.key,
-                        value,
-                    )
-                    device_registry = dr.async_get(self.hass)
-                    device = device_registry.async_get_device(
-                        self._attr_device_info["identifiers"]
-                    )
-                    device_registry.async_update_device(device_id=device.id, **attr)
 
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
 
-    @property
-    def native_value(self):
-        """Return the state of the sensor."""
-        result = super().native_value
-        if self.entity_description.precision is not None and result:
-            result = round(result, self.entity_description.precision)
-        return result
+    def select_option(self, option: str) -> None:
+        """Change the selected option."""
+        raise NotImplementedError()
+
+    async def async_select_option(self, option: str) -> None:
+        """Change the selected option."""
+        if isinstance(self.coordinator, ModbusCoordinator):
+            value: int = list(self.entity_description.options.keys())[
+                list(self.entity_description.options.values()).index(option)
+            ]
+            await self.coordinator.client.write_holding_registers(
+                entity=self.coordinator_context, value=value
+            )

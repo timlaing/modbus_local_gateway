@@ -4,7 +4,13 @@ from homeassistant.const import Platform
 
 DOMAIN = "modbus_local_gateway"
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.SELECT,
+    Platform.SWITCH,
+    Platform.NUMBER,
+    Platform.TEXT,
+]
 
 CONF_SLAVE_ID = "slave_id"
 CONF_DEVICE_INFO = "device_info"
