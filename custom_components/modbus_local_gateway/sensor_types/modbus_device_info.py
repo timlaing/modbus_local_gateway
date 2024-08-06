@@ -7,6 +7,8 @@ from os.path import join
 from typing import Any
 
 from homeassistant.util.yaml import load_yaml
+from homeassistant.util.yaml.loader import JSON_TYPE
+from homeassistant.exceptions import HomeAssistantError
 
 from ..devices import CONFIG_DIR
 from .base import (
@@ -51,32 +53,72 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+DESCRIPTION_TYPE = (
+    ModbusNumberEntityDescription
+    | ModbusSelectEntityDescription
+    | ModbusSensorEntityDescription
+    | ModbusSwitchEntityDescription
+    | ModbusTextEntityDescription
+)
+
 
 class ModbusDeviceInfo:
     """Representation of YAML device info"""
 
-    def __init__(self, fname) -> None:
+    def __init__(self, fname: str) -> None:
         """Initialise the device config"""
-        self.fname = fname
-        filename = join(CONFIG_DIR, fname)
-        self._config = load_yaml(filename)
+        self.fname: str = fname
+        filename: str = join(CONFIG_DIR, fname)
+        self._config: JSON_TYPE | None = load_yaml(filename)
         if self.manufacturer and self.model:
             _LOGGER.debug("Loaded device config %s", fname)
 
     @property
     def manufacturer(self) -> str:
         """Manufacturer of the device"""
-        return self._config[DEVICE][MANUFACTURER]
+        if (
+            self._config
+            and isinstance(self._config, dict)
+            and DEVICE in self._config
+            and isinstance(self._config[DEVICE], dict)
+            and MANUFACTURER in self._config[DEVICE]
+        ):
+            return self._config[DEVICE][MANUFACTURER]
+        raise HomeAssistantError("Device config is missing")
 
     @property
     def model(self) -> str:
         """Model of the device"""
-        return self._config[DEVICE][MODEL]
+        if (
+            self._config
+            and isinstance(self._config, dict)
+            and DEVICE in self._config
+            and isinstance(self._config[DEVICE], dict)
+            and MODEL in self._config[DEVICE]
+        ):
+            return self._config[DEVICE][MODEL]
+        raise HomeAssistantError("Device config is missing")
 
     @property
     def max_read_size(self) -> int:
         """Maximum number of registers to read in a single request"""
-        return self._config[DEVICE].get(MAX_READ, MAX_READ_DEFAULT)
+        if self._config and isinstance(self._config, dict) and DEVICE in self._config:
+            return self._config[DEVICE].get(MAX_READ, MAX_READ_DEFAULT)
+        raise HomeAssistantError("Device config is missing")
+
+    @property
+    def entity_desciptions(self) -> tuple[DESCRIPTION_TYPE, ...]:
+        """Get the entity descriptions for the device"""
+        if self._config and isinstance(self._config, dict) and ENTITIES in self._config:
+            return self._create_descriptions(self._config[ENTITIES])
+        raise HomeAssistantError("Device config is missing")
+
+    @property
+    def properties(self) -> tuple[ModbusEntityDescription, ...]:
+        """Get device properties descriptions"""
+        if self._config and isinstance(self._config, dict) and DEVICE in self._config:
+            return self._create_descriptions(self._config[DEVICE], holding=True)
+        raise HomeAssistantError("Device config is missing")
 
     def get_uom(self, data) -> dict[str, str]:
         """Get the unit_of_measurement and device class"""
@@ -100,14 +142,14 @@ class ModbusDeviceInfo:
 
     def _create_descriptions(
         self, config: dict[str, Any], holding=False
-    ) -> tuple[ModbusSensorEntityDescription, ...]:
+    ) -> tuple[DESCRIPTION_TYPE, ...]:
         """Create the entity descriptions for the device"""
-        descriptions: list[ModbusSensorEntityDescription] = []
+        descriptions: list[DESCRIPTION_TYPE] = []
         for entity in config:
             if isinstance(config[entity], dict):
                 _data: dict[str, Any] = config[entity]
 
-                uom = self.get_uom(_data)
+                uom: dict[str, str] = self.get_uom(_data)
 
                 params: dict[str, Any] = {
                     "key": entity,
@@ -136,17 +178,23 @@ class ModbusDeviceInfo:
                         match (params["control_type"]):
                             case ControlType.SWITCH:
                                 cls = ModbusSwitchEntityDescription
-                                params.update(_data.get(ControlType.SWITCH))
+                                if ControlType.SWITCH in _data and isinstance(
+                                    _data[ControlType.SWITCH], dict
+                                ):
+                                    params.update(_data[ControlType.SWITCH])
                             case ControlType.SELECT:
                                 cls = ModbusSelectEntityDescription
-                                params.update({"options": _data.get(OPTIONS)})
+                                params.update({"select_options": _data.get(OPTIONS)})
                             case ControlType.TEXT:
                                 cls = ModbusTextEntityDescription
                             case ControlType.NUMBER:
                                 cls = ModbusNumberEntityDescription
-                                params.update(_data.get(ControlType.NUMBER))
+                                if ControlType.NUMBER in _data and isinstance(
+                                    _data[ControlType.NUMBER], dict
+                                ):
+                                    params.update(_data[ControlType.NUMBER])
 
-                    desc = cls(
+                    desc: DESCRIPTION_TYPE = cls(
                         **{k: params[k] for k in params if params[k] is not None}
                     )
                 except TypeError:
@@ -163,13 +211,3 @@ class ModbusDeviceInfo:
                 descriptions.append(desc)
 
         return tuple(descriptions)
-
-    @property
-    def entity_desciptions(self) -> tuple[ModbusSensorEntityDescription, ...]:
-        """Get the entity descriptions for the device"""
-        return self._create_descriptions(self._config[ENTITIES])
-
-    @property
-    def properties(self) -> tuple[ModbusEntityDescription, ...]:
-        """Get device properties descriptions"""
-        return self._create_descriptions(self._config[DEVICE], holding=True)

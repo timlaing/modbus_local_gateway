@@ -8,6 +8,7 @@ from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import TimestampDataUpdateCoordinator
 from pymodbus.pdu import ModbusResponse
@@ -42,6 +43,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             logger=_LOGGER,
             name=f"Modbus Coordinator - {self._gateway}",
             update_interval=timedelta(seconds=update_interval),
+            update_method=self.async_update,
             always_update=False,
         )
 
@@ -82,13 +84,14 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             log_failures, raise_on_auth_failed, scheduled, raise_on_entry_error
         )
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def async_update(self) -> dict[str, Any]:
         """Updated all values for devices"""
         if self.started:
             entities: list[ModbusContext] = sorted(
                 self.async_contexts(), key=lambda x: x.slave_id
             )
             return await self._update_device(entities=entities)
+        raise PlatformNotReady("Modbus Coordinator not started")
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)

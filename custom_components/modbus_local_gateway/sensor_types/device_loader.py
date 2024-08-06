@@ -7,7 +7,7 @@ import os.path
 from ..devices import CONFIG_DIR
 from .modbus_device_info import ModbusDeviceInfo
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 async def load_devices() -> dict[str, ModbusDeviceInfo]:

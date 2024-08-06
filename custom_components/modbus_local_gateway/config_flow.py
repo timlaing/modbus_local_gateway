@@ -8,10 +8,14 @@ from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    OptionsFlow,
+    ConfigFlowResult,
+)
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     CONF_DEFAULT_PORT,
@@ -40,7 +44,7 @@ class OptionsFlowHandler(OptionsFlow):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Manage the options."""
         if user_input is not None:
             coordinator: ModbusCoordinator = self.hass.data[DOMAIN][
@@ -79,17 +83,17 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
-        host_opts = {}
-        port_opts = {"default": CONF_DEFAULT_PORT}
-        slave_opts = {"default": CONF_DEFAULT_SLAVE_ID}
-        prefix_opts = {"default": ""}
+        host_opts: dict[str, str] = {"default": ""}
+        port_opts: dict[str, int] = {"default": CONF_DEFAULT_PORT}
+        slave_opts: dict[str, int] = {"default": CONF_DEFAULT_SLAVE_ID}
+        prefix_opts: dict[str, str] = {"default": ""}
 
         if user_input is not None:
-            self.client = await AsyncModbusTcpClientGateway.async_get_client_connection(
-                self.hass, user_input
+            self.client = AsyncModbusTcpClientGateway.async_get_client_connection(
+                host=user_input[CONF_HOST], port=user_input[CONF_PORT]
             )
             await self.client.connect()
             if self.client.connected:
@@ -99,8 +103,8 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
             errors["base"] = "Gateway connection"
             host_opts["default"] = user_input[CONF_HOST]
-            port_opts["default"] = user_input[CONF_PORT]
-            slave_opts["default"] = user_input[CONF_SLAVE_ID]
+            port_opts["default"] = int(user_input[CONF_PORT])
+            slave_opts["default"] = int(user_input[CONF_SLAVE_ID])
             prefix_opts["default"] = user_input[CONF_PREFIX]
 
         return self.async_show_form(
@@ -118,7 +122,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def async_step_device_type(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the device type step."""
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -134,7 +138,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_create(self) -> FlowResult:
+    async def async_create(self) -> ConfigFlowResult:
         """Create the entry if we can"""
         device_info = ModbusDeviceInfo(self.data[CONF_FILENAME])
 
@@ -142,14 +146,14 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     def async_abort(
         self, *, reason: str, description_placeholders: Mapping[str, str] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Aborting the setup"""
         self.client.close()
         return super().async_abort(
             reason=reason, description_placeholders=description_placeholders
         )
 
-    def async_show_progress_done(self, *, next_step_id: str) -> FlowResult:
+    def async_show_progress_done(self, *, next_step_id: str) -> ConfigFlowResult:
         """Setup complete"""
         self.client.close()
         return super().async_show_progress_done(next_step_id=next_step_id)

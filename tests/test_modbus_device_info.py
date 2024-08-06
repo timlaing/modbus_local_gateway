@@ -268,3 +268,7 @@ async def test_devices_yaml():
             log.assert_not_called()
             _ = devices[name].properties
             log.assert_not_called()
+            _ = devices[name].manufacturer
+            log.assert_not_called()
+            _ = devices[name].model
+            log.assert_not_called()

@@ -1,8 +1,9 @@
 """The Modbus local gateway sensor integration."""
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
-from homeassistant.const import CONF_HOST
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
@@ -37,8 +38,8 @@ async def async_setup_entry(
 
     if gateway_key not in hass.data[DOMAIN]:
         client: AsyncModbusTcpClientGateway = (
-            await AsyncModbusTcpClientGateway.async_get_client_connection(
-                hass=hass, data=entry.data
+            AsyncModbusTcpClientGateway.async_get_client_connection(
+                host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]
             )
         )
         if client is not None:

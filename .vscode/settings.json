@@ -18,6 +18,7 @@
   "black-formatter.importStrategy": "fromEnvironment",
   "python.terminal.focusAfterLaunch": true,
   "python.testing.pytestArgs": [
+    "-m not nohomeassistant",
     "-p no:homeassistant",
   ],
   "sonarlint.connectedMode.project": {
