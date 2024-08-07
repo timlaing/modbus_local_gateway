@@ -24,11 +24,12 @@ async def test_read_registers_single():
     func = AsyncMock()
     func.return_value = response
 
-    def __init__(*_):
+    def __init__(self, host):
         """Mocked init"""
+        self.host = host
 
     with patch.object(
-        AsyncModbusTcpClient,
+        AsyncModbusTcpClientGateway,
         "__init__",
         __init__,
     ):
