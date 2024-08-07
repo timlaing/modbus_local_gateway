@@ -16,7 +16,7 @@ The has been tested with a WaveShare Wi-Fi to RS485 gateway (https://www.wavesha
 ### Configuration for the WaveShare Wi-Fi gateway
 
 | Configuration Page  | Setting                 | Value                    |
-+---------------------+-------------------------+--------------------------+
+| ------------------- | ----------------------- | ------------------------ |
 | Mode Selection      | Data Transfer Mode      | Modbus TCP<==>Modbus RTU |
 | Application         | Baud Rate               | 9600                     |
 | Application         | Data Bits               | 8                        |
