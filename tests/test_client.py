@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 from homeassistant.const import CONF_HOST, CONF_PORT
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu import ModbusResponse
-from pymodbus.register_read_message import ReadHoldingRegistersResponse
+from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.sensor_types.base import (
@@ -34,7 +34,7 @@ async def test_read_registers_single():
     ):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
 
-        resp = await client.read_registers(
+        resp: ModbusResponse | None = await client.read_registers(
             func=func, address=1, count=1, slave=1, max_read_size=3
         )
 
