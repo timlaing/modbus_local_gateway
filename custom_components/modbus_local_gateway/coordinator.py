@@ -8,7 +8,7 @@ from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import PlatformNotReady
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import TimestampDataUpdateCoordinator
 from pymodbus.pdu import ModbusResponse
@@ -17,7 +17,7 @@ from .context import ModbusContext
 from .sensor_types.conversion import Conversion
 from .tcp_client import AsyncModbusTcpClientGateway
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
@@ -69,7 +69,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         return self._max_read_size
 
     @max_read_size.setter
-    def max_read_size(self, value: int):
+    def max_read_size(self, value: int) -> None:
         """Sets the max register read size"""
         self._max_read_size = value
 
@@ -79,19 +79,18 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         raise_on_auth_failed: bool = False,
         scheduled: bool = False,
         raise_on_entry_error: bool = False,
-    ):
+    ) -> None:
         return await super()._async_refresh(
             log_failures, raise_on_auth_failed, scheduled, raise_on_entry_error
         )
 
-    async def async_update(self) -> dict[str, Any]:
+    async def async_update(self) -> dict[str, Any] | None:
         """Updated all values for devices"""
         if self.started:
             entities: list[ModbusContext] = sorted(
                 self.async_contexts(), key=lambda x: x.slave_id
             )
             return await self._update_device(entities=entities)
-        raise PlatformNotReady("Modbus Coordinator not started")
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
@@ -106,7 +105,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             if entity.desc.key in resp:
                 modbus_response: ModbusResponse = resp[entity.desc.key]
                 try:
-                    value = conversion.convert_from_registers(
+                    value: str | float | int | None = conversion.convert_from_registers(
                         desc=entity.desc, registers=modbus_response.registers
                     )
                     data[entity.desc.key] = value

@@ -1,6 +1,7 @@
 """Sensor type constants"""
 
 from enum import StrEnum
+
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     DEGREE,

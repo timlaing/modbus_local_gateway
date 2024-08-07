@@ -14,7 +14,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .coordinator import ModbusContext, ModbusCoordinator
 from .helpers import async_setup_entities
-from .sensor_types.base import ModbusSensorEntityDescription
+from .sensor_types.base import (
+    ModbusSensorEntityDescription,
+    ModbusTextEntityDescription,
+)
 from .sensor_types.const import ControlType
 from .sensor_types.conversion import Conversion
 
@@ -47,6 +50,7 @@ class ModbusTextEntity(CoordinatorEntity, TextEntity):
     ) -> None:
         """Initialize a PVOutput string."""
         super().__init__(coordinator, context=ctx)
+        self.entity_description: ModbusTextEntityDescription = ctx.desc  # type: ignore
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
 

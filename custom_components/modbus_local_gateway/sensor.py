@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import cast
-from homeassistant.components.sensor import RestoreSensor
+
+from homeassistant.components.sensor import RestoreSensor, SensorExtraStoredData
 from homeassistant.components.sensor.const import SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback, State
+from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 from .coordinator import ModbusContext, ModbusCoordinator
 from .helpers import async_setup_entities
 from .sensor_types.base import ModbusSensorEntityDescription
@@ -47,6 +49,7 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
     ) -> None:
         """Initialize a PVOutput sensor."""
         super().__init__(coordinator, context=ctx)
+        self.entity_description: ModbusSensorEntityDescription = ctx.desc  # type: ignore
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
         self._attr_native_state: State | None
@@ -55,7 +58,13 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
         """Restore the state when sensor is added."""
         await super().async_added_to_hass()
         self._attr_native_state = await self.async_get_last_state()
-        await self.async_get_last_sensor_data()
+        last_data: SensorExtraStoredData | None = (
+            await self.async_get_last_sensor_data()
+        )
+        if last_data:
+            _LOGGER.debug("%s", last_data)
+            self._attr_native_unit_of_measurement = last_data.native_unit_of_measurement
+            self._attr_native_value = last_data.native_value
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -68,9 +77,6 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
                 if (
                     self.native_value is not None
                     and self.state_class == SensorStateClass.TOTAL_INCREASING
-                    and isinstance(
-                        self.entity_description, ModbusSensorEntityDescription
-                    )
                     and self.native_value > value  # type: ignore
                 ):
                     if self.entity_description.never_resets:
@@ -114,8 +120,7 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
         """Return the state of the sensor."""
         result = super().native_value
         if (
-            isinstance(self.entity_description, ModbusSensorEntityDescription)
-            and self.entity_description.precision is not None
+            self.entity_description.precision is not None
             and result
             and isinstance(result, float)
         ):

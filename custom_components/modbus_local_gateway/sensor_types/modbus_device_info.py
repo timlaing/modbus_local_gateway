@@ -6,9 +6,10 @@ import logging
 from os.path import join
 from typing import Any
 
+from homeassistant.const import EntityCategory
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.yaml import load_yaml
 from homeassistant.util.yaml.loader import JSON_TYPE
-from homeassistant.exceptions import HomeAssistantError
 
 from ..devices import CONFIG_DIR
 from .base import (
@@ -159,18 +160,22 @@ class ModbusDeviceInfo:
                     "register_multiplier": _data.get(REGISTER_MULTIPLIER),
                     "register_map": _data.get(REGISTER_MAP),
                     "icon": _data.get(ICON),
-                    "precision": _data.get(PRECISION),
+                    "suggested_display_precision": _data.get(PRECISION),
                     "string": _data.get(IS_STRING),
                     "float": _data.get(IS_FLOAT),
                     "bits": _data.get(BITS),
                     "bit_shift": _data.get(SHIFT),
                     "flags": _data.get(FLAGS),
                     "never_resets": _data.get(NEVER_RESETS, False),
-                    "entity_category": _data.get(CATEGORY),
                     "holding_register": holding,
                     "control_type": _data.get(CONTROL_TYPE, ControlType.SENSOR),
                     **uom,
                 }
+
+                try:
+                    params["entity_category"] = EntityCategory(_data.get(CATEGORY))
+                except ValueError:
+                    pass
 
                 try:
                     cls = ModbusSensorEntityDescription

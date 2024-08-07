@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+import pytest
 import yaml
 
 from custom_components.modbus_local_gateway.sensor_types.device_loader import (
@@ -107,7 +108,7 @@ def test_entity_entity_create_all_fields():
             assert entities[0].register_multiplier == 10
             assert entities[0].register_count == 4
             assert entities[0].icon == "mdi:icon"
-            assert entities[0].precision == 2
+            assert entities[0].suggested_display_precision == 2
             assert entities[0].register_map == {1: "One"}
             assert entities[0].state_class == "total"
             assert entities[0].device_class == "A"
@@ -252,12 +253,13 @@ def test_entity_entity_invalid_string():
             assert len(entities) == 0
 
 
-async def test_devices_yaml():
+@pytest.mark.nohomeassistant
+async def test_devices_yaml(hass):
     """Validate yaml files"""
     with patch(
         "custom_components.modbus_local_gateway.sensor_types.device_loader._LOGGER.error"
     ) as log:
-        devices: dict[str, ModbusDeviceInfo] = await load_devices()
+        devices: dict[str, ModbusDeviceInfo] = await load_devices(hass=hass)
         log.assert_not_called()
 
     for name in devices:

@@ -162,3 +162,4 @@ cython_debug/
 /live/**
 custom_components/modbus_local_gateway/devices/Test-Device.yaml
 temp.py
+/config

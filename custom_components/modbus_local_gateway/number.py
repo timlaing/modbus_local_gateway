@@ -1,10 +1,9 @@
 """Modbus Local Gateway number control"""
 
 from __future__ import annotations
-from typing import cast
-
 
 import logging
+from typing import cast
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -16,8 +15,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .coordinator import ModbusContext, ModbusCoordinator
 from .helpers import async_setup_entities
 from .sensor_types.base import (
-    ModbusSensorEntityDescription,
     ModbusNumberEntityDescription,
+    ModbusSensorEntityDescription,
 )
 from .sensor_types.const import ControlType
 from .sensor_types.conversion import Conversion
@@ -51,6 +50,7 @@ class ModbusNumberEntity(CoordinatorEntity, NumberEntity):
     ) -> None:
         """Initialize a PVOutput number."""
         super().__init__(coordinator, context=ctx)
+        self.entity_description: ModbusNumberEntityDescription = ctx.desc  # type: ignore
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
         if isinstance(ctx.desc, ModbusNumberEntityDescription):

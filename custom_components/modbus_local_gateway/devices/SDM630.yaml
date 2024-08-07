@@ -1,10 +1,34 @@
 device:
   manufacturer: Eastron
   model: SDM-630
-  serial_no:
+  serial_num:
     title: Serial Number
     address: 64512
-    size: 4
+    size: 2
+    precision: 0
+    category: diagnostic
+  com_address:
+    title: Communicate address
+    address: 20
+    size: 2
+    float: true
+    icon: mdi:serial-port
+    control: number
+    number:
+      min: 1
+      max: 247
+  baud_rate:
+    title: Baud Rate
+    address: 28
+    size: 2
+    control: select
+    float: true
+    options:
+      0: 2400 bps
+      1: 4800 bps
+      2: 9600 bps
+      3: 19200 bps
+      4: 38400 bps
 
 entities:
   Phase 1 Voltage:

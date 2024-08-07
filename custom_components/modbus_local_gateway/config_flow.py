@@ -11,8 +11,8 @@ import voluptuous as vol
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
-    OptionsFlow,
     ConfigFlowResult,
+    OptionsFlow,
 )
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
@@ -28,11 +28,11 @@ from .const import (
 )
 from .coordinator import ModbusCoordinator
 from .helpers import get_gateway_key
-from .sensor_types.device_loader import load_devices
+from .sensor_types.device_loader import create_device_info, load_devices
 from .sensor_types.modbus_device_info import ModbusDeviceInfo
 from .tcp_client import AsyncModbusTcpClientGateway
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class OptionsFlowHandler(OptionsFlow):
@@ -40,7 +40,7 @@ class OptionsFlowHandler(OptionsFlow):
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        self.config_entry: ConfigEntry[Any] = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -129,8 +129,8 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             self.data.update(user_input)
             return await self.async_create()
 
-        devices = await load_devices()
-        devices_data = {dev: devices[dev].model for dev in devices}
+        devices: dict[str, ModbusDeviceInfo] = await load_devices(self.hass)
+        devices_data: dict[str, str] = {dev: devices[dev].model for dev in devices}
 
         return self.async_show_form(
             step_id="device_type",
@@ -140,7 +140,9 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     async def async_create(self) -> ConfigFlowResult:
         """Create the entry if we can"""
-        device_info = ModbusDeviceInfo(self.data[CONF_FILENAME])
+        device_info: ModbusDeviceInfo = await self.hass.async_add_executor_job(
+            create_device_info, self.data[CONF_FILENAME]
+        )
 
         return self.async_create_entry(title=device_info.model, data=self.data)
 

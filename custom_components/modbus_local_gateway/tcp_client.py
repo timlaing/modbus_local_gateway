@@ -8,7 +8,7 @@ from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
-from pymodbus.framer import Framer
+from pymodbus.framer import FramerType
 from pymodbus.pdu import ModbusResponse
 
 from .context import ModbusContext
@@ -25,11 +25,17 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         self,
         host: str,
         port: int = 502,
-        framer: Framer = Framer.SOCKET,
+        framer: FramerType = FramerType.SOCKET,
         source_address: tuple[str, int] | None = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(host, port, framer, source_address, **kwargs)
+        super().__init__(
+            host=host,
+            port=port,
+            framer=framer,
+            source_address=source_address,
+            **kwargs,
+        )
         self.lock = asyncio.Lock()
 
     async def read_registers(
@@ -88,6 +94,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         else:
             raise ModbusException("Incorrect number of registers")
 
+    def callback_data(self, data: bytes, addr: tuple | None = None) -> int:
+        try:
+            return super().callback_data(data, addr)
+        except:
+            return len(data)
+
     async def update_slave(
         self, entities: list[ModbusContext], max_read_size: int
     ) -> dict[str, ModbusResponse]:
@@ -122,7 +134,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         max_read_size=max_read_size,
                     )
 
-                    if modbus_response:
+                    if (
+                        modbus_response
+                        and len(modbus_response.registers) == entity.desc.register_count
+                    ):
                         data[entity.desc.key] = modbus_response
 
                 except (ModbusException, asyncio.TimeoutError):
@@ -142,8 +157,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_count,
                     )
 
-                    await asyncio.sleep(1)
-
             _LOGGER.debug("Closing connection - Update completed %s", self)
 
         return data
@@ -162,13 +175,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             cls._CLIENT[key] = AsyncModbusTcpClientGateway(
                 host=host,
                 port=port,
-                framer=Framer.SOCKET,
-                timeout=0.5,
-                RetryOnEmpty=True,
-                RetryOnInvalid=True,
-                Retries=5,
-                Reconnects=3,
-                IgnoreMissingSlaves=True,
+                framer=FramerType.SOCKET,
+                timeout=1.5,
+                retries=5,
             )
 
         return cls._CLIENT[key]

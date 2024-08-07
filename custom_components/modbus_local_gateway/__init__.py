@@ -2,9 +2,9 @@
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 
 from .const import (
@@ -25,9 +25,9 @@ async def async_setup_entry(
     """Load the saved entities."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    gateway_key = get_gateway_key(entry=entry, with_slave=False)
+    gateway_key: str = get_gateway_key(entry=entry, with_slave=False)
 
-    device_registry = dr.async_get(hass)
+    device_registry: dr.DeviceRegistry = dr.async_get(hass)
 
     device: dr.DeviceEntry = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,

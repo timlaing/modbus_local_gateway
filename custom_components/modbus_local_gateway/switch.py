@@ -46,6 +46,7 @@ class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
     ) -> None:
         """Initialize a PVOutput switch."""
         super().__init__(coordinator, context=ctx)
+        self.entity_description: ModbusSwitchEntityDescription = ctx.desc  # type: ignore
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
 
@@ -56,9 +57,7 @@ class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
             value: str | int | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
-            if value is not None and isinstance(
-                self.entity_description, ModbusSwitchEntityDescription
-            ):
+            if value is not None:
                 self._attr_is_on = value == self.entity_description.on
                 _LOGGER.debug(
                     "Updating device with %s as %s",
@@ -76,9 +75,7 @@ class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
-            self.entity_description, ModbusSwitchEntityDescription
-        ):
+        if isinstance(self.coordinator, ModbusCoordinator):
             await self.coordinator.client.write_holding_registers(
                 entity=self.coordinator_context, value=self.entity_description.on
             )
@@ -89,9 +86,7 @@ class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
-        if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
-            self.entity_description, ModbusSwitchEntityDescription
-        ):
+        if isinstance(self.coordinator, ModbusCoordinator):
             await self.coordinator.client.write_holding_registers(
                 entity=self.coordinator_context, value=self.entity_description.off
             )

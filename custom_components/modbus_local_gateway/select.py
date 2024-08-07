@@ -50,6 +50,7 @@ class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
     ) -> None:
         """Initialize a PVOutput Select."""
         super().__init__(coordinator, context=ctx)
+        self.entity_description: ModbusSelectEntityDescription = ctx.desc  # type: ignore
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
         if (
@@ -66,11 +67,7 @@ class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
             value: str | int | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
-            if (
-                value is not None
-                and isinstance(self.entity_description, ModbusSelectEntityDescription)
-                and self.entity_description.select_options
-            ):
+            if value is not None and self.entity_description.select_options:
                 self._attr_current_option = self.entity_description.select_options[
                     int(value)
                 ]

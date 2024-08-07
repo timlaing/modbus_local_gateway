@@ -13,10 +13,28 @@ This is a Home Assistant integration to support modbus devices running behind a 
 
 The has been tested with a WaveShare Wi-Fi to RS485 gateway (https://www.waveshare.com/rs485-to-wifi-eth.htm) Configured as a Modbus RTU to Modbus TCP gateway.
 
+### Configuration for the WaveShare Wi-Fi gateway
+
+| Configuration Page  | Setting                 | Value                    |
++---------------------+-------------------------+--------------------------+
+| Mode Selection      | Data Transfer Mode      | Modbus TCP<==>Modbus RTU |
+| Application         | Baud Rate               | 9600                     |
+| Application         | Data Bits               | 8                        |
+| Application         | Parity                  | None                     |
+| Application         | Stop                    | 1                        |
+| Application         | Bradrate adaptive       | Disable                  |
+| Application         | UART AutoFrame          | Disable                  |
+| Application         | Modbus Polling          | Off                      |
+| Application         | Network A, TCP Time out | 5                        |
+| Application         | Network A, MAX TCP Num  | 24                       |
+
+
 Slave devices for testing have been:
 * Growatt MIN-6000-TL-XH
+* Growatt MOD-6000-TL-X
 * Growatt MIC-2500-TL-X
 * Eastron SDM230
+* Eastron SDM630
 * Finder 7M.38
 * Finder 7M.24
 
