@@ -63,6 +63,10 @@ DESCRIPTION_TYPE = (
 )
 
 
+class DeviceConfigError(HomeAssistantError):
+    """Device Configuration Error"""
+
+
 class ModbusDeviceInfo:
     """Representation of YAML device info"""
 
@@ -85,7 +89,7 @@ class ModbusDeviceInfo:
             and MANUFACTURER in self._config[DEVICE]
         ):
             return self._config[DEVICE][MANUFACTURER]
-        raise HomeAssistantError("Device config is missing")
+        raise DeviceConfigError()
 
     @property
     def model(self) -> str:
@@ -98,28 +102,28 @@ class ModbusDeviceInfo:
             and MODEL in self._config[DEVICE]
         ):
             return self._config[DEVICE][MODEL]
-        raise HomeAssistantError("Device config is missing")
+        raise DeviceConfigError()
 
     @property
     def max_read_size(self) -> int:
         """Maximum number of registers to read in a single request"""
         if self._config and isinstance(self._config, dict) and DEVICE in self._config:
             return self._config[DEVICE].get(MAX_READ, MAX_READ_DEFAULT)
-        raise HomeAssistantError("Device config is missing")
+        raise DeviceConfigError()
 
     @property
     def entity_desciptions(self) -> tuple[DESCRIPTION_TYPE, ...]:
         """Get the entity descriptions for the device"""
         if self._config and isinstance(self._config, dict) and ENTITIES in self._config:
             return self._create_descriptions(self._config[ENTITIES])
-        raise HomeAssistantError("Device config is missing")
+        raise DeviceConfigError()
 
     @property
     def properties(self) -> tuple[ModbusEntityDescription, ...]:
         """Get device properties descriptions"""
         if self._config and isinstance(self._config, dict) and DEVICE in self._config:
             return self._create_descriptions(self._config[DEVICE], holding=True)
-        raise HomeAssistantError("Device config is missing")
+        raise DeviceConfigError()
 
     def get_uom(self, data) -> dict[str, str]:
         """Get the unit_of_measurement and device class"""
@@ -140,6 +144,47 @@ class ModbusDeviceInfo:
             "device_class": device_class,
             "state_class": state_class,
         }
+
+    @classmethod
+    def _get_description_class(
+        cls, entity, params: dict, holding: bool, _data: dict
+    ) -> None | ModbusEntityDescription:
+        """Gets the class for the description"""
+        try:
+            desc_cls = ModbusSensorEntityDescription
+            if holding:
+                match (params["control_type"]):
+                    case ControlType.SWITCH:
+                        desc_cls = ModbusSwitchEntityDescription
+                        if ControlType.SWITCH in _data and isinstance(
+                            _data[ControlType.SWITCH], dict
+                        ):
+                            params.update(_data[ControlType.SWITCH])
+                    case ControlType.SELECT:
+                        desc_cls = ModbusSelectEntityDescription
+                        params.update({"select_options": _data.get(OPTIONS)})
+                    case ControlType.TEXT:
+                        desc_cls = ModbusTextEntityDescription
+                    case ControlType.NUMBER:
+                        desc_cls = ModbusNumberEntityDescription
+                        if ControlType.NUMBER in _data and isinstance(
+                            _data[ControlType.NUMBER], dict
+                        ):
+                            params.update(_data[ControlType.NUMBER])
+
+            desc: DESCRIPTION_TYPE = desc_cls(
+                **{k: params[k] for k in params if params[k] is not None}
+            )
+
+            return desc
+
+        except TypeError:
+            _LOGGER.error(
+                "Unable to create entry %s: missing required values",
+                entity,
+                exc_info=True,
+            )
+            return
 
     def _create_descriptions(
         self, config: dict[str, Any], holding=False
@@ -177,40 +222,11 @@ class ModbusDeviceInfo:
                 except ValueError:
                     pass
 
-                try:
-                    cls = ModbusSensorEntityDescription
-                    if holding:
-                        match (params["control_type"]):
-                            case ControlType.SWITCH:
-                                cls = ModbusSwitchEntityDescription
-                                if ControlType.SWITCH in _data and isinstance(
-                                    _data[ControlType.SWITCH], dict
-                                ):
-                                    params.update(_data[ControlType.SWITCH])
-                            case ControlType.SELECT:
-                                cls = ModbusSelectEntityDescription
-                                params.update({"select_options": _data.get(OPTIONS)})
-                            case ControlType.TEXT:
-                                cls = ModbusTextEntityDescription
-                            case ControlType.NUMBER:
-                                cls = ModbusNumberEntityDescription
-                                if ControlType.NUMBER in _data and isinstance(
-                                    _data[ControlType.NUMBER], dict
-                                ):
-                                    params.update(_data[ControlType.NUMBER])
+                desc: None | ModbusEntityDescription = self._get_description_class(
+                    entity, params, holding, _data
+                )
 
-                    desc: DESCRIPTION_TYPE = cls(
-                        **{k: params[k] for k in params if params[k] is not None}
-                    )
-                except TypeError:
-                    _LOGGER.error(
-                        "Unable to create entry %s: missing required values",
-                        entity,
-                        exc_info=True,
-                    )
-                    continue
-
-                if not desc.validate():
+                if not desc or not desc.validate():
                     continue
 
                 descriptions.append(desc)

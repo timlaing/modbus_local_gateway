@@ -13,6 +13,10 @@ class NotSupportedError(Exception):
     """Unsupported functionality"""
 
 
+class InvalidDataTypeError(Exception):
+    """Invalid data type for conversion"""
+
+
 class Conversion:
     """Register conversion class"""
 
@@ -26,7 +30,7 @@ class Conversion:
         )
         if isinstance(value, str):
             return value.split("\0")[0]
-        raise NotSupportedError("Invalid data type")
+        raise InvalidDataTypeError()
 
     def _convert_from_string(self, value: str) -> list[int]:
         """Convert from a string type"""
@@ -42,7 +46,7 @@ class Conversion:
         )
         if isinstance(value, float):
             return value
-        raise NotSupportedError("Invalid data type")
+        raise InvalidDataTypeError()
 
     def _convert_from_float(self, value: float) -> list[int]:
         """Convert from a float type"""
@@ -55,10 +59,8 @@ class Conversion:
         self, registers: list, desc: ModbusSensorEntityDescription
     ) -> str | None:
         """Convert to a enum type"""
-        int_val: str | int | float = int(
-            self._convert_to_decimal(registers=registers, desc=desc)
-        )
-        if isinstance(int_val, int) and desc.register_map:
+        int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
+        if desc.register_map:
             if int_val in desc.register_map:
                 value: str = desc.register_map[int_val]
                 return value
@@ -103,7 +105,7 @@ class Conversion:
 
             return num * desc.register_multiplier
 
-        raise NotSupportedError("Invalid data type")
+        raise InvalidDataTypeError()
 
     def _convert_from_decimal(
         self, num: float, desc: ModbusSensorEntityDescription
@@ -129,7 +131,7 @@ class Conversion:
 
             return registers
 
-        raise NotSupportedError("Invalid data type")
+        raise InvalidDataTypeError()
 
     def convert_from_registers(
         self, desc: ModbusSensorEntityDescription, registers: list
@@ -167,6 +169,6 @@ class Conversion:
         elif isinstance(value, int | float):
             registers = self._convert_from_decimal(value, desc)
         else:
-            raise NotSupportedError("Invalid data type")
+            raise InvalidDataTypeError()
 
         return registers

@@ -97,7 +97,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     def callback_data(self, data: bytes, addr: tuple | None = None) -> int:
         try:
             return super().callback_data(data, addr)
-        except:
+        except Exception:  # pylint: disable=broad-exception-caught
             return len(data)
 
     async def update_slave(
