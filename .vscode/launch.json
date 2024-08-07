@@ -22,7 +22,8 @@
             "module": "homeassistant",
             "justMyCode": false,
             "args": [
-                "-v"
+                "-c",
+                "${workspaceFolder}/config"
             ]
         }
     ]

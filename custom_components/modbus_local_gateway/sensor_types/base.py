@@ -23,7 +23,7 @@ from .const import (
     ControlType,
 )
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -67,7 +67,7 @@ class ModbusEntityDescription(EntityDescription, ModbusRequiredKeysMixin):
             self.bit_shift
             or self.bits
             or self.precision
-            or int(self.register_multiplier) != 1
+            or (self.register_multiplier and int(self.register_multiplier) != 1)
         ) and self.string:
             _LOGGER.warning(
                 "Unable for create entity for %s, %s, %s, %s and %s not valid for %s",
@@ -81,7 +81,9 @@ class ModbusEntityDescription(EntityDescription, ModbusRequiredKeysMixin):
             valid = False
 
         elif (
-            self.bit_shift or self.bits or int(self.register_multiplier) != 1
+            self.bit_shift
+            or self.bits
+            or (self.register_multiplier and int(self.register_multiplier) != 1)
         ) and self.float:
             _LOGGER.warning(
                 "Unable for create entity for %s, %s, %s and %s not valid for %s",
@@ -122,7 +124,7 @@ class ModbusSwitchEntityDescription(SwitchEntityDescription, ModbusEntityDescrip
 class ModbusSelectEntityDescription(SelectEntityDescription, ModbusEntityDescription):
     """Describes Modbus select holding register entity."""
 
-    options: dict[int, str]
+    select_options: dict[int, str]
 
 
 @dataclass(kw_only=True, frozen=True)

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 from homeassistant.const import CONF_HOST, CONF_PORT
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu import ModbusResponse
+from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.sensor_types.base import (
@@ -19,21 +20,22 @@ from custom_components.modbus_local_gateway.tcp_client import (
 async def test_read_registers_single():
     """Test the register read function"""
 
-    response = ModbusResponse()
+    response = ReadHoldingRegistersResponse()
     func = AsyncMock()
     func.return_value = response
 
-    def __init__(*_):
+    def __init__(self, host):
         """Mocked init"""
+        self.host = host
 
     with patch.object(
-        AsyncModbusTcpClient,
+        AsyncModbusTcpClientGateway,
         "__init__",
         __init__,
     ):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
 
-        resp = await client.read_registers(
+        resp: ModbusResponse | None = await client.read_registers(
             func=func, address=1, count=1, slave=1, max_read_size=3
         )
 
@@ -45,11 +47,11 @@ async def test_read_registers_single():
 async def test_read_registers_multiple():
     """Test the register read function"""
 
-    resp1 = ModbusResponse()
+    resp1 = ReadHoldingRegistersResponse()
     resp1.registers = [1, 2, 3]
-    resp2 = ModbusResponse()
+    resp2 = ReadHoldingRegistersResponse()
     resp2.registers = [4, 5, 6]
-    resp3 = ModbusResponse()
+    resp3 = ReadHoldingRegistersResponse()
     resp3.registers = [7, 8, 9]
     response = [resp1, resp2, resp3]
     func = AsyncMock()
@@ -86,13 +88,12 @@ async def test_get_client():
         "__init__",
         __init__,
     ):
-        data = {CONF_HOST: "A", CONF_PORT: 1234}
-        client1 = await AsyncModbusTcpClientGateway.async_get_client_connection(
-            hass=None, data=data
+        client1 = AsyncModbusTcpClientGateway.async_get_client_connection(
+            host="A", port=1234
         )
 
-        client2 = await AsyncModbusTcpClientGateway.async_get_client_connection(
-            hass=None, data=data
+        client2 = AsyncModbusTcpClientGateway.async_get_client_connection(
+            host="A", port=1234
         )
 
         assert client1 == client2
@@ -188,11 +189,15 @@ async def test_update_slave_connected_sucess_slave_single():
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected
-        response = ModbusResponse()
+        response = ReadHoldingRegistersResponse(
+            values=[
+                1,
+            ]
+        )
 
         read_reg.return_value = response
 
-        resp = await gateway.update_slave(
+        resp: dict[str, ModbusResponse] = await gateway.update_slave(
             entities=[
                 ModbusContext(
                     slave_id=1,
@@ -240,7 +245,11 @@ async def test_update_slave_connected_sucess_slave_multiple():
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected
-        response = ModbusResponse()
+        response = ReadHoldingRegistersResponse(
+            values=[
+                1,
+            ]
+        )
 
         read_reg.return_value = response
 
@@ -356,11 +365,15 @@ async def test_update_slave_connected_failed_slave_multiple():
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected
-        response = ModbusResponse()
+        response = ReadHoldingRegistersResponse(
+            values=[
+                3,
+            ]
+        )
 
         read_reg.side_effect = [response, ModbusException(string="test"), response]
 
-        resp = await gateway.update_slave(
+        resp: dict[str, ModbusResponse] = await gateway.update_slave(
             entities=[
                 ModbusContext(
                     slave_id=1,

@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import DOMAIN
@@ -18,6 +19,7 @@ from custom_components.modbus_local_gateway.switch import (
 )
 
 
+@pytest.mark.nohomeassistant
 async def test_setup_entry(hass):
     """Test the HA setup function"""
 
@@ -52,6 +54,8 @@ async def test_setup_entry(hass):
         ]
     )
 
+    pm3 = PropertyMock(return_value="")
+
     with patch(
         "custom_components.modbus_local_gateway.sensor_types.modbus_device_info.load_yaml",
         return_value={
@@ -60,6 +64,10 @@ async def test_setup_entry(hass):
         },
     ), patch.object(ModbusDeviceInfo, "entity_desciptions", pm1), patch.object(
         ModbusDeviceInfo, "properties", pm2
+    ), patch.object(
+        ModbusDeviceInfo, "manufacturer", pm3
+    ), patch.object(
+        ModbusDeviceInfo, "model", pm3
     ):
         await async_setup_entry(hass, entry, callback.add)
 

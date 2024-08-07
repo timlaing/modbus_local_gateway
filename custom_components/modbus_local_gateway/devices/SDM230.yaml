@@ -1,6 +1,33 @@
 device:
   manufacturer: Eastron
   model: SDM-230
+  serial_num:
+    title: Serial Number
+    address: 64512
+    size: 2
+    precision: 0
+    category: diagnostic
+  com_address:
+    title: Communicate address
+    address: 20
+    size: 2
+    control: number
+    float: true
+    icon: mdi:serial-port
+    number:
+      min: 1
+      max: 247
+  baud_rate:
+    title: Baud Rate
+    address: 28
+    size: 2
+    control: select
+    float: true
+    options:
+      0: 2400 bps
+      1: 4800 bps
+      2: 9600 bps
+      5: 1200 bps
 
 entities:
   Total system power demand:
@@ -59,15 +86,6 @@ entities:
     state_class: measurement
     size: 2
     never_resets: True
-
-  Current demand:
-    address: 258
-    title: Current demand
-    unit_of_measurement: Amps
-    precision: 2
-    float: True
-    state_class: measurement
-    size: 2
 
   Voltage:
     address: 0
@@ -167,6 +185,25 @@ entities:
     size: 2
     never_resets: True
 
+  Export Reactive Energy:
+    address: 78
+    title: Export Reactive Energy
+    unit_of_measurement: kVArh
+    precision: 2
+    float: True
+    state_class: total_increasing
+    size: 2
+    never_resets: True
+
+  Current demand:
+    address: 258
+    title: Current demand
+    unit_of_measurement: Amps
+    precision: 2
+    float: True
+    state_class: measurement
+    size: 2
+
   Maximum current Demand:
     address: 264
     title: Maximum current Demand
@@ -174,15 +211,6 @@ entities:
     precision: 2
     float: True
     state_class: measurement
-    size: 2
-    never_resets: True
-
-  Export Reactive Energy:
-    address: 78
-    title: Export Reactive Energy
-    unit_of_measurement: kVArh
-    precision: 2
-    float: True
     size: 2
     never_resets: True
 

@@ -6,17 +6,14 @@ import asyncio
 import logging
 from typing import Any
 
-from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import HomeAssistant
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
-from pymodbus.framer import ModbusFramer
-from pymodbus.framer.socket_framer import ModbusSocketFramer
+from pymodbus.framer import FramerType
 from pymodbus.pdu import ModbusResponse
 
 from .context import ModbusContext
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
@@ -28,16 +25,24 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         self,
         host: str,
         port: int = 502,
-        framer: type[ModbusFramer] = ModbusSocketFramer,
-        source_address: tuple[str, int] = None,
+        framer: FramerType = FramerType.SOCKET,
+        source_address: tuple[str, int] | None = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(host, port, framer, source_address, **kwargs)
+        super().__init__(
+            host=host,
+            port=port,
+            framer=framer,
+            source_address=source_address,
+            **kwargs,
+        )
         self.lock = asyncio.Lock()
 
-    async def read_registers(self, func, address, count, slave, max_read_size):
+    async def read_registers(
+        self, func, address, count, slave, max_read_size
+    ) -> ModbusResponse | None:
         """Helper function for reading and combining registers"""
-        modbus_response: ModbusResponse = None
+        modbus_response: ModbusResponse | None = None
         remaining_registers: int = count
         address_to_read: int = address
 
@@ -89,6 +94,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         else:
             raise ModbusException("Incorrect number of registers")
 
+    def callback_data(self, data: bytes, addr: tuple | None = None) -> int:
+        try:
+            return super().callback_data(data, addr)
+        except Exception:  # pylint: disable=broad-exception-caught
+            return len(data)
+
     async def update_slave(
         self, entities: list[ModbusContext], max_read_size: int
     ) -> dict[str, ModbusResponse]:
@@ -111,7 +122,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_count,
                     )
 
-                    modbus_response: ModbusResponse = await self.read_registers(
+                    modbus_response: ModbusResponse | None = await self.read_registers(
                         func=(
                             self.read_holding_registers
                             if entity.desc.holding_register
@@ -123,7 +134,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         max_read_size=max_read_size,
                     )
 
-                    data[entity.desc.key] = modbus_response
+                    if (
+                        modbus_response
+                        and len(modbus_response.registers) == entity.desc.register_count
+                    ):
+                        data[entity.desc.key] = modbus_response
 
                 except (ModbusException, asyncio.TimeoutError):
                     if idx == 0:
@@ -142,33 +157,27 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_count,
                     )
 
-                    await asyncio.sleep(1)
-
             _LOGGER.debug("Closing connection - Update completed %s", self)
 
         return data
 
     @classmethod
-    async def async_get_client_connection(
-        cls: AsyncModbusTcpClientGateway,
-        hass: HomeAssistant,  # pylint: disable=unused-argument
-        data: dict[str, Any],
-    ):
+    def async_get_client_connection(
+        cls,
+        host: str,
+        port: int,
+    ) -> AsyncModbusTcpClientGateway:
         """Gets a modbus client object"""
-        key = f"{data[CONF_HOST]}:{data[CONF_PORT]}"
+        key: str = f"{host}:{port}"
         if key not in cls._CLIENT:
             _LOGGER.debug("Connecting to gateway %s", key)
 
             cls._CLIENT[key] = AsyncModbusTcpClientGateway(
-                host=data[CONF_HOST],
-                port=data[CONF_PORT],
-                framer=ModbusSocketFramer,
-                timeout=0.5,
-                RetryOnEmpty=True,
-                RetryOnInvalid=True,
-                Retries=5,
-                Reconnects=3,
-                IgnoreMissingSlaves=True,
+                host=host,
+                port=port,
+                framer=FramerType.SOCKET,
+                timeout=1.5,
+                retries=5,
             )
 
         return cls._CLIENT[key]

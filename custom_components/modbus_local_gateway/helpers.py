@@ -8,16 +8,17 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_PREFIX, CONF_SLAVE_ID, DOMAIN
 from .coordinator import ModbusContext, ModbusCoordinator
 from .sensor_types.const import ControlType
+from .sensor_types.device_loader import create_device_info
 from .sensor_types.modbus_device_info import ModbusDeviceInfo
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 def get_gateway_key(entry: ConfigEntry, with_slave: bool = True) -> str:
@@ -30,7 +31,7 @@ def get_gateway_key(entry: ConfigEntry, with_slave: bool = True) -> str:
 
 def get_prefix(config: dict[str, Any]) -> str:
     """Gets the sensor entity id prefix"""
-    prefix = config.get(CONF_PREFIX, "")
+    prefix: str = config.get(CONF_PREFIX, "")
     if prefix != "":
         return f"{prefix}-"
     return prefix
@@ -47,11 +48,13 @@ async def async_setup_entities(
     config: dict[str, Any] = {**config_entry.data}
     _LOGGER.debug(config)
     coordinator: ModbusCoordinator = hass.data[DOMAIN][get_gateway_key(config_entry)]
-    device_info: ModbusDeviceInfo = ModbusDeviceInfo(config[CONF_FILENAME])
+    device_info: ModbusDeviceInfo = await hass.async_add_executor_job(
+        create_device_info, config[CONF_FILENAME]
+    )
 
     coordinator.max_read_size = device_info.max_read_size
 
-    identifiers = {
+    identifiers: set[tuple[str, str]] = {
         (DOMAIN, f"{coordinator.gateway}-{config[CONF_SLAVE_ID]}"),
     }
 

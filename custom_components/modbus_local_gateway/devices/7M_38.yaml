@@ -22,7 +22,7 @@ entities:
     device_class: voltage
     state_class: measurement
     size: 2
-    
+
   L3 Voltage:
     address: 2504
     title: L3 Voltage
@@ -31,8 +31,8 @@ entities:
     float: True
     device_class: voltage
     state_class: measurement
-    size: 2    
-  
+    size: 2
+
   L1 Current:
     address: 2516
     title: L1 Current
@@ -41,8 +41,8 @@ entities:
     float: True
     device_class: current
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   L2 Current:
     address: 2518
     title: L2 Current
@@ -51,7 +51,7 @@ entities:
     float: True
     device_class: current
     state_class: measurement
-    size: 2  
+    size: 2
 
   L3 Current:
     address: 2520
@@ -61,185 +61,187 @@ entities:
     float: True
     device_class: current
     state_class: measurement
-    size: 2  
+    size: 2
 
   L1 active Power:
     address: 2530
-    title: L1 active Power 
+    title: L1 active Power
     unit_of_measurement: W
     precision: 2
     float: True
     device_class: power
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   L2 active Power:
     address: 2532
-    title: L2 active Power 
+    title: L2 active Power
     unit_of_measurement: W
     precision: 2
     float: True
     device_class: power
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   L3 active Power:
     address: 2534
-    title: L3 active Power 
+    title: L3 active Power
     unit_of_measurement: W
     precision: 2
     float: True
     device_class: power
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   Total active Power:
     address: 2536
-    title: Total active Power 
+    title: Total active Power
     unit_of_measurement: W
     precision: 2
     float: True
     device_class: power
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   L1 apparent Power:
     address: 2546
-    title: L1 apparent Power 
+    title: L1 apparent Power
     unit_of_measurement: VA
     precision: 2
     float: True
     device_class: apparent_power
     state_class: measurement
-    size: 2  
+    size: 2
 
   L2 apparent Power:
     address: 2548
-    title: L2 apparent Power 
+    title: L2 apparent Power
     unit_of_measurement: VA
     precision: 2
     float: True
     device_class: apparent_power
     state_class: measurement
-    size: 2  
+    size: 2
 
   L3 apparent Power:
     address: 2550
-    title: L3 apparent Power 
+    title: L3 apparent Power
     unit_of_measurement: VA
     precision: 2
     float: True
     device_class: apparent_power
     state_class: measurement
-    size: 2 
-    
+    size: 2
+
   Total apparent Power:
     address: 2552
-    title: Total apparent Power 
+    title: Total apparent Power
     unit_of_measurement: VA
     precision: 2
     float: True
     device_class: apparent_power
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   L1 reactive Power:
     address: 2538
-    title: L1 reactive Power 
+    title: L1 reactive Power
     unit_of_measurement: var
     precision: 2
     float: True
     state_class: measurement
-    size: 2  
+    size: 2
 
   L2 reactive Power:
     address: 2540
-    title: L2 reactive Power 
+    title: L2 reactive Power
     unit_of_measurement: var
     precision: 2
     float: True
     state_class: measurement
-    size: 2  
+    size: 2
 
   L3 reactive Power:
     address: 2542
-    title: L3 reactive Power 
+    title: L3 reactive Power
     unit_of_measurement: var
     precision: 2
     float: True
     state_class: measurement
-    size: 2  
+    size: 2
 
   Total reactive Power:
     address: 2544
-    title: Total reactive Power 
+    title: Total reactive Power
     unit_of_measurement: vae
     precision: 2
     float: True
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   Frequency:
     address: 2498
-    title: Frequency 
+    title: Frequency
     unit_of_measurement: Hz
     precision: 2
     float: True
     device_class: frequency
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   L1 Power Factor:
     address: 2554
-    title: L1 Power Factor 
+    title: L1 Power Factor
     precision: 2
     float: True
     state_class: measurement
     size: 2
-    
+
   L2 Power Factor:
     address: 2556
-    title: L2 Power Factor 
+    title: L2 Power Factor
     precision: 2
     float: True
     state_class: measurement
     size: 2
-    
+
   L3 Power Factor:
     address: 2558
-    title: L3 Power Factor 
+    title: L3 Power Factor
     precision: 2
     float: True
     state_class: measurement
     size: 2
-    
+
   Total Power Factor:
     address: 2560
-    title: Total Power Factor 
+    title: Total Power Factor
     precision: 2
     float: True
     state_class: measurement
     size: 2
-    
+
   Counter N1:
     address: 462
-    title: Counter N1 
+    title: Counter N1
     unit_of_measurement: Wh
     precision: 3
     float: False
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter N2:
     address: 464
-    title: Counter N2 
+    title: Counter N2
     unit_of_measurement: Wh
     precision: 3
     float: False
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter N3:
     address: 466
@@ -250,26 +252,29 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter N4:
     address: 468
-    title: Counter N4 
+    title: Counter N4
     unit_of_measurement: Wh
     precision: 3
     float: False
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C1:
     address: 470
-    title: Counter C1 
+    title: Counter C1
     unit_of_measurement: Wh
     precision: 3
     float: False
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C2:
     address: 472
@@ -280,36 +285,40 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C3:
     address: 474
-    title: Counter C3 
+    title: Counter C3
     unit_of_measurement: Wh
     precision: 3
     float: False
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C4:
     address: 476
-    title: Counter C4 
+    title: Counter C4
     unit_of_measurement: Wh
     precision: 3
     float: False
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C5:
     address: 478
-    title: Counter C5 
+    title: Counter C5
     unit_of_measurement: Wh
     precision: 3
     float: False
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C6:
     address: 480
@@ -320,6 +329,7 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C7:
     address: 482
@@ -330,6 +340,7 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1
 
   Counter C8:
     address: 484
@@ -340,3 +351,4 @@ entities:
     device_class: energy
     state_class: total_increasing
     size: 2
+    multiplier: 0.1

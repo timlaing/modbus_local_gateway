@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import DOMAIN
@@ -17,6 +18,7 @@ from custom_components.modbus_local_gateway.sensor_types.modbus_device_info impo
 )
 
 
+@pytest.mark.nohomeassistant
 async def test_setup_entry(hass):
     """Test the HA setup function"""
 
@@ -40,7 +42,11 @@ async def test_setup_entry(hass):
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusSelectEntityDescription(key="key1", register_address=1),
+            ModbusSelectEntityDescription(
+                key="key1",
+                register_address=1,
+                select_options={1: "A", 2: "B"},
+            ),
         ]
     )
     pm2 = PropertyMock(
@@ -49,10 +55,12 @@ async def test_setup_entry(hass):
                 key="key2",
                 register_address=2,
                 control_type="select",
-                options={1: "A", 2: "B"},
+                select_options={1: "A", 2: "B"},
             ),
         ]
     )
+
+    pm3 = PropertyMock(return_value="")
 
     with patch(
         "custom_components.modbus_local_gateway.sensor_types.modbus_device_info.load_yaml",
@@ -62,6 +70,10 @@ async def test_setup_entry(hass):
         },
     ), patch.object(ModbusDeviceInfo, "entity_desciptions", pm1), patch.object(
         ModbusDeviceInfo, "properties", pm2
+    ), patch.object(
+        ModbusDeviceInfo, "manufacturer", pm3
+    ), patch.object(
+        ModbusDeviceInfo, "model", pm3
     ):
         await async_setup_entry(hass, entry, callback.add)
 
@@ -122,7 +134,7 @@ async def test_update_value():
             key="key",
             register_address=1,
             control_type="select",
-            options={1: "A", 2: "B"},
+            select_options={1: "A", 2: "B"},
         )
     )
     coordinator.get_data.return_value = 1
@@ -161,7 +173,7 @@ async def test_update_deviceupdate():
             key="select",
             register_address=1,
             control_type="select",
-            options={1: "A", 2: "B"},
+            select_options={1: "A", 2: "B"},
         )
     )
 
