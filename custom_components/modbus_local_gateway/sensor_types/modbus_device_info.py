@@ -171,9 +171,9 @@ class ModbusDeviceInfo:
                             _data[ControlType.NUMBER], dict
                         ):
                             params.update(_data[ControlType.NUMBER])
-                            params.update({"precision": _data.get(PRECISION, 0)})
+                            params.update({"precision": _data.get(PRECISION)})
             else:
-                params.update({"suggested_display_precision": _data.get(PRECISION, 0)})
+                params.update({"suggested_display_precision": _data.get(PRECISION)})
 
             desc: DESCRIPTION_TYPE = desc_cls(
                 **{k: params[k] for k in params if params[k] is not None}
