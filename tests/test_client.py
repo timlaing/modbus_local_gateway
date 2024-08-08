@@ -403,6 +403,6 @@ async def test_update_slave_connected_failed_slave_multiple():
         assert resp["key1"] == response
         assert resp["key3"] == response
         gateway.connect.assert_called_once()
-        warning.assert_called_once()
-        assert debug.call_count == 4
+        warning.assert_not_called()
+        assert debug.call_count == 5
         assert len(lock.mock_calls) == 2

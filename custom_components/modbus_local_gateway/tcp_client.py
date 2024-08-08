@@ -149,7 +149,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         )
                         return data
 
-                    _LOGGER.warning(
+                    _LOGGER.debug(
                         "Unable to retrieve value for slave %d, register (%s): %d, %d",
                         entity.slave_id,
                         entity.desc.key,
