@@ -23,8 +23,8 @@ device:
     control: switch
     icon: mdi:power
     switch:
-      'off': 0
-      'on': 1
+      "off": 0
+      "on": 1
   max_output_active:
     title: Max output active power
     address: 3
@@ -102,9 +102,8 @@ device:
     control: switch
     icon: mdi:transmission-tower
     switch:
-      'off': 0
-      'on': 1
-
+      "off": 0
+      "on": 1
 
 entities:
   machine_status:
@@ -324,7 +323,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
-    state_class: total_increasing
+    state_class: total
   Epv1_total:
     title: PV1 Energy total
     address: 3057
@@ -341,7 +340,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
-    state_class: total_increasing
+    state_class: total
   Epv2_total:
     title: PV2 Energy total
     address: 3061
@@ -359,7 +358,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
-    state_class: total_increasing
+    state_class: total
     icon: mdi:transmission-tower-import
   Etouser_total:
     title: Total energy to user
@@ -378,7 +377,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
-    state_class: total_increasing
+    state_class: total
     icon: mdi:transmission-tower-export
   Etogrid_total:
     title: Total energy to grid
@@ -397,7 +396,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
-    state_class: total_increasing
+    state_class: total
     icon: mdi:solar-power-variant
   Eload_total:
     title: Total energy of user load
@@ -504,7 +503,7 @@ entities:
     size: 2
     multiplier: 0.1
     device_class: energy
-    state_class: total_increasing
+    state_class: total
     icon: mdi:battery-negative
   Edischr_total:
     title: Total discharge energy
@@ -525,7 +524,7 @@ entities:
     size: 2
     multiplier: 0.1
     device_class: energy
-    state_class: total_increasing
+    state_class: total
     icon: mdi:battery-positive
   Echr_total:
     title: Total charge energy
