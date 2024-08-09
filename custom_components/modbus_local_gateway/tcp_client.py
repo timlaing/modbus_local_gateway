@@ -8,7 +8,12 @@ from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
-from pymodbus.framer import FramerType
+
+try:
+    from pymodbus.framer import FramerType
+except ImportError:
+    from pymodbus.framer import Framer as FramerType
+
 from pymodbus.pdu import ModbusResponse
 
 from .context import ModbusContext

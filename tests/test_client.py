@@ -5,7 +5,11 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 from homeassistant.const import CONF_HOST, CONF_PORT
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu import ModbusResponse
-from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
+
+try:
+    from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
+except ModuleNotFoundError:
+    from pymodbus.register_read_message import ReadHoldingRegistersResponse
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.sensor_types.base import (
