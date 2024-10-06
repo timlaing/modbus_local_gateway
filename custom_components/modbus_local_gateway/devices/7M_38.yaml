@@ -6,7 +6,7 @@ entities:
   L1 Voltage:
     address: 2500
     title: L1 Voltage
-    unit_of_measurement: V
+    unit_of_measurement: Volts
     precision: 2
     float: True
     device_class: voltage
@@ -16,7 +16,7 @@ entities:
   L2 Voltage:
     address: 2502
     title: L2 Voltage
-    unit_of_measurement: V
+    unit_of_measurement: Volts
     precision: 2
     float: True
     device_class: voltage
@@ -26,7 +26,7 @@ entities:
   L3 Voltage:
     address: 2504
     title: L3 Voltage
-    unit_of_measurement: V
+    unit_of_measurement: Volts
     precision: 2
     float: True
     device_class: voltage
@@ -36,7 +36,7 @@ entities:
   L1 Current:
     address: 2516
     title: L1 Current
-    unit_of_measurement: A
+    unit_of_measurement: Amps
     precision: 2
     float: True
     device_class: current
@@ -46,7 +46,7 @@ entities:
   L2 Current:
     address: 2518
     title: L2 Current
-    unit_of_measurement: A
+    unit_of_measurement: Amps
     precision: 2
     float: True
     device_class: current
@@ -56,7 +56,7 @@ entities:
   L3 Current:
     address: 2520
     title: L3 Current
-    unit_of_measurement: A
+    unit_of_measurement: Amps
     precision: 2
     float: True
     device_class: current
@@ -66,7 +66,7 @@ entities:
   L1 active Power:
     address: 2530
     title: L1 active Power
-    unit_of_measurement: W
+    unit_of_measurement: Watts
     precision: 2
     float: True
     device_class: power
@@ -76,7 +76,7 @@ entities:
   L2 active Power:
     address: 2532
     title: L2 active Power
-    unit_of_measurement: W
+    unit_of_measurement: Watts
     precision: 2
     float: True
     device_class: power
@@ -86,7 +86,7 @@ entities:
   L3 active Power:
     address: 2534
     title: L3 active Power
-    unit_of_measurement: W
+    unit_of_measurement: Watts
     precision: 2
     float: True
     device_class: power
@@ -96,7 +96,7 @@ entities:
   Total active Power:
     address: 2536
     title: Total active Power
-    unit_of_measurement: W
+    unit_of_measurement: Watts
     precision: 2
     float: True
     device_class: power
@@ -106,7 +106,7 @@ entities:
   L1 apparent Power:
     address: 2546
     title: L1 apparent Power
-    unit_of_measurement: VA
+    unit_of_measurement: VoltAmps
     precision: 2
     float: True
     device_class: apparent_power
@@ -116,7 +116,7 @@ entities:
   L2 apparent Power:
     address: 2548
     title: L2 apparent Power
-    unit_of_measurement: VA
+    unit_of_measurement: VoltAmps
     precision: 2
     float: True
     device_class: apparent_power
@@ -126,7 +126,7 @@ entities:
   L3 apparent Power:
     address: 2550
     title: L3 apparent Power
-    unit_of_measurement: VA
+    unit_of_measurement: VoltAmps
     precision: 2
     float: True
     device_class: apparent_power
@@ -136,7 +136,7 @@ entities:
   Total apparent Power:
     address: 2552
     title: Total apparent Power
-    unit_of_measurement: VA
+    unit_of_measurement: VoltAmps
     precision: 2
     float: True
     device_class: apparent_power
@@ -146,7 +146,7 @@ entities:
   L1 reactive Power:
     address: 2538
     title: L1 reactive Power
-    unit_of_measurement: var
+    unit_of_measurement: VAr
     precision: 2
     float: True
     state_class: measurement
@@ -155,7 +155,7 @@ entities:
   L2 reactive Power:
     address: 2540
     title: L2 reactive Power
-    unit_of_measurement: var
+    unit_of_measurement: VAr
     precision: 2
     float: True
     state_class: measurement
@@ -164,7 +164,7 @@ entities:
   L3 reactive Power:
     address: 2542
     title: L3 reactive Power
-    unit_of_measurement: var
+    unit_of_measurement: VAr
     precision: 2
     float: True
     state_class: measurement

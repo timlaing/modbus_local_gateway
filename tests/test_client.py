@@ -2,12 +2,13 @@
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-from homeassistant.const import CONF_HOST, CONF_PORT
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu import ModbusResponse
 
 try:
-    from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
+    from pymodbus.pdu.register_read_message import (  # type: ignore
+        ReadHoldingRegistersResponse,
+    )
 except ModuleNotFoundError:
     from pymodbus.register_read_message import ReadHoldingRegistersResponse
 
@@ -16,7 +17,6 @@ from custom_components.modbus_local_gateway.sensor_types.base import (
     ModbusSensorEntityDescription,
 )
 from custom_components.modbus_local_gateway.tcp_client import (
-    AsyncModbusTcpClient,
     AsyncModbusTcpClientGateway,
 )
 
@@ -123,7 +123,7 @@ async def test_update_slave_not_connected():
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=False)
-        type(gateway).connected = connected
+        type(gateway).connected = connected  # type: ignore
 
         resp = await gateway.update_slave(entities=[], max_read_size=3)
 
@@ -155,7 +155,7 @@ async def test_update_slave_connected_no_entities():
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
-        type(gateway).connected = connected
+        type(gateway).connected = connected  # type: ignore
 
         resp = await gateway.update_slave(entities=[], max_read_size=3)
 
@@ -192,7 +192,7 @@ async def test_update_slave_connected_sucess_slave_single():
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
-        type(gateway).connected = connected
+        type(gateway).connected = connected  # type: ignore
         response = ReadHoldingRegistersResponse(
             values=[
                 1,
@@ -205,8 +205,10 @@ async def test_update_slave_connected_sucess_slave_single():
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key",
+                        register_address=1,
+                        register_count=1,
                     ),
                 )
             ],
@@ -248,7 +250,7 @@ async def test_update_slave_connected_sucess_slave_multiple():
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
-        type(gateway).connected = connected
+        type(gateway).connected = connected  # type: ignore
         response = ReadHoldingRegistersResponse(
             values=[
                 1,
@@ -261,20 +263,26 @@ async def test_update_slave_connected_sucess_slave_multiple():
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key1", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key1",
+                        register_address=1,
+                        register_count=1,
                     ),
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key2", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key2",
+                        register_address=1,
+                        register_count=1,
                     ),
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key3", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key3",
+                        register_address=1,
+                        register_count=1,
                     ),
                 ),
             ],
@@ -318,7 +326,7 @@ async def test_update_slave_connected_failed_slave_single():
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
-        type(gateway).connected = connected
+        type(gateway).connected = connected  # type: ignore
 
         read_reg.side_effect = ModbusException(string="test")
 
@@ -326,8 +334,10 @@ async def test_update_slave_connected_failed_slave_single():
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key",
+                        register_address=1,
+                        register_count=1,
                     ),
                 )
             ],
@@ -368,7 +378,7 @@ async def test_update_slave_connected_failed_slave_multiple():
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
-        type(gateway).connected = connected
+        type(gateway).connected = connected  # type: ignore
         response = ReadHoldingRegistersResponse(
             values=[
                 3,
@@ -381,20 +391,26 @@ async def test_update_slave_connected_failed_slave_multiple():
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key1", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key1",
+                        register_address=1,
+                        register_count=1,
                     ),
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key2", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key2",
+                        register_address=1,
+                        register_count=1,
                     ),
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(
-                        key="key3", register_address=1, register_count=1
+                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        key="key3",
+                        register_address=1,
+                        register_count=1,
                     ),
                 ),
             ],

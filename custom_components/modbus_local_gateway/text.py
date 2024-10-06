@@ -8,16 +8,11 @@ from typing import cast
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import ModbusContext, ModbusCoordinator
+from .coordinator import ModbusCoordinator, ModbusCoordinatorEntity
 from .helpers import async_setup_entities
-from .sensor_types.base import (
-    ModbusSensorEntityDescription,
-    ModbusTextEntityDescription,
-)
+from .sensor_types.base import ModbusSensorEntityDescription
 from .sensor_types.const import ControlType
 from .sensor_types.conversion import Conversion
 
@@ -39,20 +34,8 @@ async def async_setup_entry(
     )
 
 
-class ModbusTextEntity(CoordinatorEntity, TextEntity):
+class ModbusTextEntity(ModbusCoordinatorEntity, TextEntity):  # type: ignore
     """Text entity for Modbus gateway"""
-
-    def __init__(
-        self,
-        coordinator: ModbusCoordinator,
-        ctx: ModbusContext,
-        device: DeviceInfo,
-    ) -> None:
-        """Initialize a PVOutput string."""
-        super().__init__(coordinator, context=ctx)
-        self.entity_description: ModbusTextEntityDescription = ctx.desc  # type: ignore
-        self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
-        self._attr_device_info: DeviceInfo | None = device
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -81,7 +64,7 @@ class ModbusTextEntity(CoordinatorEntity, TextEntity):
         """Set new value."""
         if isinstance(self.coordinator, ModbusCoordinator):
             registers: list[int] | int = Conversion(
-                self.coordinator.client
+                type(self.coordinator.client)
             ).convert_to_registers(
                 value=value,
                 desc=cast(ModbusSensorEntityDescription, self.entity_description),

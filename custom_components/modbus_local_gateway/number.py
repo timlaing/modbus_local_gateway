@@ -10,9 +10,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import ModbusContext, ModbusCoordinator
+from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .helpers import async_setup_entities
 from .sensor_types.base import (
     ModbusNumberEntityDescription,
@@ -39,7 +38,7 @@ async def async_setup_entry(
     )
 
 
-class ModbusNumberEntity(CoordinatorEntity, NumberEntity):
+class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
     """Number entity for Modbus gateway"""
 
     def __init__(
@@ -49,13 +48,12 @@ class ModbusNumberEntity(CoordinatorEntity, NumberEntity):
         device: DeviceInfo,
     ) -> None:
         """Initialize a PVOutput number."""
-        super().__init__(coordinator, context=ctx)
-        self.entity_description: ModbusNumberEntityDescription = ctx.desc  # type: ignore
-        self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
-        self._attr_device_info: DeviceInfo | None = device
+        super().__init__(coordinator, ctx=ctx, device=device)
         if isinstance(ctx.desc, ModbusNumberEntityDescription):
             self._attr_native_max_value = ctx.desc.max
             self._attr_native_min_value = ctx.desc.min
+        else:
+            raise TypeError()
         self._attr_mode = NumberMode.BOX
 
     @callback
@@ -85,7 +83,7 @@ class ModbusNumberEntity(CoordinatorEntity, NumberEntity):
         """Set new value."""
         if isinstance(self.coordinator, ModbusCoordinator):
             registers: list[int] | int = Conversion(
-                self.coordinator.client
+                type(self.coordinator.client)
             ).convert_to_registers(
                 value=value,
                 desc=cast(ModbusSensorEntityDescription, self.entity_description),

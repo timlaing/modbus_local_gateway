@@ -5,13 +5,14 @@ from enum import StrEnum
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.const import (
     DEGREE,
-    POWER_VOLT_AMPERE_REACTIVE,
+    PERCENTAGE,
     UnitOfApparentPower,
     UnitOfElectricCurrent,
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfFrequency,
     UnitOfPower,
+    UnitOfReactivePower,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -69,6 +70,7 @@ class Units(StrEnum):
     WATTS = "Watts"
     VA = "VoltAmps"
     SECONDS = "Seconds"
+    PERCENT = "%"
 
 
 UOM_MAPPING = {
@@ -111,7 +113,7 @@ UOM_MAPPING = {
         STATE_CLASS: SensorStateClass.TOTAL_INCREASING,
     },
     Units.VAR: {
-        UNIT: POWER_VOLT_AMPERE_REACTIVE,
+        UNIT: UnitOfReactivePower.VOLT_AMPERE_REACTIVE,
         DEVICE_CLASS: SensorDeviceClass.REACTIVE_POWER,
         STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
@@ -124,5 +126,9 @@ UOM_MAPPING = {
         UNIT: UnitOfTime.SECONDS,
         DEVICE_CLASS: SensorDeviceClass.DURATION,
         STATE_CLASS: SensorStateClass.TOTAL_INCREASING,
+    },
+    Units.PERCENT: {
+        UNIT: PERCENTAGE,
+        STATE_CLASS: SensorStateClass.MEASUREMENT,
     },
 }

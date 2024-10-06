@@ -7,7 +7,7 @@ from custom_components.modbus_local_gateway.const import DOMAIN
 
 
 @pytest.mark.nohomeassistant
-async def test_setup_entry(hass):
+async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
 
     entry = MockConfigEntry(

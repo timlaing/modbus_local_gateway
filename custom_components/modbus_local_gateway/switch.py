@@ -8,11 +8,9 @@ from typing import Any, cast
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import ModbusContext, ModbusCoordinator
+from .coordinator import ModbusCoordinator, ModbusCoordinatorEntity
 from .helpers import async_setup_entities
 from .sensor_types.base import ModbusSwitchEntityDescription
 from .sensor_types.const import ControlType
@@ -35,20 +33,8 @@ async def async_setup_entry(
     )
 
 
-class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
+class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
     """Switch entity for Modbus gateway"""
-
-    def __init__(
-        self,
-        coordinator: ModbusCoordinator,
-        ctx: ModbusContext,
-        device: DeviceInfo,
-    ) -> None:
-        """Initialize a PVOutput switch."""
-        super().__init__(coordinator, context=ctx)
-        self.entity_description: ModbusSwitchEntityDescription = ctx.desc  # type: ignore
-        self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
-        self._attr_device_info: DeviceInfo | None = device
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -57,7 +43,9 @@ class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
             value: str | int | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
-            if value is not None:
+            if value is not None and isinstance(
+                self.entity_description, ModbusSwitchEntityDescription
+            ):
                 self._attr_is_on = value == self.entity_description.on
                 _LOGGER.debug(
                     "Updating device with %s as %s",
@@ -75,7 +63,9 @@ class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the entity on."""
-        if isinstance(self.coordinator, ModbusCoordinator):
+        if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
+            self.entity_description, ModbusSwitchEntityDescription
+        ):
             await self.coordinator.client.write_holding_registers(
                 entity=self.coordinator_context, value=self.entity_description.on
             )
@@ -86,7 +76,9 @@ class ModbusSwitchEntity(CoordinatorEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
-        if isinstance(self.coordinator, ModbusCoordinator):
+        if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
+            self.entity_description, ModbusSwitchEntityDescription
+        ):
             await self.coordinator.client.write_holding_registers(
                 entity=self.coordinator_context, value=self.entity_description.off
             )

@@ -125,11 +125,11 @@ class ModbusDeviceInfo:
             return self._create_descriptions(self._config[DEVICE], holding=True)
         raise DeviceConfigError()
 
-    def get_uom(self, data) -> dict[str, str]:
+    def get_uom(self, data) -> dict[str, str | None]:
         """Get the unit_of_measurement and device class"""
         unit = data.get(UOM)
-        state_class = None
-        device_class = None
+        state_class: str | None = DEFAULT_STATE_CLASS
+        device_class: str | None = None
 
         if unit in UOM_MAPPING:
             device_class = UOM_MAPPING[unit].get(DEVICE_CLASS, device_class)
@@ -138,6 +138,9 @@ class ModbusDeviceInfo:
 
         device_class = data.get(DEVICE_CLASS, device_class)
         state_class = data.get(STATE_CLASS, state_class)
+
+        if device_class is None or data.get(IS_STRING, False):
+            state_class = None
 
         return {
             "native_unit_of_measurement": unit,
@@ -148,11 +151,12 @@ class ModbusDeviceInfo:
     @classmethod
     def _get_description_class(
         cls, entity, params: dict, holding: bool, _data: dict
-    ) -> None | ModbusEntityDescription:
+    ) -> None | DESCRIPTION_TYPE:
         """Gets the class for the description"""
         try:
             desc_cls = ModbusSensorEntityDescription
             if holding:
+                params.pop("state_class", None)
                 match (params["control_type"]):
                     case ControlType.SWITCH:
                         desc_cls = ModbusSwitchEntityDescription
@@ -198,7 +202,7 @@ class ModbusDeviceInfo:
             if isinstance(config[entity], dict):
                 _data: dict[str, Any] = config[entity]
 
-                uom: dict[str, str] = self.get_uom(_data)
+                uom: dict[str, str | None] = self.get_uom(_data)
 
                 params: dict[str, Any] = {
                     "key": entity,
@@ -224,7 +228,7 @@ class ModbusDeviceInfo:
                 except ValueError:
                     pass
 
-                desc: None | ModbusEntityDescription = self._get_description_class(
+                desc: None | DESCRIPTION_TYPE = self._get_description_class(
                     entity, params, holding, _data
                 )
 

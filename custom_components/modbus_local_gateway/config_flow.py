@@ -111,10 +111,10 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_HOST, **host_opts): str,
-                    vol.Required(CONF_PORT, **port_opts): int,
-                    vol.Required(CONF_SLAVE_ID, **slave_opts): int,
-                    vol.Optional(CONF_PREFIX, **prefix_opts): str,
+                    vol.Required(CONF_HOST, None, **host_opts): str,
+                    vol.Required(CONF_PORT, None, **port_opts): int,
+                    vol.Required(CONF_SLAVE_ID, None, **slave_opts): int,
+                    vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
                 }
             ),
             errors=errors,

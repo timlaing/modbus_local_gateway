@@ -10,7 +10,7 @@ from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
 try:
-    from pymodbus.framer import FramerType
+    from pymodbus.framer import FramerType  # type: ignore
 except ImportError:
     from pymodbus.framer import Framer as FramerType
 
@@ -100,6 +100,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             raise ModbusException("Incorrect number of registers")
 
     def callback_data(self, data: bytes, addr: tuple | None = None) -> int:
+        """Handle received data."""
         try:
             return super().callback_data(data, addr)
         except Exception:  # pylint: disable=broad-exception-caught

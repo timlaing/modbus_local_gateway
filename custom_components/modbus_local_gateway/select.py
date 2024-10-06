@@ -10,9 +10,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import ModbusContext, ModbusCoordinator
+from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .helpers import async_setup_entities
 from .sensor_types.base import (
     ModbusSelectEntityDescription,
@@ -39,7 +38,7 @@ async def async_setup_entry(
     )
 
 
-class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
+class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
     """Select entity for Modbus gateway"""
 
     def __init__(
@@ -49,10 +48,7 @@ class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
         device: DeviceInfo,
     ) -> None:
         """Initialize a PVOutput Select."""
-        super().__init__(coordinator, context=ctx)
-        self.entity_description: ModbusSelectEntityDescription = ctx.desc  # type: ignore
-        self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
-        self._attr_device_info: DeviceInfo | None = device
+        super().__init__(coordinator, ctx=ctx, device=device)
         if (
             isinstance(ctx.desc, ModbusSelectEntityDescription)
             and ctx.desc.select_options
@@ -67,7 +63,11 @@ class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
             value: str | int | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
-            if value is not None and self.entity_description.select_options:
+            if (
+                isinstance(self.entity_description, ModbusSelectEntityDescription)
+                and value is not None
+                and self.entity_description.select_options
+            ):
                 self._attr_current_option = self.entity_description.select_options[
                     int(value)
                 ]
@@ -96,7 +96,7 @@ class ModbusSelectEntity(CoordinatorEntity, SelectEntity):
                 list(self.entity_description.select_options.values()).index(option)
             ]
             registers: list[int] | int = Conversion(
-                self.coordinator.client
+                type(self.coordinator.client)
             ).convert_to_registers(
                 value=value,
                 desc=cast(ModbusSensorEntityDescription, self.entity_description),
