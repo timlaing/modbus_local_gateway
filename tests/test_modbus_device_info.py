@@ -71,7 +71,7 @@ def test_entity_entity_create_all_fields() -> None:
                     "title": "Title",
                     "address": 1,
                     "float": True,
-                    "string": True,
+                    "string": False,
                     "bits": 8,
                     "shift_bits": 2,
                     "multiplier": 10,
@@ -103,7 +103,7 @@ def test_entity_entity_create_all_fields() -> None:
             assert entities[0].name == "Title"
             assert entities[0].register_address == 1
             assert entities[0].float
-            assert entities[0].string
+            assert not entities[0].string
             assert entities[0].bits == 8
             assert entities[0].bit_shift == 2
             assert entities[0].register_multiplier == 10
