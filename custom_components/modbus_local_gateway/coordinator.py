@@ -8,16 +8,39 @@ from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.update_coordinator import TimestampDataUpdateCoordinator
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    TimestampDataUpdateCoordinator,
+)
 from pymodbus.pdu import ModbusResponse
 
 from .context import ModbusContext
+from .sensor_types.base import ModbusEntityDescription
 from .sensor_types.conversion import Conversion
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+class ModbusCoordinatorEntity(CoordinatorEntity):
+    """Base class for Modbus Entities"""
+
+    def __init__(
+        self,
+        coordinator: ModbusCoordinator,
+        ctx: ModbusContext,
+        device: DeviceInfo,
+    ) -> None:
+        """Initialize an entity."""
+        super().__init__(coordinator, context=ctx)
+        if isinstance(ctx.desc, ModbusEntityDescription):
+            self.entity_description = ctx.desc
+        else:
+            raise TypeError()
+        self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
+        self._attr_device_info: DeviceInfo | None = device
 
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
@@ -35,15 +58,15 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self.client: AsyncModbusTcpClientGateway = client
         self._gateway: str = gateway
         self._max_read_size: int
-        self._gateway_device = gateway_device
-        self.started = hass.is_running
+        self._gateway_device: dr.DeviceEntry = gateway_device
+        self.started: bool = hass.is_running
 
         super().__init__(
             hass,
             logger=_LOGGER,
             name=f"Modbus Coordinator - {self._gateway}",
             update_interval=timedelta(seconds=update_interval),
-            update_method=self.async_update,
+            update_method=self.async_update,  # type: ignore
             always_update=False,
         )
 
@@ -98,7 +121,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             entities, max_read_size=self._max_read_size
         )
         data: dict[str, Any] = {}
-        conversion: Conversion = Conversion(self.client)
+        conversion: Conversion = Conversion(type(self.client))
 
         entity: ModbusContext
         for entity in entities:

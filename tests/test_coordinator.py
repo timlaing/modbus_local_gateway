@@ -24,7 +24,13 @@ async def test_update_single():
     )
 
     entities = [
-        ModbusContext(1, ModbusSensorEntityDescription(register_address=1, key="test"))
+        ModbusContext(
+            1,
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=1,
+                key="test",
+            ),
+        )
     ]
 
     response = {"test": MagicMock()}
@@ -38,7 +44,8 @@ async def test_update_single():
         return_value=entities,
     ):
         with patch(
-            "custom_components.modbus_local_gateway.sensor_types.conversion.Conversion.convert_from_registers"
+            "custom_components.modbus_local_gateway.sensor_types"
+            ".conversion.Conversion.convert_from_registers"
         ) as convert:
             convert.return_value = "Result"
             await coordinator._async_update_data()  # pylint: disable=protected-access
@@ -62,10 +69,18 @@ async def test_update_multiple():
 
     entities = [
         ModbusContext(
-            1, ModbusSensorEntityDescription(register_address=1, key="test1")
+            1,
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=1,
+                key="test1",
+            ),
         ),
         ModbusContext(
-            1, ModbusSensorEntityDescription(register_address=2, key="test2")
+            1,
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=2,
+                key="test2",
+            ),
         ),
     ]
 
@@ -80,7 +95,8 @@ async def test_update_multiple():
         return_value=entities,
     ):
         with patch(
-            "custom_components.modbus_local_gateway.sensor_types.conversion.Conversion.convert_from_registers"
+            "custom_components.modbus_local_gateway.sensor_types"
+            ".conversion.Conversion.convert_from_registers"
         ) as convert:
             convert.return_value = "Result"
             await coordinator._async_update_data()  # pylint: disable=protected-access
@@ -102,10 +118,18 @@ async def test_update_exception():
 
     entities = [
         ModbusContext(
-            1, ModbusSensorEntityDescription(register_address=1, key="test1")
+            1,
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=1,
+                key="test1",
+            ),
         ),
         ModbusContext(
-            1, ModbusSensorEntityDescription(register_address=2, key="test2")
+            1,
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=2,
+                key="test2",
+            ),
         ),
     ]
 
@@ -120,7 +144,8 @@ async def test_update_exception():
         return_value=entities,
     ):
         with patch(
-            "custom_components.modbus_local_gateway.sensor_types.conversion.Conversion.convert_from_registers"
+            "custom_components.modbus_local_gateway.sensor_types"
+            ".conversion.Conversion.convert_from_registers"
         ) as convert:
             convert.side_effect = ["Result", Exception()]
             await coordinator._async_update_data()  # pylint: disable=protected-access

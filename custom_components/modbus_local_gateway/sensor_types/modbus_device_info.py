@@ -148,7 +148,7 @@ class ModbusDeviceInfo:
     @classmethod
     def _get_description_class(
         cls, entity, params: dict, holding: bool, _data: dict
-    ) -> None | ModbusEntityDescription:
+    ) -> None | DESCRIPTION_TYPE:
         """Gets the class for the description"""
         try:
             desc_cls = ModbusSensorEntityDescription
@@ -224,7 +224,7 @@ class ModbusDeviceInfo:
                 except ValueError:
                     pass
 
-                desc: None | ModbusEntityDescription = self._get_description_class(
+                desc: None | DESCRIPTION_TYPE = self._get_description_class(
                     entity, params, holding, _data
                 )
 

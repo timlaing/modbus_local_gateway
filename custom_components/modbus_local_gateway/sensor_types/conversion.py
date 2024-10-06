@@ -4,7 +4,7 @@ import logging
 from typing import Any, Optional
 
 from ..tcp_client import AsyncModbusTcpClient
-from .base import ModbusSensorEntityDescription
+from .base import ModbusEntityDescription
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -20,8 +20,8 @@ class InvalidDataTypeError(Exception):
 class Conversion:
     """Register conversion class"""
 
-    def __init__(self, client: AsyncModbusTcpClient) -> None:
-        self.client: AsyncModbusTcpClient = client
+    def __init__(self, client: type[AsyncModbusTcpClient]) -> None:
+        self.client: type[AsyncModbusTcpClient] = client
 
     def _convert_to_string(self, registers: list) -> str:
         """Convert to a string type"""
@@ -56,7 +56,7 @@ class Conversion:
         return registers
 
     def _convert_to_enum(
-        self, registers: list, desc: ModbusSensorEntityDescription
+        self, registers: list, desc: ModbusEntityDescription
     ) -> str | None:
         """Convert to a enum type"""
         int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
@@ -65,7 +65,7 @@ class Conversion:
             return value
 
     def _convert_to_flags(
-        self, registers: list, desc: ModbusSensorEntityDescription
+        self, registers: list, desc: ModbusEntityDescription
     ) -> str | None:
         """Convert to a flags type"""
 
@@ -83,7 +83,7 @@ class Conversion:
             return ret_val
 
     def _convert_to_decimal(
-        self, registers: list, desc: ModbusSensorEntityDescription
+        self, registers: list, desc: ModbusEntityDescription
     ) -> float:
         """Convert to a int type"""
         num: int | float | str = self.client.convert_from_registers(
@@ -107,7 +107,7 @@ class Conversion:
         raise InvalidDataTypeError()
 
     def _convert_from_decimal(
-        self, num: float, desc: ModbusSensorEntityDescription
+        self, num: float, desc: ModbusEntityDescription
     ) -> list[int]:
         """Convert from a decimal to registers"""
         if desc.register_multiplier:
@@ -133,7 +133,7 @@ class Conversion:
         raise InvalidDataTypeError()
 
     def convert_from_registers(
-        self, desc: ModbusSensorEntityDescription, registers: list
+        self, desc: ModbusEntityDescription, registers: list
     ) -> str | float | int | None:
         """Entry point for conversion from registers"""
         value: Optional[Any] = None
@@ -152,7 +152,7 @@ class Conversion:
         return value
 
     def convert_to_registers(
-        self, desc: ModbusSensorEntityDescription, value: str | float | int
+        self, desc: ModbusEntityDescription, value: str | float | int
     ) -> list[int] | int:
         """Entry point for conversion from registers"""
         registers: list[int] | None = None

@@ -1,11 +1,12 @@
+
+-r requirements.txt
 black
 fuzzywuzzy
 isort
 levenshtein
-pytest-homeassistant-custom-component
+pre-commit
+pylint
 pytest
 pytest-asyncio
 pytest-cov
-pylint
-
--r requirements.txt
+pytest-homeassistant-custom-component

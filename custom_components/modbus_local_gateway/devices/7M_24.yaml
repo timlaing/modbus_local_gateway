@@ -6,73 +6,73 @@ entities:
   Voltage:
     address: 2500
     title: Voltage
-    unit_of_measurement: V
+    unit_of_measurement: Volts
     precision: 2
     float: True
     device_class: voltage
     state_class: measurement
     size: 2
-  
+
   Current:
     address: 2516
     title: Current
-    unit_of_measurement: A
+    unit_of_measurement: Amps
     precision: 2
     float: True
     device_class: current
     state_class: measurement
-    size: 2  
+    size: 2
 
   Active Power:
     address: 2530
-    title: Active Power 
-    unit_of_measurement: W
+    title: Active Power
+    unit_of_measurement: Watts
     precision: 2
     float: True
     device_class: power
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   Apparent Power:
     address: 2546
-    title: Apparent Power 
-    unit_of_measurement: VA
+    title: Apparent Power
+    unit_of_measurement: VoltsA
     precision: 2
     float: True
     device_class: apparent_power
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   Reactive Power:
     address: 2538
-    title: Reactive Power 
-    unit_of_measurement: var
+    title: Reactive Power
+    unit_of_measurement: VAr
     precision: 2
     float: True
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   Frequency:
     address: 2498
-    title: Frequency 
+    title: Frequency
     unit_of_measurement: Hz
     precision: 2
     float: True
     device_class: frequency
     state_class: measurement
-    size: 2  
-    
+    size: 2
+
   Power Factor:
     address: 2554
-    title: Power Factor 
+    title: Power Factor
     precision: 2
     float: True
     state_class: measurement
     size: 2
-    
+
   Counter N1:
     address: 462
-    title: Counter N1 
+    title: Counter N1
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -82,7 +82,7 @@ entities:
 
   Counter N2:
     address: 464
-    title: Counter N2 
+    title: Counter N2
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -102,7 +102,7 @@ entities:
 
   Counter N4:
     address: 468
-    title: Counter N4 
+    title: Counter N4
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -112,7 +112,7 @@ entities:
 
   Counter C1:
     address: 470
-    title: Counter C1 
+    title: Counter C1
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -132,7 +132,7 @@ entities:
 
   Counter C3:
     address: 474
-    title: Counter C3 
+    title: Counter C3
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -142,7 +142,7 @@ entities:
 
   Counter C4:
     address: 476
-    title: Counter C4 
+    title: Counter C4
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -152,7 +152,7 @@ entities:
 
   Counter C5:
     address: 478
-    title: Counter C5 
+    title: Counter C5
     unit_of_measurement: Wh
     precision: 3
     float: False

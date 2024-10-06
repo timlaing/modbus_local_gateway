@@ -2,6 +2,9 @@
 	"name": "Modbus Local Dev",
 	"image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
 	"postCreateCommand": "pip3 install --user -r requirements-dev.txt",
+	"mounts": [
+		"source=${env:HOME}${env:USERPROFILE}/.ssh,target=/root/.ssh,type=bind"
+	],
 	"containerEnv": {
 		"DEVCONTAINER": "1"
 	},
@@ -38,7 +41,8 @@
 				"ms-python.python",
 				"ryanluker.vscode-coverage-gutters",
 				"donjayamanne.git-extension-pack",
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				"elagil.pre-commit-helper"
 			],
 			"settings": {
 				"python.testing.pytestArgs": [

@@ -10,10 +10,9 @@ from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CONF_PREFIX, CONF_SLAVE_ID, DOMAIN
-from .coordinator import ModbusContext, ModbusCoordinator
+from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .sensor_types.const import ControlType
 from .sensor_types.device_loader import create_device_info
 from .sensor_types.modbus_device_info import ModbusDeviceInfo
@@ -42,7 +41,7 @@ async def async_setup_entities(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
     control: ControlType,
-    entity_class: CoordinatorEntity,
+    entity_class: type[ModbusCoordinatorEntity],
 ) -> None:
     """Set up the Modbus Local Gateway sensor."""
     config: dict[str, Any] = {**config_entry.data}

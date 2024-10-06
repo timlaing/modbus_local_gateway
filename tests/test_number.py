@@ -6,6 +6,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import DOMAIN
+from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.number import (
     ModbusNumberEntity,
     async_setup_entry,
@@ -20,7 +21,7 @@ from custom_components.modbus_local_gateway.sensor_types.modbus_device_info impo
 
 
 @pytest.mark.nohomeassistant
-async def test_setup_entry(hass):
+async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
 
     entry = MockConfigEntry(
@@ -43,13 +44,20 @@ async def test_setup_entry(hass):
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusSensorEntityDescription(key="key1", register_address=1),
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                key="key1",
+                register_address=1,
+            ),
         ]
     )
     pm2 = PropertyMock(
         return_value=[
-            ModbusNumberEntityDescription(
-                key="key2", register_address=2, control_type="number", min=1, max=0
+            ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                key="key2",
+                register_address=2,
+                control_type="number",
+                min=1,
+                max=0,
             ),
         ]
     )
@@ -78,10 +86,18 @@ async def test_setup_entry(hass):
         pm2.assert_called_once()
 
 
-async def test_update_none():
+async def test_update_none() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
-    ctx = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            min=1,
+            max=2,
+        ),
+    )
     device = MagicMock()
     entity = ModbusNumberEntity(coordinator=coordinator, ctx=ctx, device=device)
 
@@ -91,10 +107,18 @@ async def test_update_none():
     coordinator.get_data.assert_called_once_with(ctx)
 
 
-async def test_update_exception():
+async def test_update_exception() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
-    ctx = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            min=1,
+            max=2,
+        ),
+    )
     device = MagicMock()
     entity = ModbusNumberEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
@@ -116,16 +140,28 @@ async def test_update_exception():
         error.assert_called_once()
 
 
-async def test_update_value():
+async def test_update_value() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
-    ctx = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            min=1,
+            max=2,
+        ),
+    )
     device = MagicMock()
     entity = ModbusNumberEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).entity_description = PropertyMock(
-        return_value=ModbusNumberEntityDescription(
-            key="key", register_address=1, control_type="number", min=1, max=2
+        return_value=ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            register_address=1,
+            control_type="number",
+            min=1,
+            max=2,
         )
     )
     coordinator.get_data.return_value = 1
@@ -149,10 +185,18 @@ async def test_update_value():
         write.assert_called_once()
 
 
-async def test_update_deviceupdate():
+async def test_update_deviceupdate() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
-    ctx = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            min=1,
+            max=2,
+        ),
+    )
     device = MagicMock()
     hass = MagicMock()
     entity = ModbusNumberEntity(coordinator=coordinator, ctx=ctx, device=device)
@@ -160,8 +204,12 @@ async def test_update_deviceupdate():
     type(entity).hass = PropertyMock(return_value=hass)
     type(entity).native_value = PropertyMock(return_value=2)
     type(entity).entity_description = PropertyMock(
-        return_value=ModbusNumberEntityDescription(
-            key="number", register_address=1, control_type="number", min=1, max=2
+        return_value=ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="number",
+            register_address=1,
+            control_type="number",
+            min=1,
+            max=2,
         )
     )
 

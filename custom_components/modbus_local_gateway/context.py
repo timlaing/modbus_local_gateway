@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .sensor_types.base import ModbusSensorEntityDescription
+from .sensor_types.base import ModbusEntityDescription
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -15,4 +15,4 @@ class ModbusContext:
     """Context object for use with the coordinator"""
 
     slave_id: int
-    desc: ModbusSensorEntityDescription
+    desc: ModbusEntityDescription

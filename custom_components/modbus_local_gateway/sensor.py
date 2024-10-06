@@ -13,9 +13,8 @@ from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import ModbusContext, ModbusCoordinator
+from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .helpers import async_setup_entities
 from .sensor_types.base import ModbusSensorEntityDescription
 from .sensor_types.const import ControlType
@@ -38,7 +37,7 @@ async def async_setup_entry(
     )
 
 
-class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
+class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignore
     """Sensor entity for Modbus gateway"""
 
     def __init__(
@@ -48,10 +47,7 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
         device: DeviceInfo,
     ) -> None:
         """Initialize a PVOutput sensor."""
-        super().__init__(coordinator, context=ctx)
-        self.entity_description: ModbusSensorEntityDescription = ctx.desc  # type: ignore
-        self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
-        self._attr_device_info: DeviceInfo | None = device
+        super().__init__(coordinator, ctx=ctx, device=device)
         self._attr_native_state: State | None
 
     async def async_added_to_hass(self) -> None:
@@ -73,7 +69,9 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
             value: str | int | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
-            if value is not None:
+            if value is not None and isinstance(
+                self.entity_description, ModbusSensorEntityDescription
+            ):
                 if (
                     self.native_value is not None
                     and self.state_class == SensorStateClass.TOTAL_INCREASING
@@ -120,7 +118,8 @@ class ModbusSensorEntity(CoordinatorEntity, RestoreSensor):
         """Return the state of the sensor."""
         result = super().native_value
         if (
-            self.entity_description.precision is not None
+            isinstance(self.entity_description, ModbusSensorEntityDescription)
+            and self.entity_description.precision is not None
             and result
             and isinstance(result, float)
         ):
