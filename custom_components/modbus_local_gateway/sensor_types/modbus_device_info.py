@@ -153,6 +153,7 @@ class ModbusDeviceInfo:
         try:
             desc_cls = ModbusSensorEntityDescription
             if holding:
+                params.pop("state_class", None)
                 match (params["control_type"]):
                     case ControlType.SWITCH:
                         desc_cls = ModbusSwitchEntityDescription
