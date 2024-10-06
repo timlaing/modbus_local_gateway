@@ -6,6 +6,7 @@ import logging
 from os.path import join
 from typing import Any
 
+from homeassistant.components.sensor.const import SensorStateClass
 from homeassistant.const import EntityCategory
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.yaml import load_yaml
@@ -125,10 +126,10 @@ class ModbusDeviceInfo:
             return self._create_descriptions(self._config[DEVICE], holding=True)
         raise DeviceConfigError()
 
-    def get_uom(self, data) -> dict[str, str]:
+    def get_uom(self, data) -> dict[str, str | None]:
         """Get the unit_of_measurement and device class"""
         unit = data.get(UOM)
-        state_class = None
+        state_class = SensorStateClass.MEASUREMENT
         device_class = None
 
         if unit in UOM_MAPPING:
@@ -137,7 +138,10 @@ class ModbusDeviceInfo:
             unit = UOM_MAPPING[unit].get(UNIT, unit)
 
         device_class = data.get(DEVICE_CLASS, device_class)
-        state_class = data.get(STATE_CLASS, state_class)
+        if not data.get(IS_STRING, False):
+            state_class = data.get(STATE_CLASS, state_class)
+        else:
+            state_class = None
 
         return {
             "native_unit_of_measurement": unit,
@@ -199,7 +203,7 @@ class ModbusDeviceInfo:
             if isinstance(config[entity], dict):
                 _data: dict[str, Any] = config[entity]
 
-                uom: dict[str, str] = self.get_uom(_data)
+                uom: dict[str, str | None] = self.get_uom(_data)
 
                 params: dict[str, Any] = {
                     "key": entity,
