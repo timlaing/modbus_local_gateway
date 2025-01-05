@@ -8,13 +8,8 @@ from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
-
-try:
-    from pymodbus.framer import FramerType  # type: ignore
-except ImportError:
-    from pymodbus.framer import Framer as FramerType
-
-from pymodbus.pdu import ModbusResponse
+from pymodbus.framer import FramerType
+from pymodbus.pdu.pdu import ModbusPDU
 
 from .context import ModbusContext
 
@@ -45,9 +40,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     async def read_registers(
         self, func, address, count, slave, max_read_size
-    ) -> ModbusResponse | None:
+    ) -> ModbusPDU | None:
         """Helper function for reading and combining registers"""
-        modbus_response: ModbusResponse | None = None
+        modbus_response: ModbusPDU | None = None
         remaining_registers: int = count
         address_to_read: int = address
 
@@ -58,7 +53,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 else remaining_registers
             )
 
-            modbus_response_temp: ModbusResponse = await func(
+            modbus_response_temp: ModbusPDU = await func(
                 address=address_to_read,
                 count=read_count,
                 slave=slave,
@@ -77,7 +72,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     async def write_holding_registers(
         self, value: list[int] | int, entity: ModbusContext
-    ) -> ModbusResponse:
+    ) -> ModbusPDU:
         """Updates the value of an entity"""
         _LOGGER.debug(
             "Writing slave: %d, register (%s): %d, %d",
@@ -87,30 +82,26 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             entity.desc.register_count,
         )
 
-        if (isinstance(value, list) and len(value) == entity.desc.register_count) or (
-            isinstance(value, int) and entity.desc.register_count == 1
-        ):
+        if isinstance(value, int):
+            registers: list[int] = [value]
+        else:
+            registers = value
+
+        if isinstance(registers, list) and len(registers) == entity.desc.register_count:
 
             return await super().write_registers(
                 entity.desc.register_address,
-                value,
-                entity.slave_id,
+                registers,  # type: ignore
+                slave=entity.slave_id,
             )
         else:
             raise ModbusException("Incorrect number of registers")
 
-    def callback_data(self, data: bytes, addr: tuple | None = None) -> int:
-        """Handle received data."""
-        try:
-            return super().callback_data(data, addr)
-        except Exception:  # pylint: disable=broad-exception-caught
-            return len(data)
-
     async def update_slave(
         self, entities: list[ModbusContext], max_read_size: int
-    ) -> dict[str, ModbusResponse]:
+    ) -> dict[str, ModbusPDU]:
         """Retrieves all values for a single slave"""
-        data: dict[str, ModbusResponse] = {}
+        data: dict[str, ModbusPDU] = {}
         async with self.lock:
             await self.connect()
             if not self.connected:
@@ -128,7 +119,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         entity.desc.register_count,
                     )
 
-                    modbus_response: ModbusResponse | None = await self.read_registers(
+                    modbus_response: ModbusPDU | None = await self.read_registers(
                         func=(
                             self.read_holding_registers
                             if entity.desc.holding_register

@@ -3,14 +3,8 @@
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from pymodbus.exceptions import ModbusException
-from pymodbus.pdu import ModbusResponse
-
-try:
-    from pymodbus.pdu.register_read_message import (  # type: ignore
-        ReadHoldingRegistersResponse,
-    )
-except ModuleNotFoundError:
-    from pymodbus.register_read_message import ReadHoldingRegistersResponse
+from pymodbus.pdu.pdu import ModbusPDU
+from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.sensor_types.base import (
@@ -39,7 +33,7 @@ async def test_read_registers_single():
     ):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
 
-        resp: ModbusResponse | None = await client.read_registers(
+        resp: ModbusPDU | None = await client.read_registers(
             func=func, address=1, count=1, slave=1, max_read_size=3
         )
 
@@ -201,7 +195,7 @@ async def test_update_slave_connected_sucess_slave_single():
 
         read_reg.return_value = response
 
-        resp: dict[str, ModbusResponse] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_slave(
             entities=[
                 ModbusContext(
                     slave_id=1,
@@ -387,7 +381,7 @@ async def test_update_slave_connected_failed_slave_multiple():
 
         read_reg.side_effect = [response, ModbusException(string="test"), response]
 
-        resp: dict[str, ModbusResponse] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_slave(
             entities=[
                 ModbusContext(
                     slave_id=1,

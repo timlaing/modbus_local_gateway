@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     TimestampDataUpdateCoordinator,
 )
-from pymodbus.pdu import ModbusResponse
+from pymodbus.pdu.pdu import ModbusPDU
 
 from .context import ModbusContext
 from .sensor_types.base import ModbusEntityDescription
@@ -117,7 +117,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
-        resp: dict[str, ModbusResponse] = await self.client.update_slave(
+        resp: dict[str, ModbusPDU] = await self.client.update_slave(
             entities, max_read_size=self._max_read_size
         )
         data: dict[str, Any] = {}
@@ -126,7 +126,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         entity: ModbusContext
         for entity in entities:
             if entity.desc.key in resp:
-                modbus_response: ModbusResponse = resp[entity.desc.key]
+                modbus_response: ModbusPDU = resp[entity.desc.key]
                 try:
                     value: str | float | int | None = conversion.convert_from_registers(
                         desc=entity.desc, registers=modbus_response.registers
