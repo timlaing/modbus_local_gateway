@@ -26,7 +26,8 @@ class Conversion:
     def _convert_to_string(self, registers: list) -> str:
         """Convert to a string type"""
         value: str | int | float = self.client.convert_from_registers(
-            registers, data_type=self.client.DATATYPE.STRING
+            registers,
+            data_type=self.client.DATATYPE.STRING,
         )
         if isinstance(value, str):
             return value.split("\0")[0]
@@ -35,14 +36,16 @@ class Conversion:
     def _convert_from_string(self, value: str) -> list[int]:
         """Convert from a string type"""
         registers: list[int] = self.client.convert_to_registers(
-            value, data_type=self.client.DATATYPE.STRING
+            value,
+            data_type=self.client.DATATYPE.STRING,
         )
         return registers
 
     def _convert_to_float(self, registers: list) -> float:
         """Convert to a float type"""
         value: str | int | float = self.client.convert_from_registers(
-            registers, data_type=self.client.DATATYPE.FLOAT32
+            registers,
+            data_type=self.client.DATATYPE.FLOAT32,
         )
         if isinstance(value, float):
             return value
@@ -51,7 +54,8 @@ class Conversion:
     def _convert_from_float(self, value: float) -> list[int]:
         """Convert from a float type"""
         registers: list[int] = self.client.convert_to_registers(
-            value, data_type=self.client.DATATYPE.FLOAT32
+            value,
+            data_type=self.client.DATATYPE.FLOAT32,
         )
         return registers
 
