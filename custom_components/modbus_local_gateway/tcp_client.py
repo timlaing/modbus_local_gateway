@@ -10,6 +10,7 @@ from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from pymodbus.framer import FramerType
 from pymodbus.pdu.pdu import ModbusPDU
+from pymodbus.pdu.register_read_message import ReadRegistersResponseBase
 
 from .context import ModbusContext
 
