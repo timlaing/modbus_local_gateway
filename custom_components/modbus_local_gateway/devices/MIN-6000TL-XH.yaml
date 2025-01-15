@@ -299,6 +299,7 @@ entities:
     precision: 2
     size: 2
     multiplier: 0.1
+    state_class: total
   EacTotal:
     title: Total generate energy
     address: 3051

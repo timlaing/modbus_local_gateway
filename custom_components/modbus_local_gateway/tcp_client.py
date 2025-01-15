@@ -133,6 +133,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
                     if (
                         modbus_response
+                        and isinstance(modbus_response, ReadRegistersResponseBase)
                         and len(modbus_response.registers) == entity.desc.register_count
                     ):
                         data[entity.desc.key] = modbus_response
