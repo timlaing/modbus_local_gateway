@@ -4,7 +4,10 @@ from unittest.mock import AsyncMock, PropertyMock, patch
 
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu.pdu import ModbusPDU
-from pymodbus.pdu.register_read_message import ReadHoldingRegistersResponse
+from pymodbus.pdu.register_message import (
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersResponse,
+)
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.sensor_types.base import (
@@ -15,14 +18,14 @@ from custom_components.modbus_local_gateway.tcp_client import (
 )
 
 
-async def test_read_registers_single():
+async def test_read_registers_single() -> None:
     """Test the register read function"""
 
-    response = ReadHoldingRegistersResponse()
+    response = ReadInputRegistersResponse()
     func = AsyncMock()
     func.return_value = response
 
-    def __init__(self, host):
+    def __init__(self, host) -> None:
         """Mocked init"""
         self.host = host
 
@@ -42,20 +45,20 @@ async def test_read_registers_single():
         assert resp == response
 
 
-async def test_read_registers_multiple():
+async def test_read_registers_multiple() -> None:
     """Test the register read function"""
 
-    resp1 = ReadHoldingRegistersResponse()
+    resp1 = ReadInputRegistersResponse()
     resp1.registers = [1, 2, 3]
-    resp2 = ReadHoldingRegistersResponse()
+    resp2 = ReadInputRegistersResponse()
     resp2.registers = [4, 5, 6]
-    resp3 = ReadHoldingRegistersResponse()
+    resp3 = ReadInputRegistersResponse()
     resp3.registers = [7, 8, 9]
     response = [resp1, resp2, resp3]
     func = AsyncMock()
     func.side_effect = response
 
-    def __init__(self, host):
+    def __init__(self, host) -> None:
         """Mocked init"""
         self.host = host
 
@@ -75,10 +78,10 @@ async def test_read_registers_multiple():
         assert resp.registers == [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
-async def test_get_client():
+async def test_get_client() -> None:
     """test the class helper method"""
 
-    def __init__(cls, **kwargs):  # pylint: disable=unused-argument
+    def __init__(cls, **kwargs) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
 
     with patch.object(
@@ -86,22 +89,22 @@ async def test_get_client():
         "__init__",
         __init__,
     ):
-        client1 = AsyncModbusTcpClientGateway.async_get_client_connection(
-            host="A", port=1234
+        client1: AsyncModbusTcpClientGateway = (
+            AsyncModbusTcpClientGateway.async_get_client_connection(host="A", port=1234)
         )
 
-        client2 = AsyncModbusTcpClientGateway.async_get_client_connection(
-            host="A", port=1234
+        client2: AsyncModbusTcpClientGateway = (
+            AsyncModbusTcpClientGateway.async_get_client_connection(host="A", port=1234)
         )
 
         assert client1 == client2
 
 
-async def test_update_slave_not_connected():
+async def test_update_slave_not_connected() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
 
-    def __init__(self, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
 
@@ -119,7 +122,9 @@ async def test_update_slave_not_connected():
         connected = PropertyMock(return_value=False)
         type(gateway).connected = connected  # type: ignore
 
-        resp = await gateway.update_slave(entities=[], max_read_size=3)
+        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+            entities=[], max_read_size=3
+        )
 
         assert resp is not None
         assert isinstance(resp, dict)
@@ -129,11 +134,11 @@ async def test_update_slave_not_connected():
         assert len(lock.mock_calls) == 2
 
 
-async def test_update_slave_connected_no_entities():
+async def test_update_slave_connected_no_entities() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
 
-    def __init__(self, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
 
@@ -151,7 +156,9 @@ async def test_update_slave_connected_no_entities():
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected  # type: ignore
 
-        resp = await gateway.update_slave(entities=[], max_read_size=3)
+        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+            entities=[], max_read_size=3
+        )
 
         assert resp is not None
         assert isinstance(resp, dict)
@@ -161,11 +168,11 @@ async def test_update_slave_connected_no_entities():
         assert len(lock.mock_calls) == 2
 
 
-async def test_update_slave_connected_sucess_slave_single():
+async def test_update_slave_connected_sucess_slave_single() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
 
-    def __init__(self, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
 
@@ -188,7 +195,7 @@ async def test_update_slave_connected_sucess_slave_single():
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected  # type: ignore
         response = ReadHoldingRegistersResponse(
-            values=[
+            registers=[
                 1,
             ]
         )
@@ -203,6 +210,7 @@ async def test_update_slave_connected_sucess_slave_single():
                         key="key",
                         register_address=1,
                         register_count=1,
+                        holding_register=True,
                     ),
                 )
             ],
@@ -219,11 +227,11 @@ async def test_update_slave_connected_sucess_slave_single():
         assert len(lock.mock_calls) == 2
 
 
-async def test_update_slave_connected_sucess_slave_multiple():
+async def test_update_slave_connected_sucess_slave_multiple() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
 
-    def __init__(self, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
 
@@ -245,15 +253,15 @@ async def test_update_slave_connected_sucess_slave_multiple():
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected  # type: ignore
-        response = ReadHoldingRegistersResponse(
-            values=[
+        response = ReadInputRegistersResponse(
+            registers=[
                 1,
             ]
         )
 
         read_reg.return_value = response
 
-        resp = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_slave(
             entities=[
                 ModbusContext(
                     slave_id=1,
@@ -295,11 +303,11 @@ async def test_update_slave_connected_sucess_slave_multiple():
         assert len(lock.mock_calls) == 2
 
 
-async def test_update_slave_connected_failed_slave_single():
+async def test_update_slave_connected_failed_slave_single() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
 
-    def __init__(self, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
 
@@ -324,7 +332,7 @@ async def test_update_slave_connected_failed_slave_single():
 
         read_reg.side_effect = ModbusException(string="test")
 
-        resp = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_slave(
             entities=[
                 ModbusContext(
                     slave_id=1,
@@ -347,11 +355,11 @@ async def test_update_slave_connected_failed_slave_single():
         assert len(lock.mock_calls) == 2
 
 
-async def test_update_slave_connected_failed_slave_multiple():
+async def test_update_slave_connected_failed_slave_multiple() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
 
-    def __init__(self, **kwargs):  # pylint: disable=unused-argument
+    def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
 
@@ -373,8 +381,8 @@ async def test_update_slave_connected_failed_slave_multiple():
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected  # type: ignore
-        response = ReadHoldingRegistersResponse(
-            values=[
+        response = ReadInputRegistersResponse(
+            registers=[
                 3,
             ]
         )
