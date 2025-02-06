@@ -25,7 +25,7 @@ class Conversion:
 
     def _convert_to_string(self, registers: list) -> str:
         """Convert to a string type"""
-        value: str | int | float = self.client.convert_from_registers(
+        value: str | int | float | list = self.client.convert_from_registers(
             registers,
             data_type=self.client.DATATYPE.STRING,
         )
@@ -43,7 +43,7 @@ class Conversion:
 
     def _convert_to_float(self, registers: list) -> float:
         """Convert to a float type"""
-        value: str | int | float = self.client.convert_from_registers(
+        value: str | int | float | list = self.client.convert_from_registers(
             registers,
             data_type=self.client.DATATYPE.FLOAT32,
         )
@@ -90,7 +90,7 @@ class Conversion:
         self, registers: list, desc: ModbusEntityDescription
     ) -> float:
         """Convert to a int type"""
-        num: int | float | str = self.client.convert_from_registers(
+        num: str | int | float | list = self.client.convert_from_registers(
             registers,
             data_type=(
                 self.client.DATATYPE.UINT32

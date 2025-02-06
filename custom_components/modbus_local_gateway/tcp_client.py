@@ -10,7 +10,10 @@ from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from pymodbus.framer import FramerType
 from pymodbus.pdu.pdu import ModbusPDU
-from pymodbus.pdu.register_read_message import ReadRegistersResponseBase
+from pymodbus.pdu.register_message import (
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersResponse,
+)
 
 from .context import ModbusContext
 
@@ -131,15 +134,20 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         slave=entity.slave_id,
                         max_read_size=max_read_size,
                     )
+                    resp_class: type[ModbusPDU] = (
+                        ReadHoldingRegistersResponse
+                        if entity.desc.holding_register
+                        else ReadInputRegistersResponse
+                    )
 
                     if (
                         modbus_response
-                        and isinstance(modbus_response, ReadRegistersResponseBase)
+                        and isinstance(modbus_response, resp_class)
                         and len(modbus_response.registers) == entity.desc.register_count
                     ):
                         data[entity.desc.key] = modbus_response
 
-                except (ModbusException, asyncio.TimeoutError):
+                except (ModbusException, TimeoutError):
                     if idx == 0:
                         _LOGGER.warning(
                             "Closing connection - Device not available %s [%d]",
