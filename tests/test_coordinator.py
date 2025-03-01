@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.coordinator import ModbusCoordinator
-from custom_components.modbus_local_gateway.sensor_types.base import (
+from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSensorEntityDescription,
 )
 

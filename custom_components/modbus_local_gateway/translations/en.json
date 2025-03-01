@@ -19,7 +19,7 @@
                     "host": "Host",
                     "port": "Port",
                     "slave_id": "Slave ID",
-                    "prefix": "Prefix"
+                    "prefix": "Prefix (optional)"
                 },
                 "description": "Configure the connection parameters"
             }

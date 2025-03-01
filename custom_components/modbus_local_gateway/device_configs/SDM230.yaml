@@ -1,14 +1,16 @@
 device:
   manufacturer: Eastron
   model: SDM-230
+
+read_write_word:
   serial_num:
-    title: Serial Number
+    name: Serial Number
     address: 64512
     size: 2
     precision: 0
-    category: diagnostic
+    entity_category: diagnostic
   com_address:
-    title: Communicate address
+    name: Communicate address
     address: 20
     size: 2
     control: number
@@ -18,7 +20,7 @@ device:
       min: 1
       max: 247
   baud_rate:
-    title: Baud Rate
+    name: Baud Rate
     address: 28
     size: 2
     control: select
@@ -29,10 +31,10 @@ device:
       2: 9600 bps
       5: 1200 bps
 
-entities:
+read_only_word:
   Total system power demand:
     address: 84
-    title: Total system power demand
+    name: Total system power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -41,7 +43,7 @@ entities:
 
   Maximum total system power demand:
     address: 86
-    title: Maximum total system power demand
+    name: Maximum total system power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -51,7 +53,7 @@ entities:
 
   Current system import power demand:
     address: 88
-    title: Current system import power demand
+    name: Current system import power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -60,7 +62,7 @@ entities:
 
   Maximum system import power demand:
     address: 90
-    title: Maximum system import power demand
+    name: Maximum system import power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -70,7 +72,7 @@ entities:
 
   Current system export power demand:
     address: 92
-    title: Current system export power demand
+    name: Current system export power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -79,7 +81,7 @@ entities:
 
   Maximum system export power demand:
     address: 94
-    title: Maximum system export power demand
+    name: Maximum system export power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -89,7 +91,7 @@ entities:
 
   Voltage:
     address: 0
-    title: Voltage
+    name: Voltage
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -97,7 +99,7 @@ entities:
 
   Current:
     address: 6
-    title: Current
+    name: Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -105,7 +107,7 @@ entities:
 
   Active Power:
     address: 12
-    title: Active Power
+    name: Active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -113,7 +115,7 @@ entities:
 
   Apparent Power:
     address: 18
-    title: Apparent Power
+    name: Apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -121,7 +123,7 @@ entities:
 
   Reactive Power:
     address: 24
-    title: Reactive Power
+    name: Reactive Power
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -129,7 +131,7 @@ entities:
 
   Power Factor:
     address: 30
-    title: Power Factor
+    name: Power Factor
     precision: 2
     float: True
     state_class: measurement
@@ -137,7 +139,7 @@ entities:
 
   Phase Angle:
     address: 36
-    title: Phase Angle
+    name: Phase Angle
     unit_of_measurement: Degrees
     precision: 2
     float: True
@@ -146,7 +148,7 @@ entities:
 
   Frequency:
     address: 70
-    title: Frequency
+    name: Frequency
     unit_of_measurement: Hz
     precision: 2
     float: True
@@ -155,7 +157,7 @@ entities:
 
   Import Active Energy:
     address: 72
-    title: Import Active Energy
+    name: Import Active Energy
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -166,7 +168,7 @@ entities:
 
   Export Active Energy:
     address: 74
-    title: Export Active Energy
+    name: Export Active Energy
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -177,7 +179,7 @@ entities:
 
   Import Reactive Energy:
     address: 76
-    title: Import Reactive Energy
+    name: Import Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -187,7 +189,7 @@ entities:
 
   Export Reactive Energy:
     address: 78
-    title: Export Reactive Energy
+    name: Export Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -197,7 +199,7 @@ entities:
 
   Current demand:
     address: 258
-    title: Current demand
+    name: Current demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -206,7 +208,7 @@ entities:
 
   Maximum current Demand:
     address: 264
-    title: Maximum current Demand
+    name: Maximum current Demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -216,7 +218,7 @@ entities:
 
   Total Active Energy:
     address: 342
-    title: Total Active Energy
+    name: Total Active Energy
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -227,10 +229,14 @@ entities:
 
   Total Reactive Energy:
     address: 344
-    title: Total Reactive Energy
+    name: Total Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
     float: True
     state_class: total_increasing
     size: 2
     never_resets: True
+
+read_write_boolean:
+
+read_only_boolean:

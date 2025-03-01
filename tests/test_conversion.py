@@ -1,9 +1,9 @@
 """Conversion Tests"""
 
-from custom_components.modbus_local_gateway.sensor_types.base import (
+from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSensorEntityDescription,
 )
-from custom_components.modbus_local_gateway.sensor_types.conversion import Conversion
+from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.tcp_client import AsyncModbusTcpClient
 
 
@@ -51,7 +51,7 @@ async def test_int16_bitshift() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            bit_shift=8,
+            conv_shift_bits=8,
         ),
     )
 
@@ -68,7 +68,7 @@ async def test_int16_multiplier() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            register_multiplier=0.1,
+            conv_multiplier=0.1,
         ),
     )
 
@@ -87,7 +87,7 @@ async def test_from_int16_multiplier() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            register_multiplier=0.1,
+            conv_multiplier=0.1,
         ),
     )
 
@@ -141,7 +141,7 @@ async def test_float() -> None:
             register_address=1,
             key="test",
             register_count=2,
-            float=True,
+            is_float=True,
         ),
     )
 
@@ -161,7 +161,7 @@ async def test_from_float() -> None:
             register_address=1,
             key="test",
             register_count=2,
-            float=True,
+            is_float=True,
         ),
     )
 
@@ -180,7 +180,7 @@ async def test_string() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            string=True,
+            is_string=True,
             register_count=5,
         ),
     )
@@ -202,7 +202,7 @@ async def test_from_string() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            string=True,
+            is_string=True,
             register_count=5,
         ),
     )
@@ -220,7 +220,7 @@ async def test_enum() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            register_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
+            conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
         ),
     )
 
@@ -237,7 +237,7 @@ async def test_enum_missing() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            register_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
+            conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
         ),
     )
 
@@ -254,8 +254,8 @@ async def test_enum_bitshift() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            register_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
-            bit_shift=8,
+            conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
+            conv_shift_bits=8,
         ),
     )
 
@@ -272,8 +272,8 @@ async def test_enum_bits() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            register_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
-            bits=8,
+            conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
+            conv_bits=8,
         ),
     )
 
@@ -290,8 +290,8 @@ async def test_flags_low() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            flags={1: "One", 3: "Good", 4: "Bad"},
-            bits=8,
+            conv_flags={1: "One", 3: "Good", 4: "Bad"},
+            conv_bits=8,
         ),
     )
 
@@ -308,9 +308,9 @@ async def test_flags_high() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            flags={1: "One", 3: "Good", 4: "Bad"},
-            bits=8,
-            bit_shift=8,
+            conv_flags={1: "One", 3: "Good", 4: "Bad"},
+            conv_bits=8,
+            conv_shift_bits=8,
         ),
     )
 
@@ -327,7 +327,7 @@ async def test_flags_missing() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            flags={1: "One", 3: "Good", 4: "Bad"},
+            conv_flags={1: "One", 3: "Good", 4: "Bad"},
         ),
     )
 
@@ -344,7 +344,7 @@ async def test_flags_multiple() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
-            flags={1: "One", 3: "Good", 4: "Bad"},
+            conv_flags={1: "One", 3: "Good", 4: "Bad"},
         ),
     )
 

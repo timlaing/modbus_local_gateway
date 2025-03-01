@@ -13,9 +13,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_PREFIX, CONF_SLAVE_ID, DOMAIN
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
-from .sensor_types.const import ControlType
-from .sensor_types.device_loader import create_device_info
-from .sensor_types.modbus_device_info import ModbusDeviceInfo
+from .entity_management.const import ControlType
+from .entity_management.device_loader import create_device_info
+from .entity_management.modbus_device_info import ModbusDeviceInfo
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -28,14 +28,6 @@ def get_gateway_key(entry: ConfigEntry, with_slave: bool = True) -> str:
     return f"{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}"
 
 
-def get_prefix(config: dict[str, Any]) -> str:
-    """Gets the sensor entity id prefix"""
-    prefix: str = config.get(CONF_PREFIX, "")
-    if prefix != "":
-        return f"{prefix}-"
-    return prefix
-
-
 async def async_setup_entities(
     hass: HomeAssistant,
     config_entry: ConfigEntry,
@@ -43,10 +35,11 @@ async def async_setup_entities(
     control: ControlType,
     entity_class: type[ModbusCoordinatorEntity],
 ) -> None:
-    """Set up the Modbus Local Gateway sensor."""
+    """Set up the Modbus Local Gateway sensors."""
     config: dict[str, Any] = {**config_entry.data}
-    _LOGGER.debug(config)
+    _LOGGER.debug(f"Setting up entities for config: {config}, platform: {control}")
     coordinator: ModbusCoordinator = hass.data[DOMAIN][get_gateway_key(config_entry)]
+    # TODO: Maybe create ModbusDeviceInfo only once because here it is called with the same config multiple times for different platforms
     device_info: ModbusDeviceInfo = await hass.async_add_executor_job(
         create_device_info, config[CONF_FILENAME]
     )
@@ -59,7 +52,7 @@ async def async_setup_entities(
 
     device = DeviceInfo(
         identifiers=identifiers,
-        name=f"{get_prefix(config)}{device_info.model}",
+        name=" ".join([part for part in [config.get(CONF_PREFIX), device_info.manufacturer, device_info.model] if part]),         # name=f"{get_prefix(config)} {device_info.manufacturer} {device_info.model}",
         manufacturer=device_info.manufacturer,
         model=device_info.model,
         via_device=list(coordinator.gateway_device.identifiers)[0],
@@ -76,16 +69,7 @@ async def async_setup_entities(
                 ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
                 device=device,
             )
-            for desc in device_info.entity_desciptions
-            if desc.control_type == control
-        ]
-        + [
-            entity_class(
-                coordinator=coordinator,
-                ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
-                device=device,
-            )
-            for desc in device_info.properties
+            for desc in device_info.entity_descriptions
             if desc.control_type == control
         ],
         update_before_add=False,

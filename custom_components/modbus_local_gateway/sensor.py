@@ -13,11 +13,12 @@ from homeassistant.core import HomeAssistant, State, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import slugify
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .helpers import async_setup_entities
-from .sensor_types.base import ModbusSensorEntityDescription
-from .sensor_types.const import ControlType
+from .entity_management.base import ModbusSensorEntityDescription
+from .entity_management.const import ControlType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
             self._attr_native_unit_of_measurement = last_data.native_unit_of_measurement
             self._attr_native_value = last_data.native_value
 
+
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
@@ -95,11 +97,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                     ]
                 ):
                     attr: dict[str, str] = {self.entity_description.key: str(value)}
-                    _LOGGER.debug(
-                        "Updating device with %s as %s",
-                        self.entity_description.key,
-                        value,
-                    )
+                    _LOGGER.debug("Updating device with %s as %s", self.entity_description.key, value)
                     device_registry: dr.DeviceRegistry = dr.async_get(self.hass)
                     device: dr.DeviceEntry | None = device_registry.async_get_device(
                         self._attr_device_info["identifiers"]
@@ -112,6 +110,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
 
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
+
 
     @property
     def native_value(self):  # type: ignore

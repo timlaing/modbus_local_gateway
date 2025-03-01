@@ -1,4 +1,4 @@
-"""The Modbus local gateway sensor integration."""
+"""The Modbus Local Gateway sensor integration."""
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
@@ -25,14 +25,14 @@ async def async_setup_entry(
     """Load the saved entities."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    gateway_key: str = get_gateway_key(entry=entry, with_slave=False)
+    gateway_key: str = get_gateway_key(entry=entry)
 
     device_registry: dr.DeviceRegistry = dr.async_get(hass)
 
     device: dr.DeviceEntry = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, f"ModbusGateway-{gateway_key}")},
-        name="Modbus Gateway",
+        name=f"Modbus Gateway ({gateway_key})",
         configuration_url=f"http://{entry.data[CONF_HOST]}/",
     )
 
@@ -43,7 +43,7 @@ async def async_setup_entry(
             )
         )
         if client is not None:
-            hass.data[DOMAIN][get_gateway_key(entry=entry)] = ModbusCoordinator(
+            hass.data[DOMAIN][gateway_key] = ModbusCoordinator(
                 hass=hass,
                 gateway_device=device,
                 client=client,

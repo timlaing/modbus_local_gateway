@@ -12,11 +12,11 @@ from custom_components.modbus_local_gateway.sensor import (
     ModbusSensorEntity,
     async_setup_entry,
 )
-from custom_components.modbus_local_gateway.sensor_types.base import (
+from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusEntityDescription,
     ModbusSensorEntityDescription,
 )
-from custom_components.modbus_local_gateway.sensor_types.modbus_device_info import (
+from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
     ModbusDeviceInfo,
 )
 
@@ -24,7 +24,6 @@ from custom_components.modbus_local_gateway.sensor_types.modbus_device_info impo
 @pytest.mark.nohomeassistant
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -45,43 +44,24 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
-                key="key1",
-                register_address=1,
-            ),
+            ModbusSensorEntityDescription(key="key1", register_address=1, data_type="input_register"),
+            ModbusSensorEntityDescription(key="key2", register_address=2, data_type="holding_register"),
         ]
     )
-    pm2 = PropertyMock(
-        return_value=[
-            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
-                key="key2",
-                register_address=2,
-            ),
-        ]
-    )
-
-    pm3 = PropertyMock(return_value="")
+    pm2 = PropertyMock(return_value="")
 
     with patch(
         "custom_components.modbus_local_gateway.sensor_types.modbus_device_info.load_yaml",
-        return_value={
-            "device": MagicMock(),
-            "entities": [],
-        },
-    ), patch.object(ModbusDeviceInfo, "entity_desciptions", pm1), patch.object(
-        ModbusDeviceInfo, "properties", pm2
-    ), patch.object(
-        ModbusDeviceInfo, "manufacturer", pm3
-    ), patch.object(
-        ModbusDeviceInfo, "model", pm3
-    ):
+        return_value={"device": MagicMock()},
+    ), patch.object(ModbusDeviceInfo, "entity_descriptions", pm1), patch.object(
+        ModbusDeviceInfo, "manufacturer", pm2
+    ), patch.object(ModbusDeviceInfo, "model", pm2):
         await async_setup_entry(hass, entry, callback.add)
 
         callback.add.assert_called_once()
-        assert len(callback.add.call_args[0][0]) == 2
+        assert len(callback.add.call_args[0][0]) == 2  # Both input and holding registers
         assert callback.add.call_args[1] == {"update_before_add": False}
         pm1.assert_called_once()
-        pm2.assert_called_once()
 
 
 async def test_update_none() -> None:

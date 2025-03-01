@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
-from .sensor_types.base import ModbusEntityDescription
+from .entity_management.base import ModbusEntityDescription
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -10,10 +10,10 @@ from custom_components.modbus_local_gateway.context import (
     ModbusContext,
     ModbusEntityDescription,
 )
-from custom_components.modbus_local_gateway.sensor_types.base import (
+from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusTextEntityDescription,
 )
-from custom_components.modbus_local_gateway.sensor_types.modbus_device_info import (
+from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
     ModbusDeviceInfo,
 )
 from custom_components.modbus_local_gateway.text import (

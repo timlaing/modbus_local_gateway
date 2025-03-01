@@ -1,14 +1,16 @@
 device:
   manufacturer: Eastron
   model: SDM-630
+
+read_write_word:
   serial_num:
-    title: Serial Number
+    name: Serial Number
     address: 64512
     size: 2
     precision: 0
-    category: diagnostic
+    entity_category: diagnostic
   com_address:
-    title: Communicate address
+    name: Communicate address
     address: 20
     size: 2
     float: true
@@ -18,7 +20,7 @@ device:
       min: 1
       max: 247
   baud_rate:
-    title: Baud Rate
+    name: Baud Rate
     address: 28
     size: 2
     control: select
@@ -30,10 +32,10 @@ device:
       3: 19200 bps
       4: 38400 bps
 
-entities:
+read_only_word:
   Phase 1 Voltage:
     address: 0
-    title: Phase 1 Voltage
+    name: Phase 1 Voltage
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -41,7 +43,7 @@ entities:
 
   Phase 2 Voltage:
     address: 2
-    title: Phase 2 Voltage
+    name: Phase 2 Voltage
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -49,7 +51,7 @@ entities:
 
   Phase 3 Voltage:
     address: 4
-    title: Phase 3 Voltage
+    name: Phase 3 Voltage
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -57,7 +59,7 @@ entities:
 
   Phase 1 Current:
     address: 6
-    title: Phase 1 Current
+    name: Phase 1 Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -65,7 +67,7 @@ entities:
 
   Phase 2 Current:
     address: 8
-    title: Phase 2 Current
+    name: Phase 2 Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -73,7 +75,7 @@ entities:
 
   Phase 3 Current:
     address: 10
-    title: Phase 3 Current
+    name: Phase 3 Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -81,7 +83,7 @@ entities:
 
   Phase 1 Active Power:
     address: 12
-    title: Phase 1 Active Power
+    name: Phase 1 Active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -89,7 +91,7 @@ entities:
 
   Phase 2 Active Power:
     address: 14
-    title: Phase 2 Active Power
+    name: Phase 2 Active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -97,7 +99,7 @@ entities:
 
   Phase 3 Active Power:
     address: 16
-    title: Phase 3 Active Power
+    name: Phase 3 Active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -105,7 +107,7 @@ entities:
 
   Phase 1 Apparent Power:
     address: 18
-    title: Phase 1 Apparent Power
+    name: Phase 1 Apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -113,7 +115,7 @@ entities:
 
   Phase 2 Apparent Power:
     address: 20
-    title: Phase 2 Apparent Power
+    name: Phase 2 Apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -121,7 +123,7 @@ entities:
 
   Phase 3 Apparent Power:
     address: 22
-    title: Phase 3 Apparent Power
+    name: Phase 3 Apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -129,7 +131,7 @@ entities:
 
   Phase 1 Reactive Power:
     address: 24
-    title: Phase 1 Reactive Power
+    name: Phase 1 Reactive Power
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -137,7 +139,7 @@ entities:
 
   Phase 2 Reactive Power:
     address: 26
-    title: Phase 2 Reactive Power
+    name: Phase 2 Reactive Power
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -145,7 +147,7 @@ entities:
 
   Phase 3 Reactive Power:
     address: 28
-    title: Phase 3 Reactive Power
+    name: Phase 3 Reactive Power
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -153,15 +155,15 @@ entities:
 
   Phase 1 Power Factor:
     address: 30
-    title: Phase 1 Power Factor
+    name: Phase 1 Power Factor
     precision: 2
     float: True
     state_class: measurement
     size: 2
 
   Phase 2 Power Factor:
-    address: 34
-    title: Phase 2 Power Factor
+    address: 32  # Note: Was duplicate "address: 34" like below, corrected to "address: 32"
+    name: Phase 2 Power Factor
     precision: 2
     float: True
     state_class: measurement
@@ -169,7 +171,7 @@ entities:
 
   Phase 3 Power Factor:
     address: 34
-    title: Phase 3 Power Factor
+    name: Phase 3 Power Factor
     precision: 2
     float: True
     state_class: measurement
@@ -177,7 +179,7 @@ entities:
 
   Phase 1 Phase Angle:
     address: 36
-    title: Phase 1 Phase Angle
+    name: Phase 1 Phase Angle
     unit_of_measurement: Degrees
     precision: 2
     float: True
@@ -186,7 +188,7 @@ entities:
 
   Phase 2 Phase Angle:
     address: 38
-    title: Phase 2 Phase Angle
+    name: Phase 2 Phase Angle
     unit_of_measurement: Degrees
     precision: 2
     float: True
@@ -195,7 +197,7 @@ entities:
 
   Phase 3 Phase Angle:
     address: 40
-    title: Phase 3 Phase Angle
+    name: Phase 3 Phase Angle
     unit_of_measurement: Degrees
     precision: 2
     float: True
@@ -204,7 +206,7 @@ entities:
 
   Average Line to neutral Volts:
     address: 42
-    title: Average Line to neutral Volts
+    name: Average Line to neutral Volts
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -213,7 +215,7 @@ entities:
 
   Average Line Current:
     address: 46
-    title: Average Line Current
+    name: Average Line Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -222,7 +224,7 @@ entities:
 
   Sum of Line currents:
     address: 48
-    title: Sum of Line currents
+    name: Sum of Line currents
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -231,7 +233,7 @@ entities:
 
   Total System Power:
     address: 52
-    title: Total System Power
+    name: Total System Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -240,7 +242,7 @@ entities:
 
   Total System VA:
     address: 56
-    title: Total System VA
+    name: Total System VA
     unit_of_measurement: VA
     precision: 2
     float: True
@@ -249,7 +251,7 @@ entities:
 
   Total System VAr:
     address: 60
-    title: Total System VAr
+    name: Total System VAr
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -258,7 +260,7 @@ entities:
 
   Total System Power factor:
     address: 62
-    title: Total System Power factor
+    name: Total System Power factor
     precision: 2
     float: True
     state_class: measurement
@@ -266,7 +268,7 @@ entities:
 
   Total System Phase Angle:
     address: 66
-    title: Total System Phase Angle
+    name: Total System Phase Angle
     unit_of_measurement: Degrees
     precision: 2
     float: True
@@ -275,7 +277,7 @@ entities:
 
   Frequency:
     address: 70
-    title: Frequency
+    name: Frequency
     unit_of_measurement: Hz
     precision: 2
     float: True
@@ -284,7 +286,7 @@ entities:
 
   Total Import Active Energy:
     address: 72
-    title: Total Import Active Energy
+    name: Total Import Active Energy
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -295,7 +297,7 @@ entities:
 
   Total Export Active Energy:
     address: 74
-    title: Total Export Active Energy
+    name: Total Export Active Energy
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -306,7 +308,7 @@ entities:
 
   Total Import Reactive Energy:
     address: 76
-    title: Total Import Reactive Energy
+    name: Total Import Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -316,7 +318,7 @@ entities:
 
   Total Export Reactive Energy:
     address: 78
-    title: Total Export Reactive Energy
+    name: Total Export Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -326,7 +328,7 @@ entities:
 
   Total VAh:
     address: 80
-    title: Total VAh
+    name: Total VAh
     unit_of_measurement: kVAh
     precision: 2
     float: True
@@ -336,7 +338,7 @@ entities:
 
   Ah:
     address: 82
-    title: Ah
+    name: Ah
     unit_of_measurement: Ah
     precision: 2
     float: True
@@ -346,7 +348,7 @@ entities:
 
   Total System Power demand:
     address: 84
-    title: Total System Power demand
+    name: Total System Power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -356,7 +358,7 @@ entities:
 
   Maximum Total System Power demand:
     address: 86
-    title: Maximum Total System Power demand
+    name: Maximum Total System Power demand
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -366,7 +368,7 @@ entities:
 
   Total System VA demand:
     address: 100
-    title: Total System VA demand
+    name: Total System VA demand
     unit_of_measurement: VA
     precision: 2
     float: True
@@ -376,7 +378,7 @@ entities:
 
   Maximum Total System VA demand:
     address: 102
-    title: Maximum Total System VA demand
+    name: Maximum Total System VA demand
     unit_of_measurement: VA
     precision: 2
     float: True
@@ -386,7 +388,7 @@ entities:
 
   Neutral Current demand:
     address: 104
-    title: Neutral Current demand
+    name: Neutral Current demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -395,7 +397,7 @@ entities:
 
   Maximum neutral Current demand:
     address: 106
-    title: Maximum neutral Current demand
+    name: Maximum neutral Current demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -405,7 +407,7 @@ entities:
 
   Line 1 to Line 2 Volts:
     address: 200
-    title: Line 1 to Line 2 Volts
+    name: Line 1 to Line 2 Volts
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -414,7 +416,7 @@ entities:
 
   Line 2 to Line 3 Volts:
     address: 202
-    title: Line 2 to Line 3 Volts
+    name: Line 2 to Line 3 Volts
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -423,7 +425,7 @@ entities:
 
   Line 3 to Line 1 Volts:
     address: 204
-    title: Line 3 to Line 1 Volts
+    name: Line 3 to Line 1 Volts
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -432,7 +434,7 @@ entities:
 
   Average Line to Line Volts:
     address: 206
-    title: Average Line to Line Volts
+    name: Average Line to Line Volts
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -441,7 +443,7 @@ entities:
 
   Neutral Current:
     address: 224
-    title: Neutral Current
+    name: Neutral Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -450,7 +452,7 @@ entities:
 
   Phase 1 L/N Volts THD:
     address: 234
-    title: Phase 1 L/N Volts THD
+    name: Phase 1 L/N Volts THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -459,7 +461,7 @@ entities:
 
   Phase 2 L/N Volts THD:
     address: 236
-    title: Phase 2 L/N Volts THD
+    name: Phase 2 L/N Volts THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -468,7 +470,7 @@ entities:
 
   Phase 3 L/N Volts THD:
     address: 238
-    title: Phase 3 L/N Volts THD
+    name: Phase 3 L/N Volts THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -477,7 +479,7 @@ entities:
 
   Phase 1 Current THD:
     address: 240
-    title: Phase 1 Current THD
+    name: Phase 1 Current THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -486,7 +488,7 @@ entities:
 
   Phase 2 Current THD:
     address: 242
-    title: Phase 2 Current THD
+    name: Phase 2 Current THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -495,7 +497,7 @@ entities:
 
   Phase 3 Current THD:
     address: 244
-    title: Phase 3 Current THD
+    name: Phase 3 Current THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -504,7 +506,7 @@ entities:
 
   Average Line to neutral Volts THD:
     address: 248
-    title: Average Line to neutral Volts THD
+    name: Average Line to neutral Volts THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -513,7 +515,7 @@ entities:
 
   Average Line Current THD:
     address: 250
-    title: Average Line Current THD
+    name: Average Line Current THD
     unit_of_measurement: "%"
     precision: 2
     float: True
@@ -522,7 +524,7 @@ entities:
 
   Phase 1 Current demand:
     address: 258
-    title: Phase 1 Current demand
+    name: Phase 1 Current demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -531,7 +533,7 @@ entities:
 
   Phase 2 Current demand:
     address: 260
-    title: Phase 2 Current demand
+    name: Phase 2 Current demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -540,7 +542,7 @@ entities:
 
   Phase 3 Current demand:
     address: 262
-    title: Phase 3 Current demand
+    name: Phase 3 Current demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -549,7 +551,7 @@ entities:
 
   Phase 1 Maximum Current Demand:
     address: 264
-    title: Phase 1 Maximum Current Demand
+    name: Phase 1 Maximum Current Demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -559,7 +561,7 @@ entities:
 
   Phase 2 Maximum Current Demand:
     address: 266
-    title: Phase 2 Maximum Current Demand
+    name: Phase 2 Maximum Current Demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -569,7 +571,7 @@ entities:
 
   Phase 3 Maximum Current Demand:
     address: 268
-    title: Phase 3 Maximum Current Demand
+    name: Phase 3 Maximum Current Demand
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -579,7 +581,7 @@ entities:
 
   Total Energy:
     address: 342
-    title: Total kWh
+    name: Total kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -589,7 +591,7 @@ entities:
 
   Total kVArh:
     address: 344
-    title: Total kVArh
+    name: Total kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -598,7 +600,7 @@ entities:
 
   L1 Import Energy:
     address: 346
-    title: L1 Import kWh
+    name: L1 Import kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -608,7 +610,7 @@ entities:
 
   L2 Import Energy:
     address: 348
-    title: L2 Import kWh
+    name: L2 Import kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -618,7 +620,7 @@ entities:
 
   L3 Import Energy:
     address: 350
-    title: L3 Import kWh
+    name: L3 Import kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -628,7 +630,7 @@ entities:
 
   L1 Export Energy:
     address: 352
-    title: L1 Export kWh
+    name: L1 Export kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -638,7 +640,7 @@ entities:
 
   L2 Export Energy:
     address: 354
-    title: L2 Export kWh
+    name: L2 Export kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -648,7 +650,7 @@ entities:
 
   L3 Export Energy:
     address: 356
-    title: L3 Export kWh
+    name: L3 Export kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -658,7 +660,7 @@ entities:
 
   L1 Total Energy:
     address: 358
-    title: L1 Total kWh
+    name: L1 Total kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -668,7 +670,7 @@ entities:
 
   L2 Total Energy:
     address: 360
-    title: L2 Total kWh
+    name: L2 Total kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -678,7 +680,7 @@ entities:
 
   L3 Total Energy:
     address: 362
-    title: L3 Total kWh
+    name: L3 Total kWh
     unit_of_measurement: kWh
     precision: 2
     float: True
@@ -688,7 +690,7 @@ entities:
 
   L1 Import kVArh:
     address: 364
-    title: L1 Import kVArh
+    name: L1 Import kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -697,7 +699,7 @@ entities:
 
   L2 Import kVArh:
     address: 366
-    title: L2 Import kVArh
+    name: L2 Import kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -706,7 +708,7 @@ entities:
 
   L3 Import kVArh:
     address: 368
-    title: L3 Import kVArh
+    name: L3 Import kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -715,7 +717,7 @@ entities:
 
   L1 Export kVArh:
     address: 370
-    title: L1 Export kVArh
+    name: L1 Export kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -724,7 +726,7 @@ entities:
 
   L2 Export kVArh:
     address: 372
-    title: L2 Export kVArh
+    name: L2 Export kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -733,7 +735,7 @@ entities:
 
   L3 Export kVArh:
     address: 374
-    title: L3 Export kVArh
+    name: L3 Export kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -742,7 +744,7 @@ entities:
 
   L1 Total kVArh:
     address: 376
-    title: L1 Total kVArh
+    name: L1 Total kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -751,7 +753,7 @@ entities:
 
   L2 Total kVArh:
     address: 378
-    title: L2 Total kVArh
+    name: L2 Total kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
@@ -760,9 +762,13 @@ entities:
 
   L3 Total kVArh:
     address: 380
-    title: L3 Total kVArh
+    name: L3 Total kVArh
     unit_of_measurement: kVArh
     precision: 2
     float: True
     state_class: measurement
     size: 2
+
+read_write_boolean:
+
+read_only_boolean:
