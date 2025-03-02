@@ -39,7 +39,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         self.lock = asyncio.Lock()
 
     async def batch_read(self, read_plan: Dict[str, List[Tuple[int, int]]], slave: int, max_read_size: int) -> Dict[str, List[ModbusPDU]]:
-        """Execute the precomputed read plan and return responses"""
+        """Execute the precomputed read plan and return responses."""
         responses: Dict[str, List[ModbusPDU]] = {}
         async with self.lock:
             if not self.connected:
@@ -59,12 +59,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         "Reading %s from %d, count %d, slave %d",
                         category, start, count, slave
                     )
-                    response = await self.read_data(
-                        func=func,
+                    response = await func(
                         address=start,
                         count=count,
                         slave=slave,
-                        max_read_size=max_read_size,
                     )
                     if response and not response.isError():
                         responses[category].append(response)
@@ -75,54 +73,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         )
                         responses[category].append(None)  # Maintain order
         return responses
-
-    async def read_data(self, func: callable, address: int, count: int, slave: int, max_read_size: int) -> ModbusPDU | None:
-        """Read registers or coils in batches based on max_read_size"""
-        is_register_func = func in [self.read_holding_registers, self.read_input_registers]
-        response: ModbusPDU | None = None
-        remaining: int = count
-        current_address: int = address
-
-        _LOGGER.debug(
-            "Trying to read %d registers/coils from address %d",
-            count,
-            address,
-        )
-
-        while remaining > 0:
-            read_count: int = min(max_read_size, remaining)
-            temp_response: ModbusPDU = await func(
-                address=current_address,
-                count=read_count,
-                slave=slave,
-            )
-
-            if not hasattr(temp_response, "registers" if is_register_func else "bits"):
-                _LOGGER.error("Invalid response received from slave %d", slave)
-                return None
-
-            remaining -= read_count
-            current_address += read_count
-
-            if response is None:
-                response = temp_response
-            else:
-                if is_register_func:
-                    _LOGGER.debug(
-                        "Appending %d registers from address %d",
-                        len(temp_response.registers),
-                        current_address - read_count,
-                    )
-                    response.registers += temp_response.registers
-                else:  # Coils or discrete inputs
-                    _LOGGER.debug(
-                        "Appending %d bits from address %d",
-                        len(temp_response.bits),
-                        current_address - read_count,
-                    )
-                    response.bits += temp_response.bits
-
-        return response
 
     async def _custom_write_registers(self, address: int, values: List[int], slave: int) -> None:
         """Write values to Modbus registers. Try write_registers first, and fall back to individual write_register calls if it fails."""
@@ -196,55 +146,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 )
             else:
                 raise ValueError("Unsupported data type: %s", entity.desc.data_type)
-
-    # async def update_slave(self, entities: list[ModbusContext], max_read_size: int) -> dict[str, ModbusPDU]:
-    #     data: dict[str, ModbusPDU] = {}
-    #     async with self.lock:
-    #         # Ensure connection before proceeding
-    #         if not self.connected:
-    #             await self.connect()
-    #             if not self.connected:
-    #                 _LOGGER.warning("Failed to connect to gateway - %s", self)
-    #                 return data  # Return empty data if connection fails
-
-    #         # Process each entity individually
-    #         for entity in entities:
-    #             _LOGGER.debug(
-    #                 "Reading slave: %d, register/coil (%s): %d, count: %d",
-    #                 entity.slave_id,
-    #                 entity.desc.key,
-    #                 entity.desc.register_address,
-    #                 entity.desc.register_count,
-    #             )
-    #             func = self._DATA_TYPE_TO_FUNC.get(entity.desc.data_type)
-    #             if func is None:
-    #                 _LOGGER.error("Invalid data type: %s", entity.desc.data_type)
-    #                 continue
-
-    #             try:
-    #                 modbus_response = await self.read_data(
-    #                     func=func,
-    #                     address=entity.desc.register_address,
-    #                     count=entity.desc.register_count * (len(entity.desc.sum_scale) if entity.desc.sum_scale is not None else 1),
-    #                     slave=entity.slave_id,
-    #                     max_read_size=max_read_size,
-    #                 )
-
-    #                 # Check if the response is valid and not an error
-    #                 if modbus_response and not modbus_response.isError():
-    #                     data[entity.desc.key] = modbus_response
-    #                 else:
-    #                     _LOGGER.debug("Error reading %s: %s", entity.desc.key, modbus_response)
-    #             except (ModbusException, TimeoutError) as e:
-    #                 _LOGGER.debug(
-    #                     "Unable to retrieve value for slave %d, register/coil (%s): %s",
-    #                     entity.slave_id,
-    #                     entity.desc.key,
-    #                     str(e)
-    #                 )
-
-    #         _LOGGER.debug("Update completed %s", self)
-    #     return data
 
     @classmethod
     def async_get_client_connection(cls, host: str, port: int) -> AsyncModbusTcpClientGateway:
