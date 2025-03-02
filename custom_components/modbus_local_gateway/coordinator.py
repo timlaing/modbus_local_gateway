@@ -129,7 +129,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     async def async_update(self) -> dict[str, Any] | None:
         """Fetch updated data for all registered entities"""
         if self.started:
-            entities: list[ModbusContext] = self.async_contexts()  # No need to sort by slave_id
+            entities: list[ModbusContext] = list(self.async_contexts())
             # Compute read plan on first update or if max_read_size changes
             if self._read_plan is None or self._last_max_read_size != self._max_read_size:
                 self._read_plan = self._compute_read_plan(entities)
