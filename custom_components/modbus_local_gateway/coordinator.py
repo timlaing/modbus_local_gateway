@@ -157,7 +157,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
 
         # For each category, merge address ranges
         for category, ents in entities_by_category.items():
-            ranges = [(e.desc.register_address, e.desc.register_count) for e in ents]
+            ranges = [(e.desc.register_address, e.desc.register_count * (len(entity.desc.sum_scale) if entity.desc.sum_scale is not None else 1)) for e in ents]
             read_plan[category] = self._merge_ranges(ranges, self._max_read_size)
         return read_plan
 
@@ -204,7 +204,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         for entity in entities:
             category = entity.desc.data_type
             start = entity.desc.register_address
-            count = entity.desc.register_count
+            count = entity.desc.register_count * (len(entity.desc.sum_scale) if entity.desc.sum_scale is not None else 1)
             response_offset = self._find_response(responses, category, start)
             if response_offset:
                 response, offset = response_offset
