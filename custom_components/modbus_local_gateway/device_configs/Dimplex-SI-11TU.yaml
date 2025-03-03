@@ -1,7 +1,7 @@
 device:
   manufacturer: Dimplex
   model: Sole/Wasser-Wärmepumpe SI 11TU
-  max_register_read: 100
+  max_register_read: 8
 
 
 read_write_word:
@@ -109,6 +109,7 @@ read_write_word:
   heating_hysteresis:
     name: Heizung Hysterese
     address: 47
+    precision: 1
     multiplier: 0.1
     control: number
     number:
@@ -189,6 +190,7 @@ read_only_word:
   outside_temp:
     name: Außentemperatur (R1)
     address: 1
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer
@@ -196,6 +198,7 @@ read_only_word:
   heating_return_temp:
     name: Heizung Rücklauftemperatur (R2)
     address: 2
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer
@@ -203,6 +206,7 @@ read_only_word:
   heating_return_target:
     name: Heizung Rücklaufsolltemperatur
     address: 53
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer
@@ -211,6 +215,7 @@ read_only_word:
   hot_water_temp:
     name: Warmwasser Temperatur (R3)
     address: 3
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer
@@ -218,6 +223,7 @@ read_only_word:
   hot_water_target:
     name: Warmwasser Solltemperatur
     address: 58
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer
@@ -226,6 +232,7 @@ read_only_word:
   flow_temp:
     name: Vorlauftemperatur (R9)
     address: 5
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer
@@ -233,6 +240,7 @@ read_only_word:
   source_input_temp:
     name: Wärmequelleneintrittstemperatur (R24)
     address: 6
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer
@@ -240,6 +248,7 @@ read_only_word:
   source_output_temp:
     name: Wärmequellenaustrittstemperatur (R6)
     address: 7
+    precision: 1
     multiplier: 0.1
     unit_of_measurement: °C
     icon: mdi:thermometer

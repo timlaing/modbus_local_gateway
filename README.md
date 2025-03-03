@@ -138,8 +138,8 @@ For all entity definitions:
   - `control: text`: Creates a text entity.
 
 - **Data Types**:
-  - `float: true`: Raw 32-bit float requires `size: 2`. Raw 16-bit float requires `size: 1`. Both are big endian.
-  - `string: true`: String requires `size:` = length / 2.
+  - `float: true`: Raw 32-bit float (requires `size: 2`).
+  - `string: true`: String (requires `size:` = length / 2).
     - E.g.
       ```yaml
       string: true

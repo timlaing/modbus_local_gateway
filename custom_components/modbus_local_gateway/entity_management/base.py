@@ -115,7 +115,7 @@ class ModbusEntityDescription(EntityDescription, ModbusRequiredKeysMixin, Unused
                 IS_FLOAT,
             )
             valid = False
-        elif self.register_count != 1 and self.register_count != 2 and self.is_float:
+        elif self.register_count != 2 and self.is_float:
             _LOGGER.warning(
                 "Unable to create entity for %s: %s outside valid range not valid for %s",
                 self.key,
