@@ -1,0 +1,627 @@
+device:
+  manufacturer: Pichler
+  model: Lüftungsgerät LG 150 - LG 250
+  max_register_read: 100
+
+
+read_write_word: # Holding registers
+
+  # Selects
+
+  betriebsmodus_sommer_winter_select:
+    name: Betriebsmodus Sommer/Winter
+    address: 1
+    control: select
+    options:
+      1: Sommer
+      2: Winter
+    icon: mdi:dip-switch
+
+  luftungsstufe_select:
+    name: Lüftungsstufe
+    address: 2
+    control: select
+    options:
+      0: Standby
+      1: Stufe 1
+      2: Stufe 2
+      3: Stufe 3
+      4: Grundlüftung
+    icon: mdi:stairs
+
+  temperaturregelungsart_select:
+    name: Temperaturregelungsart
+    address: 7
+    control: select
+    options:
+      1: Abluft
+      2: Zuluft
+      3: Raum
+    icon: mdi:thermometer-lines
+    entity_category: config
+
+  luftfeuchtigkeit_regelung_select:
+    name: Luftfeuchtigkeit Regelung
+    address: 44
+    control: select
+    options:
+      0: Aus
+      1: An
+    icon: mdi:dip-switch
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  co2_regelung_select:
+    name: CO2 Regelung
+    address: 39
+    control: select
+    options:
+      0: Aus
+      1: An
+    icon: mdi:dip-switch
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Buttons (represented as a select for register 33)
+  # Note: Buttons are not directly supported in the integration's YAML structure.
+  #       Represented as a select entity with options for Reset and Snooze.
+  #       User must select "Reset" or "Snooze" to trigger the action, then set back to "None".
+  #       Alternatively, create an automation in HA to reset to "None" after a delay.
+  # TODO: Implement Buttons
+
+  filter_timer_control:
+    name: Filter Timer Control
+    address: 33
+    control: select
+    options:
+      0: None
+      1: Reset
+      2: Snooze
+    icon: mdi:timer-refresh-outline
+    # Note: Select "Reset" to write 1, "Snooze" to write 2, then set back to "None" to write 0 manually.
+    #       Device may reset register automatically; if not, use HA automation to reset to "None".
+
+  # Numbers
+
+  volumenstrom_luftungsstufe_1_number:
+    name: Luftstrom Lüftungsstufe 1
+    address: 9
+    control: number
+    multiplier: 10
+    number:
+      min: 30
+      max: 400
+    unit_of_measurement: m³/h
+    icon: mdi:fan-speed-1
+    entity_category: config
+
+  volumenstrom_luftungsstufe_2_number:
+    name: Luftstrom Lüftungsstufe 2
+    address: 10
+    control: number
+    multiplier: 10
+    number:
+      min: 30
+      max: 400
+    unit_of_measurement: m³/h
+    icon: mdi:fan-speed-2
+    entity_category: config
+
+  volumenstrom_luftungsstufe_3_number:
+    name: Luftstrom Lüftungsstufe 3
+    address: 11
+    control: number
+    multiplier: 10
+    number:
+      min: 30
+      max: 400
+    unit_of_measurement: m³/h
+    icon: mdi:fan-speed-3
+    entity_category: config
+
+  volumenstrom_grundluftung_number:
+    name: Luftstrom Grundlüftung
+    address: 12
+    control: number
+    multiplier: 10
+    number:
+      min: 30
+      max: 400
+    unit_of_measurement: m³/h
+    icon: mdi:fan
+    entity_category: config
+
+  timer_luftungsstufe_3_number:
+    name: Lüftungsstufe 3 Timer
+    address: 70
+    control: number
+    number:
+      min: 0
+      max: 65000
+    unit_of_measurement: minutes
+    icon: mdi:fan-clock
+    entity_category: config
+
+  soll_zulufttemperatur_number:
+    name: Soll Zulufttemperatur
+    address: 22
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -20
+      max: 50
+    unit_of_measurement: Celsius
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+
+  soll_raumlufttemperatur_number:
+    name: Soll Raumlufttemperatur
+    address: 23
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -20
+      max: 50
+    unit_of_measurement: Celsius
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+
+  soll_ablufttemperatur_number:
+    name: Soll Ablufttemperatur
+    address: 24
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -20
+      max: 50
+    unit_of_measurement: Celsius
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+
+  luftfeuchtigkeit_maximum_number:
+    name: Luftfeuchtigkeit Maximum
+    address: 45
+    control: number
+    number:
+      min: 0
+      max: 100
+    unit_of_measurement: "%"
+    device_class: humidity
+    icon: mdi:thermometer
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  co2_maximum_number:
+    name: CO2 Maximum
+    address: 40
+    control: number
+    number:
+      min: 800
+      max: 2000
+    unit_of_measurement: ppm
+    device_class: co2
+    icon: mdi:thermometer
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # # Holding register sensors (duplicates of input elements)
+
+  # betriebsmodus_sommer_winter_sensor:
+  #   title: Betriebsmodus Sommer/Winter
+  #   address: 1
+  #   control: sensor
+  #   map:
+  #     1: Sommer
+  #     2: Winter
+  #   icon: mdi:dip-switch
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # luftungsstufe_sensor:
+  #   title: Lüftungsstufe
+  #   address: 2
+  #   control: sensor
+  #   map:
+  #     0: Standby
+  #     1: Stufe 1
+  #     2: Stufe 2
+  #     3: Stufe 3
+  #     4: Grundlüftung
+  #   icon: mdi:fan
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # temperaturregelungsart_sensor:
+  #   title: Temperaturregelungsart
+  #   address: 7
+  #   control: sensor
+  #   map:
+  #     1: Abluft
+  #     2: Zuluft
+  #     3: Raum
+  #   icon: mdi:thermometer-lines
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # volumenstrom_luftungsstufe_1_sensor:
+  #   title: Luftstrom Lüftungsstufe 1
+  #   address: 9
+  #   control: sensor
+  #   multiplier: 10
+  #   unit_of_measurement: m³/h
+  #   icon: mdi:fan-speed-1
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # volumenstrom_luftungsstufe_2_sensor:
+  #   title: Luftstrom Lüftungsstufe 2
+  #   address: 10
+  #   control: sensor
+  #   multiplier: 10
+  #   unit_of_measurement: m³/h
+  #   icon: mdi:fan-speed-2
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # volumenstrom_luftungsstufe_3_sensor:
+  #   title: Luftstrom Lüftungsstufe 3
+  #   address: 11
+  #   control: sensor
+  #   multiplier: 10
+  #   unit_of_measurement: m³/h
+  #   icon: mdi:fan-speed-3
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # volumenstrom_grundluftung_sensor:
+  #   title: Luftstrom Grundlüftung
+  #   address: 12
+  #   control: sensor
+  #   multiplier: 10
+  #   unit_of_measurement: m³/h
+  #   icon: mdi:fan
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # timer_luftungsstufe_3_sensor:
+  #   title: Lüftungsstufe 3 Timer
+  #   address: 70
+  #   control: sensor
+  #   multiplier: 1
+  #   unit_of_measurement: minutes
+  #   icon: mdi:fan-clock
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # soll_zulufttemperatur_sensor:
+  #   title: Soll Zulufttemperatur
+  #   address: 22
+  #   control: sensor
+  #   multiplier: 0.1
+  #   offset: -100
+  #   precision: 1
+  #   unit_of_measurement: Celsius
+  #   device_class: temperature
+  #   state_class: measurement
+  #   icon: mdi:thermometer
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # soll_raumlufttemperatur_sensor:
+  #   title: Soll Raumlufttemperatur
+  #   address: 23
+  #   control: sensor
+  #   multiplier: 0.1
+  #   offset: -100
+  #   precision: 1
+  #   unit_of_measurement: Celsius
+  #   device_class: temperature
+  #   state_class: measurement
+  #   icon: mdi:thermometer
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # soll_ablufttemperatur_sensor:
+  #   title: Soll Ablufttemperatur
+  #   address: 24
+  #   control: sensor
+  #   multiplier: 0.1
+  #   offset: -100
+  #   precision: 1
+  #   unit_of_measurement: Celsius
+  #   device_class: temperature
+  #   state_class: measurement
+  #   icon: mdi:thermometer
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # luftfeuchtigkeit_regelung_sensor:
+  #   title: Luftfeuchtigkeit Regelung
+  #   address: 44
+  #   control: sensor
+  #   map:
+  #     0: Aus
+  #     1: An
+  #   icon: mdi:dip-switch
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # co2_regelung_sensor:
+  #   title: CO2 Regelung
+  #   address: 39
+  #   control: sensor
+  #   map:
+  #     0: Aus
+  #     1: An
+  #   icon: mdi:dip-switch
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # luftfeuchtigkeit_maximum_sensor:
+  #   title: Luftfeuchtigkeit Maximum
+  #   address: 45
+  #   control: sensor
+  #   multiplier: 1
+  #   unit_of_measurement: "%"
+  #   device_class: humidity
+  #   icon: mdi:thermometer
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+  # co2_maximum_sensor:
+  #   title: CO2 Maximum
+  #   address: 40
+  #   control: sensor
+  #   multiplier: 1
+  #   unit_of_measurement: ppm
+  #   device_class: co2
+  #   icon: mdi:thermometer
+  #   entity_category: diagnostic
+  #   entity_registry_enabled_default: False
+
+
+read_only_word: # Input registers
+
+  # Sensors
+
+  temperatur_raum_display:
+    name: Temperatur Raum Display
+    address: 29
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: Celsius
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  temperatur_aussenluft:
+    name: Temperatur Außenluft
+    address: 30
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: Celsius
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  temperatur_fortluft:
+    name: Temperatur Fortluft
+    address: 31
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: Celsius
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  temperatur_abluft:
+    name: Abluft Temperatur
+    address: 32
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: Celsius
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  temperatur_zuluft:
+    name: Zuluft Temperatur
+    address: 33
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: Celsius
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  temperatur_nachheizregister_zuluft:
+    name: Temperatur Nachheizregister Zuluft
+    address: 34
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: Celsius
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+
+  zuluftventilator_drehzahl:
+    name: Zuluft Ventilatordrehzahl
+    address: 39
+    unit_of_measurement: rpm
+    state_class: measurement
+    icon: mdi:fan
+
+  abluftventilator_drehzahl:
+    name: Abluft Ventilatordrehzahl
+    address: 40
+    unit_of_measurement: rpm
+    state_class: measurement
+    icon: mdi:fan
+
+  zuluftventilator:
+    name: Zuluft Ventilatorleistung
+    address: 44
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: mdi:fan
+
+  abluftventilator:
+    name: Abluft Ventilatorleistung
+    address: 45
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: mdi:fan
+
+  zuluftvolumenstrom:
+    name: Zuluft Luftstrom
+    address: 46
+    unit_of_measurement: m³/h
+    state_class: measurement
+    icon: mdi:air-filter
+
+  abluftvolumenstrom:
+    name: Abluft Luftstrom
+    address: 47
+    unit_of_measurement: m³/h
+    state_class: measurement
+    icon: mdi:air-filter
+
+  betriebsstatus:
+    name: Betriebsstatus
+    address: 48
+    map:
+      0: CPU startup
+      1: Standby
+      2: Anlauf
+      3: Betrieb
+      4: Nachlauf
+      5: Standby Powersafe
+      6: Testmodus
+    icon: mdi:state-machine
+
+  filter_reststandzeit:
+    name: Filter Reststandzeit
+    address: 50
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:timer-sand
+
+  aktuelle_luftungsstufe:
+    name: Aktuelle Lüftungsstufe
+    address: 59
+    map:
+      0: Standby
+      1: Stufe 1
+      2: Stufe 2
+      3: Stufe 3
+      4: Grundlüftung
+      6: AUS von extern
+      7: Fehler
+    icon: mdi:stairs
+
+  lufter_1_stunden:
+    name: Lüfter 1 Stunden
+    address: 87
+    unit_of_measurement: h
+    state_class: total_increasing
+    icon: mdi:timer-sand
+
+  lufter_2_stunden:
+    name: Lüfter 2 Stunden
+    address: 81
+    unit_of_measurement: h
+    state_class: total_increasing
+    icon: mdi:timer-sand
+
+  lufter_3_stunden:
+    name: Lüfter 3 Stunden
+    address: 82
+    unit_of_measurement: h
+    state_class: total_increasing
+    icon: mdi:timer-sand
+
+  lufter_grund_stunden:
+    name: Lüfter Grund Stunden
+    address: 83
+    unit_of_measurement: h
+    state_class: total_increasing
+    icon: mdi:timer-sand
+
+  heizelement_stunden:
+    name: Heizelement Stunden
+    address: 85
+    unit_of_measurement: h
+    state_class: total_increasing
+    icon: mdi:timer-sand
+    entity_registry_enabled_default: False
+
+  position_bypassklappe:
+    name: Position Bypassklappe
+    address: 51
+    map:
+      1: Wärmerückgewinnung
+      2: Bypass
+      3: Vorheizregister
+      4: Fehler
+    icon: mdi:valve
+
+  feuchtesensor_1:
+    name: Feuchtesensor 1
+    address: 91
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water
+    entity_registry_enabled_default: False
+
+  feuchtesensor_2:
+    name: Feuchtesensor 2
+    address: 92
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water
+    entity_registry_enabled_default: False
+
+  co2_sensor_1:
+    name: CO2 Sensor 1
+    address: 89
+    unit_of_measurement: ppm
+    device_class: co2
+    state_class: measurement
+    icon: mdi:water
+    entity_registry_enabled_default: False
+
+  co2_sensor_2:
+    name: CO2 Sensor 2
+    address: 90
+    unit_of_measurement: ppm
+    device_class: co2
+    state_class: measurement
+    icon: mdi:water
+    entity_registry_enabled_default: False
+
+
+read_write_boolean: # Coils
+
+
+read_only_boolean: # Discrete inputs

@@ -12,13 +12,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
+from .entity_management.base import ModbusSelectEntityDescription
+from .entity_management.const import ControlType
 from .helpers import async_setup_entities
-from .sensor_types.base import (
-    ModbusSelectEntityDescription,
-    ModbusSensorEntityDescription,
-)
-from .sensor_types.const import ControlType
-from .sensor_types.conversion import Conversion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -95,13 +91,4 @@ class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
             value: int = list(self.entity_description.select_options.keys())[
                 list(self.entity_description.select_options.values()).index(option)
             ]
-            registers: list[int] | int = Conversion(
-                type(self.coordinator.client)
-            ).convert_to_registers(
-                value=value,
-                desc=cast(ModbusSensorEntityDescription, self.entity_description),
-            )
-
-            await self.coordinator.client.write_holding_registers(
-                entity=self.coordinator_context, value=registers
-            )
+            await self.coordinator.client.write_data(self.coordinator_context, value)

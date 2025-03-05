@@ -1,4 +1,4 @@
-"""Loading YAML device definitiations from disk"""
+"""Loading YAML device definitions from disk"""
 
 import glob
 import logging
@@ -6,7 +6,7 @@ import os.path
 
 from homeassistant.core import HomeAssistant
 
-from ..devices import CONFIG_DIR
+from ..device_configs import CONFIG_DIR
 from .modbus_device_info import ModbusDeviceInfo
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -14,7 +14,9 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 async def load_devices(hass: HomeAssistant) -> dict[str, ModbusDeviceInfo]:
     """Find and load files from disk"""
-    filenames: list[str] = glob.glob(f"{CONFIG_DIR}/*.yaml")
+    filenames: list[str] = await hass.loop.run_in_executor(
+        None, lambda: glob.glob(f"{CONFIG_DIR}/*.yaml")
+    )
     devices: dict[str, ModbusDeviceInfo] = {}
     for filename in filenames:
         try:

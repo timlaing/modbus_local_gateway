@@ -164,3 +164,5 @@ custom_components/modbus_local_gateway/devices/Test-Device.yaml
 temp.py
 /config/*
 !/config/*.yaml
+
+.DS_Store

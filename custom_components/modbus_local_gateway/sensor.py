@@ -15,9 +15,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
+from .entity_management.base import ModbusSensorEntityDescription
+from .entity_management.const import ControlType
 from .helpers import async_setup_entities
-from .sensor_types.base import ModbusSensorEntityDescription
-from .sensor_types.const import ControlType
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,9 +54,9 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
         """Restore the state when sensor is added."""
         await super().async_added_to_hass()
         self._attr_native_state = await self.async_get_last_state()
-        last_data: SensorExtraStoredData | None = (
-            await self.async_get_last_sensor_data()
-        )
+        last_data: (
+            SensorExtraStoredData | None
+        ) = await self.async_get_last_sensor_data()
         if last_data:
             _LOGGER.debug("%s", last_data)
             self._attr_native_unit_of_measurement = last_data.native_unit_of_measurement

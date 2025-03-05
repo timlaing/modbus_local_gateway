@@ -12,13 +12,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
+from .entity_management.base import ModbusNumberEntityDescription
+from .entity_management.const import ControlType
 from .helpers import async_setup_entities
-from .sensor_types.base import (
-    ModbusNumberEntityDescription,
-    ModbusSensorEntityDescription,
-)
-from .sensor_types.const import ControlType
-from .sensor_types.conversion import Conversion
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -52,6 +48,11 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
         if isinstance(ctx.desc, ModbusNumberEntityDescription):
             self._attr_native_max_value = ctx.desc.max
             self._attr_native_min_value = ctx.desc.min
+            self._attr_native_step = (
+                ctx.desc.conv_multiplier
+                if ctx.desc.conv_multiplier is not None
+                else 1.0
+            )
         else:
             raise TypeError()
         self._attr_mode = NumberMode.BOX
@@ -82,13 +83,23 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         if isinstance(self.coordinator, ModbusCoordinator):
-            registers: list[int] | int = Conversion(
-                type(self.coordinator.client)
-            ).convert_to_registers(
-                value=value,
-                desc=cast(ModbusSensorEntityDescription, self.entity_description),
-            )
+            await self.coordinator.client.write_data(self.coordinator_context, value)
 
-            await self.coordinator.client.write_holding_registers(
-                entity=self.coordinator_context, value=registers
-            )
+    @property
+    def state(self) -> int | float | str:
+        """Return the state of the entity, formatted based on precision or else conv_multiplier."""
+        if self._attr_native_value is None:
+            return ""
+
+        precision = self.coordinator_context.desc.precision
+        multiplier = self.coordinator_context.desc.conv_multiplier
+
+        keep_float = (precision is not None and precision > 0) or (
+            precision is None and multiplier is not None and multiplier % 1 != 0
+        )
+
+        return (
+            self._attr_native_value
+            if keep_float
+            else int(round(self._attr_native_value))
+        )

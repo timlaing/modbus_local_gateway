@@ -17,33 +17,43 @@ from homeassistant.const import (
     UnitOfTime,
 )
 
+DEVICE = "device"
+
 MODEL = "model"
 MANUFACTURER = "manufacturer"
-DEVICE = "device"
-ENTITIES = "entities"
+MAX_READ = "max_register_read"
+MAX_READ_DEFAULT = 8
+
+NAME = "name"
+CONTROL_TYPE = "control"
 REGISTER_ADDRESS = "address"
 REGISTER_COUNT = "size"
-REGISTER_MULTIPLIER = "multiplier"
-REGISTER_MAP = "map"
-ICON = "icon"
+CONV_MULTIPLIER = "multiplier"
+CONV_OFFSET = "offset"
+CONV_BITS = "bits"
+CONV_SHIFT_BITS = "shift_bits"
+CONV_SUM_SCALE = "sum_scale"
+CONV_MAP = "map"
+CONV_FLAGS = "flags"
 PRECISION = "precision"
 IS_STRING = "string"
 IS_FLOAT = "float"
+NEVER_RESETS = "never_resets"
 UOM = "unit_of_measurement"
 DEVICE_CLASS = "device_class"
 STATE_CLASS = "state_class"
-TITLE = "title"
-UNIT = "unit"
-MAX_READ = "max_register_read"
-BITS = "bits"
-SHIFT = "shift_bits"
-CONTROL_TYPE = "control"
-FLAGS = "flags"
-MAX_READ_DEFAULT = 8
-CATEGORY = "category"
-NEVER_RESETS = "never_resets"
 DEFAULT_STATE_CLASS = SensorStateClass.MEASUREMENT
-OPTIONS = "options"
+
+UNIT = "unit"
+
+
+class ModbusDataType(StrEnum):
+    """Modbus data types"""
+
+    HOLDING_REGISTER = "read_write_word"
+    INPUT_REGISTER = "read_only_word"
+    COIL = "read_write_boolean"
+    DISCRETE_INPUT = "read_only_boolean"
 
 
 class ControlType(StrEnum):
@@ -54,6 +64,7 @@ class ControlType(StrEnum):
     SELECT = "select"
     TEXT = "text"
     NUMBER = "number"
+    BINARY_SENSOR = "binary_sensor"
 
 
 class Units(StrEnum):

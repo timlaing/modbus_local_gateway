@@ -7,7 +7,7 @@
           "host": "[%key:common::config_flow::data::host%]",
           "port": "[%key:common::config_flow::data::port%]",
           "slave_id": "Slave ID",
-          "prefix": "Prefix"
+          "prefix": "Prefix (optional)"
         }
       },
       "device_type": {

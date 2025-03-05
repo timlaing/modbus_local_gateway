@@ -1,24 +1,26 @@
 device:
   manufacturer: Growatt
-  model: MOD 6000TL-X
+  model: MIC 2500TL-X
   max_register_read: 5
+
+read_write_word:
   hw_version:
-    title: Firmware version
+    name: Firmware version
     address: 9
     size: 3
     string: true
   sw_version:
-    title: Control firmware version
+    name: Control firmware version
     address: 12
     size: 3
     string: true
   serial_no:
-    title: Serial Number
+    name: Serial Number
     address: 3001
     size: 14
     string: true
   on_off:
-    title: Remote On/Off
+    name: Remote On/Off
     address: 0
     control: switch
     icon: mdi:power
@@ -26,7 +28,7 @@ device:
       "off": 0
       "on": 1
   max_output_active:
-    title: Max output active power
+    name: Max output active power
     address: 3
     control: number
     icon: mdi:flash
@@ -36,7 +38,7 @@ device:
       max: 100
     unit_of_measurement: "%"
   language:
-    title: LCD language
+    name: LCD language
     address: 15
     control: select
     options:
@@ -50,64 +52,18 @@ device:
       7: Portugues
       8: Hungary
   com_address:
-    title: Communicate address
-    address: 3085
+    name: Communicate address
+    address: 30
     control: number
     icon: mdi:serial-port
     precision: 0
     number:
       min: 1
       max: 254
-  GridFirstDischargePowerRate:
-    title: Discharge Power Rate (Grid First)
-    address: 3036
-    control: number
-    icon: mdi:transmission-tower-export
-    precision: 0
-    number:
-      min: 1
-      max: 255
-  GridFirstStopSOC:
-    title: Stop Discharge SOC (Grid First)
-    address: 3037
-    control: number
-    icon: mdi:battery-negative
-    precision: 0
-    number:
-      min: 1
-      max: 100
-    unit_of_measurement: "%"
-  BatFirstDischargePowerRate:
-    title: Charge Power Rate (Bat First)
-    address: 3047
-    control: number
-    icon: mdi:transmission-tower-import
-    precision: 0
-    number:
-      min: 1
-      max: 100
-  BatFirstStopSOC:
-    title: Stop Charge SOC (Bat First)
-    address: 3048
-    control: number
-    icon: mdi:battery-charging
-    precision: 0
-    number:
-      min: 1
-      max: 100
-    unit_of_measurement: "%"
-  AcChargeEnable:
-    title: AC Charge Enable
-    address: 3049
-    control: switch
-    icon: mdi:transmission-tower
-    switch:
-      "off": 0
-      "on": 1
 
-entities:
+read_only_word:
   machine_status:
-    title: Inverter Machine Status
+    name: Inverter Machine Status
     address: 3000
     map:
       0: Standby
@@ -116,7 +72,7 @@ entities:
       4: Flash
     bits: 8
   run_status:
-    title: Inverter Run Status
+    name: Inverter Run Status
     address: 3000
     map:
       0: Waiting module
@@ -131,45 +87,45 @@ entities:
     bits: 8
   Ppv:
     address: 3001
-    title: PV total power
+    name: PV total power
     unit_of_measurement: Watts
     precision: 2
     size: 2
     multiplier: 0.1
   Vpv1:
-    title: PV1 voltage
+    name: PV1 voltage
     address: 3003
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   PV1Curr:
-    title: PV1 input current
+    name: PV1 input current
     address: 3004
     unit_of_measurement: Amps
     precision: 2
     multiplier: 0.1
   Ppv1:
     address: 3005
-    title: PV1 power
+    name: PV1 power
     unit_of_measurement: Watts
     precision: 2
     size: 2
     multiplier: 0.1
   Vpv2:
-    title: PV2 voltage
+    name: PV2 voltage
     address: 3007
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   PV2Curr:
-    title: PV2 input current
+    name: PV2 input current
     address: 3008
     unit_of_measurement: Amps
     precision: 2
     multiplier: 0.1
   Ppv2:
     address: 3009
-    title: PV2 power
+    name: PV2 power
     unit_of_measurement: Watts
     precision: 2
     size: 2
@@ -177,115 +133,115 @@ entities:
   # 3011 - 3022 (PV3, PV4 & Reserved)
   Pac:
     address: 3023
-    title: Output power
+    name: Output power
     unit_of_measurement: Watts
     precision: 2
     size: 2
     multiplier: 0.1
   Fac:
-    title: Grid frequency
+    name: Grid frequency
     address: 3025
     unit_of_measurement: Hz
     precision: 3
     multiplier: 0.01
   Vac1:
-    title: Grid voltage
+    name: Grid voltage
     address: 3026
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   Iac1:
-    title: Grid output current
+    name: Grid output current
     address: 3027
     unit_of_measurement: Amps
     precision: 2
     multiplier: 0.1
   Pac1:
-    title: Grid output watt VA
+    name: Grid output watt VA
     address: 3028
     unit_of_measurement: VoltAmps
     precision: 2
     size: 2
     multiplier: 0.1
   Vac2:
-    title: Three phase grid voltage (2)
+    name: Three phase grid voltage (2)
     address: 3030
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   Iac2:
-    title: Three phase grid output current (2)
+    name: Three phase grid output current (2)
     address: 3031
     unit_of_measurement: Amps
     precision: 2
     multiplier: 0.1
   Pac2:
-    title: Three phase grid output power (2)
+    name: Three phase grid output power (2)
     address: 3032
     unit_of_measurement: VoltAmps
     precision: 2
     size: 2
     multiplier: 0.1
   Vac3:
-    title: Three phase grid voltage (3)
+    name: Three phase grid voltage (3)
     address: 3034
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   Iac3:
-    title: Three phase grid output current (3)
+    name: Three phase grid output current (3)
     address: 3035
     unit_of_measurement: Amps
     precision: 2
     multiplier: 0.1
   Pac3:
-    title: Three phase grid output power (3)
+    name: Three phase grid output power (3)
     address: 3036
     unit_of_measurement: VoltAmps
     precision: 2
     size: 2
     multiplier: 0.1
   Vac_RS:
-    title: Three phase grid voltage (RS)
+    name: Three phase grid voltage (RS)
     address: 3038
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   Vac_ST:
-    title: Three phase grid voltage (ST)
+    name: Three phase grid voltage (ST)
     address: 3039
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   Vac_TR:
-    title: Three phase grid voltage (TR)
+    name: Three phase grid voltage (TR)
     address: 3040
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   PtouserTotal:
-    title: Total forward power
+    name: Total forward power
     address: 3041
     unit_of_measurement: Watts
     precision: 2
     size: 2
     multiplier: 0.1
   PtogridTotal:
-    title: Total reverse power
+    name: Total reverse power
     address: 3043
     unit_of_measurement: Watts
     precision: 2
     size: 2
     multiplier: 0.1
   PtoloadTotal:
-    title: Total load power
+    name: Total load power
     address: 3045
     unit_of_measurement: Watts
     precision: 2
     size: 2
     multiplier: 0.1
   TimeTotal:
-    title: Work time total
+    name: Work time total
     address: 3047
     unit_of_measurement: Seconds
     precision: 2
@@ -293,7 +249,7 @@ entities:
     multiplier: 0.5
     never_resets: True
   EacToday:
-    title: Today generate energy
+    name: Today generate energy
     address: 3049
     unit_of_measurement: kWh
     precision: 2
@@ -301,7 +257,7 @@ entities:
     multiplier: 0.1
     state_class: total
   EacTotal:
-    title: Total generate energy
+    name: Total generate energy
     address: 3051
     unit_of_measurement: kWh
     precision: 2
@@ -309,7 +265,7 @@ entities:
     multiplier: 0.1
     never_resets: True
   Epv_total:
-    title: PV Energy total
+    name: PV Energy total
     address: 3053
     unit_of_measurement: kWh
     precision: 2
@@ -318,7 +274,7 @@ entities:
     state_class: total_increasing
     never_resets: True
   Epv1_today:
-    title: PV1Energy today
+    name: PV1Energy today
     address: 3055
     unit_of_measurement: kWh
     precision: 2
@@ -326,7 +282,7 @@ entities:
     multiplier: 0.1
     state_class: total
   Epv1_total:
-    title: PV1 Energy total
+    name: PV1 Energy total
     address: 3057
     unit_of_measurement: kWh
     precision: 2
@@ -335,7 +291,7 @@ entities:
     state_class: total_increasing
     never_resets: True
   Epv2_today:
-    title: PV2Energy today
+    name: PV2Energy today
     address: 3059
     unit_of_measurement: kWh
     precision: 2
@@ -343,7 +299,7 @@ entities:
     multiplier: 0.1
     state_class: total
   Epv2_total:
-    title: PV2 Energy total
+    name: PV2 Energy total
     address: 3061
     unit_of_measurement: kWh
     precision: 2
@@ -353,7 +309,7 @@ entities:
     never_resets: True
   # 3063 - 3066 PV3
   Etouser_today:
-    title: Today energy to user
+    name: Today energy to user
     address: 3067
     unit_of_measurement: kWh
     precision: 2
@@ -362,7 +318,7 @@ entities:
     state_class: total
     icon: mdi:transmission-tower-import
   Etouser_total:
-    title: Total energy to user
+    name: Total energy to user
     address: 3069
     unit_of_measurement: kWh
     precision: 2
@@ -372,7 +328,7 @@ entities:
     icon: mdi:transmission-tower-import
     never_resets: True
   Etogrid_today:
-    title: Today energy to grid
+    name: Today energy to grid
     address: 3071
     unit_of_measurement: kWh
     precision: 2
@@ -381,7 +337,7 @@ entities:
     state_class: total
     icon: mdi:transmission-tower-export
   Etogrid_total:
-    title: Total energy to grid
+    name: Total energy to grid
     address: 3073
     unit_of_measurement: kWh
     precision: 2
@@ -391,7 +347,7 @@ entities:
     icon: mdi:transmission-tower-export
     never_resets: True
   Eload_today:
-    title: Today energy of user load
+    name: Today energy of user load
     address: 3075
     unit_of_measurement: kWh
     precision: 2
@@ -400,7 +356,7 @@ entities:
     state_class: total
     icon: mdi:solar-power-variant
   Eload_total:
-    title: Total energy of user load
+    name: Total energy of user load
     address: 3077
     unit_of_measurement: kWh
     precision: 2
@@ -411,7 +367,7 @@ entities:
     never_resets: True
   # 3079 - 3085 - Reserved
   DeratingMode:
-    title: Derating Mode
+    name: Derating Mode
     address: 3086
     map:
       0: cNOTDerate
@@ -433,153 +389,69 @@ entities:
       16: cChkCTErrDerate
   # 3087 - 3092 (ISO, DCI, GFCI & Reserved)
   Temp1:
-    title: Inverter temperature
+    name: Inverter temperature
     address: 3093
     unit_of_measurement: Celsius
     precision: 2
     multiplier: 0.1
   Temp2:
-    title: IPM Inverter temperature
+    name: IPM Inverter temperature
     address: 3094
     unit_of_measurement: Celsius
     precision: 2
     multiplier: 0.1
   Temp3:
-    title: Boost temperature
+    name: Boost temperature
     address: 3095
     unit_of_measurement: Celsius
     precision: 2
     multiplier: 0.1
   # 3096 - Temp4 / Reserved
   Temp5:
-    title: Communications board temperature
+    name: Communications board temperature
     address: 3097
     unit_of_measurement: Celsius
     precision: 2
     multiplier: 0.1
   PBusVoltage:
-    title: P Bus inside voltage
+    name: P Bus inside voltage
     address: 3098
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   NBusVoltage:
-    title: N Bus inside voltage
+    name: N Bus inside voltage
     address: 3099
     unit_of_measurement: Volts
     precision: 2
     multiplier: 0.1
   IPF:
-    title: Inverter output Power Factor
+    name: Inverter output Power Factor
     address: 3100
     state_class: measurement
   RealOPPercent:
-    title: Real output power percent
+    name: Real output power percent
     address: 3101
     unit_of_measurement: "%"
     precision: 2
-    register_multiplier: 1
+    multiplier: 1
   OPFullWatt:
-    title: Output Maxpower Limited
+    name: Output Maxpower Limited
     address: 3102
     unit_of_measurement: Watts
     size: 2
     precision: 2
     multiplier: 0.1
   StandbyFlag:
-    title: Inverter standby flag
+    name: Inverter standby flag
     address: 3104
   Fault:
-    title: Fault code
+    name: Fault code
     address: 3105
   Warning:
-    title: Warning code
+    name: Warning code
     address: 3106
-  # Battery info
-  Edischr_today:
-    title: Today discharge energy
-    address: 3125
-    unit_of_measurement: kWh
-    precision: 2
-    size: 2
-    multiplier: 0.1
-    device_class: energy
-    state_class: total
-    icon: mdi:battery-negative
-  Edischr_total:
-    title: Total discharge energy
-    address: 3127
-    unit_of_measurement: kWh
-    precision: 2
-    size: 2
-    multiplier: 0.1
-    device_class: energy
-    state_class: total_increasing
-    icon: mdi:battery-negative
-    never_resets: True
-  Echr_today:
-    title: Today charge energy
-    address: 3129
-    unit_of_measurement: kWh
-    precision: 2
-    size: 2
-    multiplier: 0.1
-    device_class: energy
-    state_class: total
-    icon: mdi:battery-positive
-  Echr_total:
-    title: Total charge energy
-    address: 3131
-    unit_of_measurement: kWh
-    precision: 2
-    size: 2
-    multiplier: 0.1
-    state_class: total_increasing
-    device_class: energy
-    icon: mdi:battery-positive
-    never_resets: True
-  priority:
-    title: Work mode
-    address: 3144
-    map:
-      0: LoadFirst
-      1: BatteryFirst
-      2: GridFirst
-  FaultCode:
-    title: Storage Fault code
-    address: 3167
-  WarningCopde:
-    title: Storage Warning code
-    address: 3168
-  vbat:
-    title: Battery voltage
-    address: 3169
-    unit_of_measurement: Volts
-    multiplier: 0.01
-    precision: 3
-  ibat:
-    title: Battery current
-    address: 3170
-    unit_of_measurement: Amps
-    multiplier: 0.1
-    precision: 2
-  soc:
-    title: SoC
-    address: 3171
-    unit_of_measurement: "%"
-    precision: 2
-    device_class: battery
-  pdischr:
-    title: Discharge power
-    address: 3178
-    unit_of_measurement: Watts
-    multiplier: 0.1
-    precision: 2
-    size: 2
-  pchr:
-    title: Charge power
-    address: 3180
-    unit_of_measurement: Watts
-    multiplier: 0.1
-    precision: 2
-    size: 2
+
+read_write_boolean:
+
+read_only_boolean:

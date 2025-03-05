@@ -8,12 +8,13 @@ from typing import Any, cast
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import ModbusCoordinator, ModbusCoordinatorEntity
+from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
+from .entity_management.base import ModbusSwitchEntityDescription
+from .entity_management.const import ControlType, ModbusDataType
 from .helpers import async_setup_entities
-from .sensor_types.base import ModbusSwitchEntityDescription
-from .sensor_types.const import ControlType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -33,27 +34,42 @@ async def async_setup_entry(
     )
 
 
-class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
+class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):
     """Switch entity for Modbus gateway"""
+
+    def __init__(
+        self,
+        coordinator: ModbusCoordinator,
+        ctx: ModbusContext,
+        device: DeviceInfo,
+    ) -> None:
+        """Initialize a PVOutput sensor."""
+        super().__init__(coordinator, ctx=ctx, device=device)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: str | int | None = cast(
+            value: str | int | bool | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
             if value is not None and isinstance(
                 self.entity_description, ModbusSwitchEntityDescription
             ):
-                self._attr_is_on = value == self.entity_description.on
+                if self.entity_description.data_type == ModbusDataType.COIL:
+                    self._attr_is_on = value
+                elif (
+                    self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER
+                ):
+                    self._attr_is_on = value == self.entity_description.on
+                else:
+                    raise ValueError("Invalid data_type for switch")
                 _LOGGER.debug(
                     "Updating device with %s as %s",
                     self.entity_description.key,
                     value,
                 )
                 self.async_write_ha_state()
-
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
 
@@ -66,9 +82,13 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
         if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
             self.entity_description, ModbusSwitchEntityDescription
         ):
-            await self.coordinator.client.write_holding_registers(
-                entity=self.coordinator_context, value=self.entity_description.on
-            )
+            if self.entity_description.data_type == ModbusDataType.COIL:
+                value = True
+            elif self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER:
+                value = self.entity_description.on
+            else:
+                raise ValueError("Invalid data_type for switch")
+            await self.coordinator.client.write_data(self.coordinator_context, value)
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
@@ -79,6 +99,10 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
         if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
             self.entity_description, ModbusSwitchEntityDescription
         ):
-            await self.coordinator.client.write_holding_registers(
-                entity=self.coordinator_context, value=self.entity_description.off
-            )
+            if self.entity_description.data_type == ModbusDataType.COIL:
+                value = False
+            elif self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER:
+                value = self.entity_description.off
+            else:
+                raise ValueError("Invalid data_type for switch")
+            await self.coordinator.client.write_data(self.coordinator_context, value)

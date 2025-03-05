@@ -2,10 +2,12 @@ device:
   manufacturer: Finder
   model: 7M.38
 
-entities:
+read_write_word:
+
+read_only_word:
   L1 Voltage:
     address: 2500
-    title: L1 Voltage
+    name: L1 Voltage
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -15,7 +17,7 @@ entities:
 
   L2 Voltage:
     address: 2502
-    title: L2 Voltage
+    name: L2 Voltage
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -25,7 +27,7 @@ entities:
 
   L3 Voltage:
     address: 2504
-    title: L3 Voltage
+    name: L3 Voltage
     unit_of_measurement: Volts
     precision: 2
     float: True
@@ -35,7 +37,7 @@ entities:
 
   L1 Current:
     address: 2516
-    title: L1 Current
+    name: L1 Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -45,7 +47,7 @@ entities:
 
   L2 Current:
     address: 2518
-    title: L2 Current
+    name: L2 Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -55,7 +57,7 @@ entities:
 
   L3 Current:
     address: 2520
-    title: L3 Current
+    name: L3 Current
     unit_of_measurement: Amps
     precision: 2
     float: True
@@ -65,7 +67,7 @@ entities:
 
   L1 active Power:
     address: 2530
-    title: L1 active Power
+    name: L1 active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -75,7 +77,7 @@ entities:
 
   L2 active Power:
     address: 2532
-    title: L2 active Power
+    name: L2 active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -85,7 +87,7 @@ entities:
 
   L3 active Power:
     address: 2534
-    title: L3 active Power
+    name: L3 active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -95,7 +97,7 @@ entities:
 
   Total active Power:
     address: 2536
-    title: Total active Power
+    name: Total active Power
     unit_of_measurement: Watts
     precision: 2
     float: True
@@ -105,7 +107,7 @@ entities:
 
   L1 apparent Power:
     address: 2546
-    title: L1 apparent Power
+    name: L1 apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -115,7 +117,7 @@ entities:
 
   L2 apparent Power:
     address: 2548
-    title: L2 apparent Power
+    name: L2 apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -125,7 +127,7 @@ entities:
 
   L3 apparent Power:
     address: 2550
-    title: L3 apparent Power
+    name: L3 apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -135,7 +137,7 @@ entities:
 
   Total apparent Power:
     address: 2552
-    title: Total apparent Power
+    name: Total apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
     float: True
@@ -145,7 +147,7 @@ entities:
 
   L1 reactive Power:
     address: 2538
-    title: L1 reactive Power
+    name: L1 reactive Power
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -154,7 +156,7 @@ entities:
 
   L2 reactive Power:
     address: 2540
-    title: L2 reactive Power
+    name: L2 reactive Power
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -163,7 +165,7 @@ entities:
 
   L3 reactive Power:
     address: 2542
-    title: L3 reactive Power
+    name: L3 reactive Power
     unit_of_measurement: VAr
     precision: 2
     float: True
@@ -172,8 +174,8 @@ entities:
 
   Total reactive Power:
     address: 2544
-    title: Total reactive Power
-    unit_of_measurement: vae
+    name: Total reactive Power
+    unit_of_measurement: VAr
     precision: 2
     float: True
     state_class: measurement
@@ -181,7 +183,7 @@ entities:
 
   Frequency:
     address: 2498
-    title: Frequency
+    name: Frequency
     unit_of_measurement: Hz
     precision: 2
     float: True
@@ -191,7 +193,7 @@ entities:
 
   L1 Power Factor:
     address: 2554
-    title: L1 Power Factor
+    name: L1 Power Factor
     precision: 2
     float: True
     state_class: measurement
@@ -199,7 +201,7 @@ entities:
 
   L2 Power Factor:
     address: 2556
-    title: L2 Power Factor
+    name: L2 Power Factor
     precision: 2
     float: True
     state_class: measurement
@@ -207,7 +209,7 @@ entities:
 
   L3 Power Factor:
     address: 2558
-    title: L3 Power Factor
+    name: L3 Power Factor
     precision: 2
     float: True
     state_class: measurement
@@ -215,7 +217,7 @@ entities:
 
   Total Power Factor:
     address: 2560
-    title: Total Power Factor
+    name: Total Power Factor
     precision: 2
     float: True
     state_class: measurement
@@ -223,7 +225,7 @@ entities:
 
   Counter N1:
     address: 462
-    title: Counter N1
+    name: Counter N1
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -234,7 +236,7 @@ entities:
 
   Counter N2:
     address: 464
-    title: Counter N2
+    name: Counter N2
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -245,7 +247,7 @@ entities:
 
   Counter N3:
     address: 466
-    title: Counter N3
+    name: Counter N3
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -256,7 +258,7 @@ entities:
 
   Counter N4:
     address: 468
-    title: Counter N4
+    name: Counter N4
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -267,7 +269,7 @@ entities:
 
   Counter C1:
     address: 470
-    title: Counter C1
+    name: Counter C1
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -278,7 +280,7 @@ entities:
 
   Counter C2:
     address: 472
-    title: Counter C2
+    name: Counter C2
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -289,7 +291,7 @@ entities:
 
   Counter C3:
     address: 474
-    title: Counter C3
+    name: Counter C3
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -300,7 +302,7 @@ entities:
 
   Counter C4:
     address: 476
-    title: Counter C4
+    name: Counter C4
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -311,7 +313,7 @@ entities:
 
   Counter C5:
     address: 478
-    title: Counter C5
+    name: Counter C5
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -322,7 +324,7 @@ entities:
 
   Counter C6:
     address: 480
-    title: Counter C6
+    name: Counter C6
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -333,7 +335,7 @@ entities:
 
   Counter C7:
     address: 482
-    title: Counter C7
+    name: Counter C7
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -344,7 +346,7 @@ entities:
 
   Counter C8:
     address: 484
-    title: Counter C8
+    name: Counter C8
     unit_of_measurement: Wh
     precision: 3
     float: False
@@ -352,3 +354,7 @@ entities:
     state_class: total_increasing
     size: 2
     multiplier: 0.1
+
+read_write_boolean:
+
+read_only_boolean:
