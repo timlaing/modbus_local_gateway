@@ -51,21 +51,12 @@ async def test_setup_entry(hass) -> None:
                 key="key1",
                 register_address=1,
                 data_type=ModbusDataType.INPUT_REGISTER,
-            ),
-        ]
-    )
-    pm2 = PropertyMock(
-        return_value=[
-            ModbusTextEntityDescription(  # pylint: disable=unexpected-keyword-arg
-                key="key2",
-                register_address=2,
                 control_type="text",
-                data_type=ModbusDataType.INPUT_REGISTER,
             ),
         ]
     )
 
-    pm3 = PropertyMock(return_value="")
+    pm2 = PropertyMock(return_value="")
 
     with (
         patch(
@@ -75,10 +66,9 @@ async def test_setup_entry(hass) -> None:
                 "entities": [],
             },
         ),
-        patch.object(ModbusDeviceInfo, "entity_desciptions", pm1),
-        patch.object(ModbusDeviceInfo, "properties", pm2),
-        patch.object(ModbusDeviceInfo, "manufacturer", pm3),
-        patch.object(ModbusDeviceInfo, "model", pm3),
+        patch.object(ModbusDeviceInfo, "entity_descriptions", pm1),
+        patch.object(ModbusDeviceInfo, "manufacturer", pm2),
+        patch.object(ModbusDeviceInfo, "model", pm2),
     ):
         await async_setup_entry(hass, entry, callback.add)
 
@@ -86,7 +76,7 @@ async def test_setup_entry(hass) -> None:
         assert len(callback.add.call_args[0][0]) == 1
         assert callback.add.call_args[1] == {"update_before_add": False}
         pm1.assert_called_once()
-        pm2.assert_called_once()
+        pm2.assert_called()
 
 
 async def test_update_none() -> None:

@@ -10,7 +10,6 @@ from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusDataType,
     ModbusNumberEntityDescription,
-    ModbusSensorEntityDescription,
 )
 from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
     ModbusDeviceInfo,
@@ -45,25 +44,18 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
                 key="key1",
                 register_address=1,
-            ),
-        ]
-    )
-    pm2 = PropertyMock(
-        return_value=[
-            ModbusNumberEntityDescription(  # pylint: disable=unexpected-keyword-arg
-                key="key2",
-                register_address=2,
+                data_type=ModbusDataType.INPUT_REGISTER,
                 control_type="number",
                 min=1,
-                max=0,
+                max=2,
             ),
         ]
     )
 
-    pm3 = PropertyMock(return_value="")
+    pm2 = PropertyMock(return_value="")
 
     with (
         patch(
@@ -73,10 +65,9 @@ async def test_setup_entry(hass) -> None:
                 "entities": [],
             },
         ),
-        patch.object(ModbusDeviceInfo, "entity_desciptions", pm1),
-        patch.object(ModbusDeviceInfo, "properties", pm2),
-        patch.object(ModbusDeviceInfo, "manufacturer", pm3),
-        patch.object(ModbusDeviceInfo, "model", pm3),
+        patch.object(ModbusDeviceInfo, "entity_descriptions", pm1),
+        patch.object(ModbusDeviceInfo, "manufacturer", pm2),
+        patch.object(ModbusDeviceInfo, "model", pm2),
     ):
         await async_setup_entry(hass, entry, callback.add)
 
@@ -84,7 +75,7 @@ async def test_setup_entry(hass) -> None:
         assert len(callback.add.call_args[0][0]) == 1
         assert callback.add.call_args[1] == {"update_before_add": False}
         pm1.assert_called_once()
-        pm2.assert_called_once()
+        pm2.assert_called()
 
 
 async def test_update_none() -> None:
