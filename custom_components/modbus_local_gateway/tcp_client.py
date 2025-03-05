@@ -117,7 +117,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             else:
                 _LOGGER.debug("Writing successful")
         else:
-            # Multiple values: try write_registers first # TODO: if that fails, remember for that address, port and slave to always use the fallback method
+            # Multiple values: try write_registers first, if that fails, remember for that address, port and slave to always use the fallback method
             _LOGGER.debug(
                 f"Attempting to write multiple values {values} starting at address {address}, slave {slave} using write_registers"
             )

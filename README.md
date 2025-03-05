@@ -1,5 +1,4 @@
 # Modbus Local Gateway Integration for Home Assistant
-# Maybe new name: Modbus Connect
 
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
@@ -7,7 +6,7 @@
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=bugs)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
 [![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
 This custom Home Assistant integration enables communication with Modbus devices via a Modbus TCP gateway. It uses YAML configuration files to define device registers and coils, mapping them to Home Assistant entities like sensors, switches, numbers, and more. It supports both monitoring (read-only) and control (read/write) operations.
@@ -20,11 +19,8 @@ The easiest way to install this integration is through the [Home Assistant Commu
 
 1. Go to HACS > Integrations.
 2. Click the three-dot menu and select "Custom repositories".
-3. Add one of these repositories:
-   - **timlaing version** (original version, recommended for stability):\
+3. Add repositoriy:
    `https://github.com/timlaing/modbus_local_gateway`
-   - **dmatscheko version** (this fork with additional features):\
-   `https://github.com/dmatscheko/modbus_local_gateway`
 4. Set category to "Integration" and click "Add".
 5. Search for "Modbus Local Gateway" and install.
 

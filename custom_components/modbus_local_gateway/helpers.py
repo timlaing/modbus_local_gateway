@@ -39,7 +39,7 @@ async def async_setup_entities(
     config: dict[str, Any] = {**config_entry.data}
     _LOGGER.debug(f"Setting up entities for config: {config}, platform: {control}")
     coordinator: ModbusCoordinator = hass.data[DOMAIN][get_gateway_key(config_entry)]
-    # TODO: Maybe create ModbusDeviceInfo only once because here it is called with the same config multiple times for different platforms
+
     device_info: ModbusDeviceInfo = await hass.async_add_executor_job(
         create_device_info, config[CONF_FILENAME]
     )
