@@ -25,10 +25,7 @@ The easiest way to install this integration is through the [Home Assistant Commu
 5. Search for "Modbus Local Gateway" and install.
 
 Or use these buttons (requires *My Home Assistant*):
-- **timlaing version** (original version, recommended for stability):\
   [![Open HACS Repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=timlaing&repository=modbus_local_gateway&category=integration)
-- **dmatscheko version** (this fork with additional features):\
-  [![Open HACS Repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dmatscheko&repository=modbus_local_gateway&category=integration)
 
 Restart Home Assistant after installation.
 
