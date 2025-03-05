@@ -109,7 +109,7 @@ class ModbusEntityDescription(
         elif (
             self.conv_shift_bits
             or self.conv_bits
-            or (self.conv_multiplier and int(self.conv_multiplier) != 1)
+            or (self.conv_multiplier is not None and self.conv_multiplier != 1.0)
         ) and self.is_float:
             _LOGGER.warning(
                 "Unable to create entity for %s: %s, %s, and %s not valid for %s",
