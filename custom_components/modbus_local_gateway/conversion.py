@@ -4,18 +4,15 @@ import logging
 from typing import Any, Optional
 
 from pymodbus.pdu import ModbusPDU
+from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.register_message import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
 )
-from pymodbus.pdu.bit_message import (
-    ReadCoilsResponse,
-    ReadDiscreteInputsResponse,
-)
 
-from .tcp_client import AsyncModbusTcpClient
 from .entity_management.base import ModbusEntityDescription
 from .entity_management.const import ModbusDataType
+from .tcp_client import AsyncModbusTcpClient
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -157,8 +154,13 @@ class Conversion:
         self, desc: ModbusEntityDescription, response: ModbusPDU
     ) -> str | float | int | bool | None:
         """Entry point for conversion from response (registers or bits)"""
-        if desc.data_type in [ModbusDataType.HOLDING_REGISTER, ModbusDataType.INPUT_REGISTER]:
-            if isinstance(response, (ReadHoldingRegistersResponse, ReadInputRegistersResponse)):
+        if desc.data_type in [
+            ModbusDataType.HOLDING_REGISTER,
+            ModbusDataType.INPUT_REGISTER,
+        ]:
+            if isinstance(
+                response, (ReadHoldingRegistersResponse, ReadInputRegistersResponse)
+            ):
                 registers = response.registers
                 value: Optional[Any] = None
                 if desc.is_string:

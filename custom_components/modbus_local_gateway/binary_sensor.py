@@ -10,14 +10,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
-from .helpers import async_setup_entities
 from .entity_management.base import ModbusBinarySensorEntityDescription
 from .entity_management.const import ControlType
+from .helpers import async_setup_entities
 
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -32,6 +32,7 @@ async def async_setup_entry(
         control=ControlType.BINARY_SENSOR,
         entity_class=ModbusBinarySensorEntity,
     )
+
 
 class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):
     """Binary sensor entity for Modbus gateway"""
@@ -51,9 +52,9 @@ class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: bool | None = cast(
-                ModbusCoordinator, self.coordinator
-            ).get_data(self.coordinator_context)
+            value: bool | None = cast(ModbusCoordinator, self.coordinator).get_data(
+                self.coordinator_context
+            )
             if value is not None:
                 self._attr_is_on = value
                 self.async_write_ha_state()

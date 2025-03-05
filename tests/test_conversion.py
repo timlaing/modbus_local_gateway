@@ -1,9 +1,12 @@
 """Conversion Tests"""
 
+from pymodbus.pdu.register_message import ReadInputRegistersResponse
+
+from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management.base import (
+    ModbusDataType,
     ModbusSensorEntityDescription,
 )
-from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.tcp_client import AsyncModbusTcpClient
 
 
@@ -12,11 +15,14 @@ async def test_int16() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16)
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -35,6 +41,7 @@ async def test_from_int16() -> None:
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -46,12 +53,17 @@ async def test_int16_bitshift() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(0xF000, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                0xF000, data_type=client.DATATYPE.UINT16
+            )
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_shift_bits=8,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -63,12 +75,15 @@ async def test_int16_multiplier() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(8, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(8, data_type=client.DATATYPE.UINT16)
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_multiplier=0.1,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -88,6 +103,7 @@ async def test_from_int16_multiplier() -> None:
             register_address=1,
             key="test",
             conv_multiplier=0.1,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -99,12 +115,17 @@ async def test_int32() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(65537, data_type=client.DATATYPE.UINT32),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                65537, data_type=client.DATATYPE.UINT32
+            )
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             register_count=2,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -124,6 +145,7 @@ async def test_from_int32() -> None:
             register_address=1,
             key="test",
             register_count=2,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -135,13 +157,18 @@ async def test_float() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(1.0, data_type=client.DATATYPE.FLOAT32),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                1.0, data_type=client.DATATYPE.FLOAT32
+            )
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             register_count=2,
             is_float=True,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -162,6 +189,7 @@ async def test_from_float() -> None:
             key="test",
             register_count=2,
             is_float=True,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -173,15 +201,18 @@ async def test_string() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(
-            "HelloWorld", data_type=client.DATATYPE.STRING
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                "HelloWorld", data_type=client.DATATYPE.STRING
+            )
         ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             is_string=True,
             register_count=5,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -204,6 +235,7 @@ async def test_from_string() -> None:
             key="test",
             is_string=True,
             register_count=5,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -215,12 +247,15 @@ async def test_enum() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(5, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(5, data_type=client.DATATYPE.UINT16)
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -232,12 +267,15 @@ async def test_enum_missing() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(7, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(7, data_type=client.DATATYPE.UINT16)
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -249,13 +287,18 @@ async def test_enum_bitshift() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(0x0500, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                0x0500, data_type=client.DATATYPE.UINT16
+            )
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
             conv_shift_bits=8,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -267,13 +310,18 @@ async def test_enum_bits() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(0x0505, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                0x0505, data_type=client.DATATYPE.UINT16
+            )
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_map={1: "One", 3: "three", 4: "Four", 5: "Good"},
             conv_bits=8,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -285,13 +333,18 @@ async def test_flags_low() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(0x0104, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                0x0104, data_type=client.DATATYPE.UINT16
+            )
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_flags={1: "One", 3: "Good", 4: "Bad"},
             conv_bits=8,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -303,14 +356,19 @@ async def test_flags_high() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(0x0401, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                0x0401, data_type=client.DATATYPE.UINT16
+            )
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_flags={1: "One", 3: "Good", 4: "Bad"},
             conv_bits=8,
             conv_shift_bits=8,
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -322,12 +380,15 @@ async def test_flags_missing() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(32, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(32, data_type=client.DATATYPE.UINT16)
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_flags={1: "One", 3: "Good", 4: "Bad"},
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 
@@ -339,12 +400,15 @@ async def test_flags_multiple() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
-    value = conversion.convert_from_registers(
-        registers=client.convert_to_registers(7, data_type=client.DATATYPE.UINT16),
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(7, data_type=client.DATATYPE.UINT16)
+        ),
         desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="test",
             conv_flags={1: "One", 3: "Good", 4: "Bad"},
+            data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
 

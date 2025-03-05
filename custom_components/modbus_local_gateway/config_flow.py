@@ -27,9 +27,9 @@ from .const import (
     OPTIONS_REFRESH,
 )
 from .coordinator import ModbusCoordinator
-from .helpers import get_gateway_key
 from .entity_management.device_loader import create_device_info, load_devices
 from .entity_management.modbus_device_info import ModbusDeviceInfo
+from .helpers import get_gateway_key
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -130,8 +130,13 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             return await self.async_create()
 
         devices: dict[str, ModbusDeviceInfo] = await load_devices(self.hass)
-        devices_data: dict[str, str] = {item[0]: f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}"
-                for item in sorted(devices.items(), key=lambda item: f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}")}
+        devices_data: dict[str, str] = {
+            item[0]: f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}"
+            for item in sorted(
+                devices.items(),
+                key=lambda item: f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}",
+            )
+        }
 
         return self.async_show_form(
             step_id="device_type",
@@ -146,7 +151,17 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         )
 
         # This title is shown in the main devices list under the Modbus Local Gateway integration
-        title = " ".join([part for part in [self.data.get(CONF_PREFIX), device_info.manufacturer, device_info.model] if part])
+        title = " ".join(
+            [
+                part
+                for part in [
+                    self.data.get(CONF_PREFIX),
+                    device_info.manufacturer,
+                    device_info.model,
+                ]
+                if part
+            ]
+        )
         return self.async_create_entry(title=title, data=self.data)
 
     def async_abort(

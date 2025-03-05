@@ -2,22 +2,22 @@
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 
+from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
+from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.pdu import ModbusPDU
 from pymodbus.pdu.register_message import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
 )
-from pymodbus.pdu.bit_message import (
-    ReadCoilsResponse,
-    ReadDiscreteInputsResponse,
-)
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.entity_management.base import (
+    ModbusBinarySensorEntityDescription,
+    ModbusDataType,
+    ModbusEntityDescription,
     ModbusSensorEntityDescription,
     ModbusSwitchEntityDescription,
-    ModbusBinarySensorEntityDescription,
 )
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
@@ -37,7 +37,9 @@ async def test_read_registers_single() -> None:
 
     with patch.object(AsyncModbusTcpClientGateway, "__init__", __init__):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        resp = await client.read_registers(func=func, address=1, count=1, slave=1, max_read_size=3)
+        resp = await client.read_data(
+            func=func, address=1, count=1, slave=1, max_read_size=3
+        )
         func.assert_called_once()
         assert resp == response
 
@@ -59,15 +61,22 @@ async def test_read_registers_multiple() -> None:
         """Mocked init"""
         self.host = host
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "__init__",
+            __init__,
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_holding_registers", func),
     ):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
 
-        resp = await client.read_registers(
-            func=func, address=1, count=9, slave=1, max_read_size=3
+        resp = await client.read_data(
+            func=func,
+            address=1,
+            count=9,
+            slave=1,
+            max_read_size=3,
         )
 
         func.assert_called()
@@ -105,22 +114,33 @@ async def test_update_slave_not_connected() -> None:
         """Mocked init"""
         self.lock = lock
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
-    ), patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
-    ) as warning, patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
-    ) as debug:
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "__init__",
+            __init__,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
+        ) as warning,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
+        ) as debug,
+    ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=False)
         type(gateway).connected = connected  # type: ignore
 
         resp: dict[str, ModbusPDU] = await gateway.update_slave(
-            entities=[], max_read_size=3
+            entities=[
+                ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    register_address=1,
+                    key="key",
+                    data_type=ModbusDataType.INPUT_REGISTER,
+                )
+            ],
+            max_read_size=3,
         )
 
         assert resp is not None
@@ -139,27 +159,32 @@ async def test_update_slave_connected_no_entities() -> None:
         """Mocked init"""
         self.lock = lock
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
-    ), patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
-    ) as warning, patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
-    ) as debug:
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "__init__",
+            __init__,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
+        ) as warning,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
+        ) as debug,
+    ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected  # type: ignore
 
         resp: dict[str, ModbusPDU] = await gateway.update_slave(
-            entities=[], max_read_size=3
+            entities=[],
+            max_read_size=3,
         )
 
         assert resp is not None
         assert isinstance(resp, dict)
-        gateway.connect.assert_called_once()
+        gateway.connect.assert_not_called()
         warning.assert_not_called()
         debug.assert_called_once()
         assert len(lock.mock_calls) == 2
@@ -173,23 +198,28 @@ async def test_update_slave_connected_sucess_slave_single() -> None:
         """Mocked init"""
         self.lock = lock
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
-    ), patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
-    ) as warning, patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
-    ) as debug, patch(
-        (
-            "custom_components.modbus_local_gateway.tcp_client."
-            "AsyncModbusTcpClientGateway.read_registers"
-        )
-    ) as read_reg:
+    with (
+        patch.object(
+            AsyncModbusTcpClient,
+            "__init__",
+            __init__,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
+        ) as warning,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
+        ) as debug,
+        patch(
+            (
+                "custom_components.modbus_local_gateway.tcp_client."
+                "AsyncModbusTcpClientGateway.read_data"
+            )
+        ) as read_reg,
+    ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
-        connected = PropertyMock(return_value=True)
+        connected = PropertyMock(side_effect=[False, True])
         type(gateway).connected = connected  # type: ignore
         response = ReadHoldingRegistersResponse(
             registers=[
@@ -207,7 +237,7 @@ async def test_update_slave_connected_sucess_slave_single() -> None:
                         key="key",
                         register_address=1,
                         register_count=1,
-                        holding_register=True,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 )
             ],
@@ -232,23 +262,28 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
         """Mocked init"""
         self.lock = lock
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
-    ), patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
-    ) as warning, patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
-    ) as debug, patch(
-        (
-            "custom_components.modbus_local_gateway.tcp_client."
-            "AsyncModbusTcpClientGateway.read_registers"
-        )
-    ) as read_reg:
+    with (
+        patch.object(
+            AsyncModbusTcpClient,
+            "__init__",
+            __init__,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
+        ) as warning,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
+        ) as debug,
+        patch(
+            (
+                "custom_components.modbus_local_gateway.tcp_client."
+                "AsyncModbusTcpClientGateway.read_data"
+            )
+        ) as read_reg,
+    ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
-        connected = PropertyMock(return_value=True)
+        connected = PropertyMock(side_effect=[False, True])
         type(gateway).connected = connected  # type: ignore
         response = ReadInputRegistersResponse(
             registers=[
@@ -266,6 +301,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
                         key="key1",
                         register_address=1,
                         register_count=1,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 ),
                 ModbusContext(
@@ -274,6 +310,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
                         key="key2",
                         register_address=1,
                         register_count=1,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 ),
                 ModbusContext(
@@ -282,6 +319,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
                         key="key3",
                         register_address=1,
                         register_count=1,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 ),
             ],
@@ -308,23 +346,28 @@ async def test_update_slave_connected_failed_slave_single() -> None:
         """Mocked init"""
         self.lock = lock
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
-    ), patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
-    ) as warning, patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
-    ) as debug, patch(
-        (
-            "custom_components.modbus_local_gateway.tcp_client."
-            "AsyncModbusTcpClientGateway.read_registers"
-        )
-    ) as read_reg:
+    with (
+        patch.object(
+            AsyncModbusTcpClient,
+            "__init__",
+            __init__,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
+        ) as warning,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
+        ) as debug,
+        patch(
+            (
+                "custom_components.modbus_local_gateway.tcp_client."
+                "AsyncModbusTcpClientGateway.read_data"
+            )
+        ) as read_reg,
+    ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
-        connected = PropertyMock(return_value=True)
+        connected = PropertyMock(side_effect=[False, True])
         type(gateway).connected = connected  # type: ignore
 
         read_reg.side_effect = ModbusException(string="test")
@@ -337,6 +380,7 @@ async def test_update_slave_connected_failed_slave_single() -> None:
                         key="key",
                         register_address=1,
                         register_count=1,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 )
             ],
@@ -360,23 +404,28 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
         """Mocked init"""
         self.lock = lock
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
-    ), patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
-    ) as warning, patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
-    ) as debug, patch(
-        (
-            "custom_components.modbus_local_gateway.tcp_client."
-            "AsyncModbusTcpClientGateway.read_registers"
-        )
-    ) as read_reg:
+    with (
+        patch.object(
+            AsyncModbusTcpClient,
+            "__init__",
+            __init__,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
+        ) as warning,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
+        ) as debug,
+        patch(
+            (
+                "custom_components.modbus_local_gateway.tcp_client."
+                "AsyncModbusTcpClientGateway.read_data"
+            )
+        ) as read_reg,
+    ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
-        connected = PropertyMock(return_value=True)
+        connected = PropertyMock(side_effect=[False, True])
         type(gateway).connected = connected  # type: ignore
         response = ReadInputRegistersResponse(
             registers=[
@@ -394,6 +443,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
                         key="key1",
                         register_address=1,
                         register_count=1,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 ),
                 ModbusContext(
@@ -402,6 +452,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
                         key="key2",
                         register_address=1,
                         register_count=1,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 ),
                 ModbusContext(
@@ -410,6 +461,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
                         key="key3",
                         register_address=1,
                         register_count=1,
+                        data_type=ModbusDataType.HOLDING_REGISTER,
                     ),
                 ),
             ],
@@ -426,6 +478,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
         assert debug.call_count == 5
         assert len(lock.mock_calls) == 2
 
+
 async def test_update_slave_connected_success_all_types() -> None:
     """Test update slave with all four Modbus data types"""
     lock = AsyncMock()
@@ -433,20 +486,25 @@ async def test_update_slave_connected_success_all_types() -> None:
     def __init__(self, **kwargs) -> None:
         self.lock = lock
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "__init__",
-        __init__,
-    ), patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
-    ) as warning, patch(
-        "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
-    ) as debug, patch(
-        "custom_components.modbus_local_gateway.tcp_client.AsyncModbusTcpClientGateway.read_registers"
-    ) as read_reg:
+    with (
+        patch.object(
+            AsyncModbusTcpClient,
+            "__init__",
+            __init__,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
+        ) as warning,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
+        ) as debug,
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client.AsyncModbusTcpClientGateway.read_data"
+        ) as read_reg,
+    ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
-        connected = PropertyMock(return_value=True)
+        connected = PropertyMock(side_effect=[False, True])
         type(gateway).connected = connected
 
         responses = [
@@ -458,10 +516,40 @@ async def test_update_slave_connected_success_all_types() -> None:
         read_reg.side_effect = responses
 
         entities = [
-            ModbusContext(slave_id=1, desc=ModbusSensorEntityDescription(key="rw_word", register_address=1, data_type="holding_register")),
-            ModbusContext(slave_id=1, desc=ModbusSensorEntityDescription(key="ro_word", register_address=2, data_type="input_register")),
-            ModbusContext(slave_id=1, desc=ModbusSwitchEntityDescription(key="rw_bool", register_address=3, data_type="coil", control_type="switch")),
-            ModbusContext(slave_id=1, desc=ModbusBinarySensorEntityDescription(key="ro_bool", register_address=4, data_type="discrete_input", control_type="binary_sensor")),
+            ModbusContext(
+                slave_id=1,
+                desc=ModbusSensorEntityDescription(
+                    key="rw_word",
+                    register_address=1,
+                    data_type=ModbusDataType.HOLDING_REGISTER,
+                ),
+            ),
+            ModbusContext(
+                slave_id=1,
+                desc=ModbusSensorEntityDescription(
+                    key="ro_word",
+                    register_address=2,
+                    data_type=ModbusDataType.INPUT_REGISTER,
+                ),
+            ),
+            ModbusContext(
+                slave_id=1,
+                desc=ModbusSwitchEntityDescription(
+                    key="rw_bool",
+                    register_address=3,
+                    data_type=ModbusDataType.COIL,
+                    control_type="switch",
+                ),
+            ),
+            ModbusContext(
+                slave_id=1,
+                desc=ModbusBinarySensorEntityDescription(
+                    key="ro_bool",
+                    register_address=4,
+                    data_type=ModbusDataType.DISCRETE_INPUT,
+                    control_type="binary_sensor",
+                ),
+            ),
         ]
 
         resp = await gateway.update_slave(entities=entities, max_read_size=3)

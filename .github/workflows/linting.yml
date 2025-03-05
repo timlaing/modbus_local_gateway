@@ -19,5 +19,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: isort
         run: isort --recursive --diff .
-      - name: Black
-        run: black --check --diff .
+      - name: Ruff Format
+        run: ruff format --check .
+      - name: Ruff Check
+        run: ruff check .

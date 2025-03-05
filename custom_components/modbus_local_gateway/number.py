@@ -10,12 +10,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
-from .helpers import async_setup_entities
 from .entity_management.base import ModbusNumberEntityDescription
 from .entity_management.const import ControlType
+from .helpers import async_setup_entities
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -49,7 +48,11 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
         if isinstance(ctx.desc, ModbusNumberEntityDescription):
             self._attr_native_max_value = ctx.desc.max
             self._attr_native_min_value = ctx.desc.min
-            self._attr_native_step = ctx.desc.conv_multiplier if ctx.desc.conv_multiplier is not None else 1.0
+            self._attr_native_step = (
+                ctx.desc.conv_multiplier
+                if ctx.desc.conv_multiplier is not None
+                else 1.0
+            )
         else:
             raise TypeError()
         self._attr_mode = NumberMode.BOX
@@ -91,9 +94,12 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
         precision = self.coordinator_context.desc.precision
         multiplier = self.coordinator_context.desc.conv_multiplier
 
-        keep_float = (
-            (precision is not None and precision > 0) or
-            (precision is None and multiplier is not None and multiplier % 1 != 0)
+        keep_float = (precision is not None and precision > 0) or (
+            precision is None and multiplier is not None and multiplier % 1 != 0
         )
 
-        return self._attr_native_value if keep_float else int(round(self._attr_native_value))
+        return (
+            self._attr_native_value
+            if keep_float
+            else int(round(self._attr_native_value))
+        )

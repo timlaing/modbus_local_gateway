@@ -32,7 +32,7 @@ CONV_MULTIPLIER = "multiplier"
 CONV_OFFSET = "offset"
 CONV_BITS = "bits"
 CONV_SHIFT_BITS = "shift_bits"
-CONV_SUM_SCALE="sum_scale"
+CONV_SUM_SCALE = "sum_scale"
 CONV_MAP = "map"
 CONV_FLAGS = "flags"
 PRECISION = "precision"
@@ -46,8 +46,10 @@ DEFAULT_STATE_CLASS = SensorStateClass.MEASUREMENT
 
 UNIT = "unit"
 
+
 class ModbusDataType(StrEnum):
     """Modbus data types"""
+
     HOLDING_REGISTER = "read_write_word"
     INPUT_REGISTER = "read_only_word"
     COIL = "read_write_boolean"
@@ -56,6 +58,7 @@ class ModbusDataType(StrEnum):
 
 class ControlType(StrEnum):
     """Valid control types"""
+
     SENSOR = "sensor"
     SWITCH = "switch"
     SELECT = "select"
@@ -66,6 +69,7 @@ class ControlType(StrEnum):
 
 class Units(StrEnum):
     """Valid unit types for yaml definition"""
+
     CELSIUS = "Celsius"
     VOLTS = "Volts"
     AMPS = "Amps"

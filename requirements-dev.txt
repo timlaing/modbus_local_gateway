@@ -1,6 +1,5 @@
 
 -r requirements.txt
-black
 fuzzywuzzy
 isort
 levenshtein
@@ -10,3 +9,4 @@ pytest
 pytest-asyncio
 pytest-cov
 pytest-homeassistant-custom-component
+ruff

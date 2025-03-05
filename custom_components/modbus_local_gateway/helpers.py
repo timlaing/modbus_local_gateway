@@ -52,7 +52,17 @@ async def async_setup_entities(
 
     device = DeviceInfo(
         identifiers=identifiers,
-        name=" ".join([part for part in [config.get(CONF_PREFIX), device_info.manufacturer, device_info.model] if part]),         # name=f"{get_prefix(config)} {device_info.manufacturer} {device_info.model}",
+        name=" ".join(
+            [
+                part
+                for part in [
+                    config.get(CONF_PREFIX),
+                    device_info.manufacturer,
+                    device_info.model,
+                ]
+                if part
+            ]
+        ),  # name=f"{get_prefix(config)} {device_info.manufacturer} {device_info.model}",
         manufacturer=device_info.manufacturer,
         model=device_info.model,
         via_device=list(coordinator.gateway_device.identifiers)[0],

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
@@ -17,8 +17,8 @@ from homeassistant.helpers.update_coordinator import (
 from pymodbus.pdu.pdu import ModbusPDU
 
 from .context import ModbusContext
-from .entity_management.base import ModbusEntityDescription
 from .conversion import Conversion
+from .entity_management.base import ModbusEntityDescription
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -123,7 +123,6 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     async def async_update(self) -> dict[str, Any] | None:
         """Fetch updated data for all registered entities"""
         if self.started:
-            # TODO: Maybe remove sorted
             entities: list[ModbusContext] = sorted(
                 self.async_contexts(), key=lambda x: x.slave_id
             )
@@ -145,8 +144,10 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             if entity.desc.key in resp:
                 modbus_response: ModbusPDU = resp[entity.desc.key]
                 try:
-                    value: str | float | int | bool | None = conversion.convert_from_response(
-                        desc=entity.desc, response=modbus_response
+                    value: str | float | int | bool | None = (
+                        conversion.convert_from_response(
+                            desc=entity.desc, response=modbus_response
+                        )
                     )
                     data[entity.desc.key] = value
                     _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
@@ -155,7 +156,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                         "Data not available for key: %s (%d)",
                         entity.desc.key,
                         entity.slave_id,
-                        exc_info=True
+                        exc_info=True,
                     )
 
         return data

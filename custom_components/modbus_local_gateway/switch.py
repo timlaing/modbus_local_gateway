@@ -10,12 +10,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import slugify
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
-from .helpers import async_setup_entities
 from .entity_management.base import ModbusSwitchEntityDescription
 from .entity_management.const import ControlType, ModbusDataType
+from .helpers import async_setup_entities
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -59,7 +58,9 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):
             ):
                 if self.entity_description.data_type == ModbusDataType.COIL:
                     self._attr_is_on = value
-                elif self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER:
+                elif (
+                    self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER
+                ):
                     self._attr_is_on = value == self.entity_description.on
                 else:
                     raise ValueError("Invalid data_type for switch")
