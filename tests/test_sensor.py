@@ -2,7 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
-import pytest
 from homeassistant.components.sensor.const import SensorStateClass
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -22,7 +21,6 @@ from custom_components.modbus_local_gateway.sensor import (
 )
 
 
-@pytest.mark.nohomeassistant
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
     entry = MockConfigEntry(
@@ -45,11 +43,15 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusSensorEntityDescription(
-                key="key1", register_address=1, data_type="input_register"
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                key="key1",
+                register_address=1,
+                data_type=ModbusDataType.INPUT_REGISTER,
             ),
-            ModbusSensorEntityDescription(
-                key="key2", register_address=2, data_type="holding_register"
+            ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                key="key2",
+                register_address=2,
+                data_type=ModbusDataType.HOLDING_REGISTER,
             ),
         ]
     )

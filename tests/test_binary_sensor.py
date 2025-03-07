@@ -2,7 +2,6 @@
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
-import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.binary_sensor import (
@@ -13,13 +12,13 @@ from custom_components.modbus_local_gateway.const import DOMAIN
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusBinarySensorEntityDescription,
+    ModbusDataType,
 )
 from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
     ModbusDeviceInfo,
 )
 
 
-@pytest.mark.nohomeassistant
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
     entry = MockConfigEntry(
@@ -42,10 +41,10 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusBinarySensorEntityDescription(
+            ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
                 key="discrete_ro",
                 register_address=1,
-                data_type="discrete_input",
+                data_type=ModbusDataType.DISCRETE_INPUT,
                 control_type="binary_sensor",
             ),
         ]
@@ -74,10 +73,10 @@ async def test_update_none() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusBinarySensorEntityDescription(
+        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="key",
-            data_type="discrete_input",
+            data_type=ModbusDataType.DISCRETE_INPUT,
             control_type="binary_sensor",
         ),
     )
@@ -95,10 +94,10 @@ async def test_update_exception() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusBinarySensorEntityDescription(
+        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="key",
-            data_type="discrete_input",
+            data_type=ModbusDataType.DISCRETE_INPUT,
             control_type="binary_sensor",
         ),
     )
@@ -121,10 +120,10 @@ async def test_update_value() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusBinarySensorEntityDescription(
+        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
             register_address=1,
             key="key",
-            data_type="discrete_input",
+            data_type=ModbusDataType.DISCRETE_INPUT,
             control_type="binary_sensor",
         ),
     )

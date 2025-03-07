@@ -7,6 +7,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import DOMAIN
 from custom_components.modbus_local_gateway.context import ModbusContext
+from custom_components.modbus_local_gateway.coordinator import ModbusCoordinator
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusDataType,
     ModbusEntityDescription,
@@ -16,12 +17,12 @@ from custom_components.modbus_local_gateway.entity_management.modbus_device_info
     ModbusDeviceInfo,
 )
 from custom_components.modbus_local_gateway.switch import (
+    INVALID_DATA_TYPE,
     ModbusSwitchEntity,
     async_setup_entry,
 )
 
 
-@pytest.mark.nohomeassistant
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
     entry = MockConfigEntry(
@@ -44,16 +45,16 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusSwitchEntityDescription(
+            ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
                 key="coil_rw",
                 register_address=1,
-                data_type="coil",
+                data_type=ModbusDataType.COIL,
                 control_type="switch",
             ),
-            ModbusSwitchEntityDescription(
+            ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
                 key="reg_rw",
                 register_address=2,
-                data_type="holding_register",
+                data_type=ModbusDataType.HOLDING_REGISTER,
                 control_type="switch",
                 on=1,
                 off=0,
@@ -226,3 +227,157 @@ async def test_update_deviceupdate() -> None:
         debug.assert_called()
         warning.assert_not_called()
         write.assert_called_once()
+
+
+async def test_async_turn_on_coil() -> None:
+    """Test turning on a switch with COIL data type."""
+    coordinator = MagicMock(spec=ModbusCoordinator)
+    coordinator.client = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            name="name",
+            register_address=1,
+            data_type=ModbusDataType.COIL,
+            control_type="switch",
+            icon="icon",
+            on=1,
+            off=0,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
+
+    with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
+        await entity.async_turn_on()
+        mock_write_data.assert_called_once_with(entity.coordinator_context, True)
+
+
+async def test_async_turn_on_holding_register() -> None:
+    """Test turning on a switch with HOLDING_REGISTER data type."""
+    coordinator = MagicMock(spec=ModbusCoordinator)
+    coordinator.client = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            name="name",
+            register_address=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            control_type="switch",
+            icon="icon",
+            on=1,
+            off=0,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
+
+    with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
+        await entity.async_turn_on()
+        mock_write_data.assert_called_once_with(entity.coordinator_context, 1)
+
+
+async def test_async_turn_on_invalid_data_type() -> None:
+    """Test turning on a switch with an invalid data type."""
+    coordinator = MagicMock(spec=ModbusCoordinator)
+    coordinator.client = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            name="name",
+            register_address=1,
+            data_type=ModbusDataType.INPUT_REGISTER,
+            control_type="switch",
+            icon="icon",
+            on=1,
+            off=0,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
+
+    with pytest.raises(ValueError, match=INVALID_DATA_TYPE):
+        await entity.async_turn_on()
+
+
+async def test_async_turn_off_coil() -> None:
+    """Test turning off a switch with COIL data type."""
+    coordinator = MagicMock(spec=ModbusCoordinator)
+    coordinator.client = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            name="name",
+            register_address=1,
+            data_type=ModbusDataType.COIL,
+            control_type="switch",
+            icon="icon",
+            on=1,
+            off=0,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
+
+    with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
+        await entity.async_turn_off()
+        mock_write_data.assert_called_once_with(entity.coordinator_context, False)
+
+
+async def test_async_turn_off_holding_register() -> None:
+    """Test turning off a switch with HOLDING_REGISTER data type."""
+    coordinator = MagicMock(spec=ModbusCoordinator)
+    coordinator.client = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            name="name",
+            register_address=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            control_type="switch",
+            icon="icon",
+            on=1,
+            off=0,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
+
+    with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
+        await entity.async_turn_off()
+        mock_write_data.assert_called_once_with(entity.coordinator_context, 0)
+
+
+async def test_async_turn_off_invalid_data_type() -> None:
+    """Test turning off a switch with an invalid data type."""
+    coordinator = MagicMock(spec=ModbusCoordinator)
+    coordinator.client = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            name="name",
+            register_address=1,
+            data_type=ModbusDataType.INPUT_REGISTER,
+            control_type="switch",
+            icon="icon",
+            on=1,
+            off=0,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
+
+    with pytest.raises(ValueError, match=INVALID_DATA_TYPE):
+        await entity.async_turn_off()

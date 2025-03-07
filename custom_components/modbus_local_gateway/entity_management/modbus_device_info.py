@@ -192,11 +192,19 @@ class ModbusDeviceInfo:
             return None
 
         uom = self.get_uom(_data, control_type)
+        params = self._initialize_params(entity, _data, data_type, control_type, uom)
 
-        # Start with all attributes from _data
+        if "entity_category" in params:
+            self._handle_entity_category(params, entity)
+
+        desc_cls = self._select_description_class(control_type, params, _data, entity)
+        if desc_cls:
+            return self._create_description_instance(desc_cls, params)
+        return None
+
+    def _initialize_params(self, entity, _data, data_type, control_type, uom):
+        """Initialize parameters for the description"""
         params = dict(_data)
-
-        # Override or add required and computed fields
         params.update(
             {
                 "key": entity,
@@ -220,85 +228,101 @@ class ModbusDeviceInfo:
                 "state_class": uom["state_class"],
             }
         )
+        return params
 
-        # Handle entity_category directly from params
-        if "entity_category" in params:
-            try:
-                params["entity_category"] = EntityCategory(params["entity_category"])
-            except ValueError:
-                _LOGGER.warning(
-                    "Invalid entity_category %s for %s",
-                    params["entity_category"],
-                    entity,
-                )
-                del params["entity_category"]  # Remove invalid category
+    def _handle_entity_category(self, params, entity):
+        """Handle entity category in parameters"""
+        try:
+            params["entity_category"] = EntityCategory(params["entity_category"])
+        except ValueError:
+            _LOGGER.warning(
+                "Invalid entity_category %s for %s",
+                params["entity_category"],
+                entity,
+            )
+            del params["entity_category"]
 
-        # Select description class and add control-specific parameters
-        desc_cls = None
+    def _select_description_class(self, control_type, params, _data, entity):
+        """Select the appropriate description class based on control type"""
         if control_type == ControlType.SENSOR:
-            desc_cls = ModbusSensorEntityDescription
-            # Set precision based on conv_multiplier if applicable
-            if params.get("precision") is None:
-                if (
-                    params.get("conv_map") is None
-                    and params.get("conv_flags") is None
-                    and params.get("is_string") is None
-                ):
-                    multiplier = params.get("conv_multiplier")
-                    if not multiplier or multiplier % 1 == 0:
-                        params["precision"] = 0
-                    elif multiplier > 0.0001:
-                        params["precision"] = (
-                            len(f"{multiplier:.8g}".split(".")[-1].rstrip("0"))
-                            if "." in f"{multiplier:.8g}"
-                            else 0
-                        )
-                    else:
-                        params["precision"] = 4
+            return self._handle_sensor_description(params)
         elif control_type == ControlType.BINARY_SENSOR:
-            desc_cls = ModbusBinarySensorEntityDescription
+            return ModbusBinarySensorEntityDescription
         elif control_type == ControlType.SWITCH:
-            desc_cls = ModbusSwitchEntityDescription
-            switch_data = _data.get("switch", {})
-            if not isinstance(switch_data, dict):
-                _LOGGER.warning(
-                    "Switch configuration for %s should be a dictionary", entity
-                )
-                return None
-            params["on"] = switch_data.get("on", 1)
-            params["off"] = switch_data.get("off", 0)
+            return self._handle_switch_description(params, _data, entity)
         elif control_type == ControlType.SELECT:
-            desc_cls = ModbusSelectEntityDescription
-            params["select_options"] = _data.get("options")
-            if not params["select_options"]:
-                _LOGGER.warning("Missing options for select")
-                return None
+            return self._handle_select_description(params, _data)
         elif control_type == ControlType.NUMBER:
-            desc_cls = ModbusNumberEntityDescription
-            number_data = _data.get("number", {})
-            if not isinstance(number_data, dict):
-                _LOGGER.warning(
-                    "Number configuration for %s should be a dictionary", entity
-                )
-                return None
-            if "min" not in number_data or "max" not in number_data:
-                _LOGGER.warning("Missing min or max for number in %s", entity)
-                return None
-            params["min"] = number_data["min"]
-            params["max"] = number_data["max"]
-            params["precision"] = _data.get(PRECISION)
+            return self._handle_number_description(params, _data, entity)
         elif control_type == ControlType.TEXT:
-            desc_cls = ModbusTextEntityDescription
+            return ModbusTextEntityDescription
         else:
             _LOGGER.warning("Unsupported control_type %s", control_type)
             return None
 
-        if desc_cls:
-            # Filter out None values and create the description
-            try:
-                desc = desc_cls(**{k: v for k, v in params.items() if v is not None})
-                if desc.validate():
-                    return desc
-            except TypeError:
-                pass
+    def _handle_sensor_description(self, params):
+        """Handle sensor description specific logic"""
+        if params.get("precision") is None:
+            if (
+                params.get("conv_map") is None
+                and params.get("conv_flags") is None
+                and params.get("is_string") is None
+            ):
+                multiplier = params.get("conv_multiplier")
+                if not multiplier or multiplier % 1 == 0:
+                    params["precision"] = 0
+                elif multiplier > 0.0001:
+                    params["precision"] = (
+                        len(f"{multiplier:.8g}".split(".")[-1].rstrip("0"))
+                        if "." in f"{multiplier:.8g}"
+                        else 0
+                    )
+                else:
+                    params["precision"] = 4
+        return ModbusSensorEntityDescription
+
+    def _handle_switch_description(self, params, _data, entity):
+        """Handle switch description specific logic"""
+        switch_data = _data.get("switch", {})
+        if not isinstance(switch_data, dict):
+            _LOGGER.warning(
+                "Switch configuration for %s should be a dictionary", entity
+            )
+            return None
+        params["on"] = switch_data.get("on", 1)
+        params["off"] = switch_data.get("off", 0)
+        return ModbusSwitchEntityDescription
+
+    def _handle_select_description(self, params, _data):
+        """Handle select description specific logic"""
+        params["select_options"] = _data.get("options")
+        if not params["select_options"]:
+            _LOGGER.warning("Missing options for select")
+            return None
+        return ModbusSelectEntityDescription
+
+    def _handle_number_description(self, params, _data, entity):
+        """Handle number description specific logic"""
+        number_data = _data.get("number", {})
+        if not isinstance(number_data, dict):
+            _LOGGER.warning(
+                "Number configuration for %s should be a dictionary", entity
+            )
+            return None
+        if "min" not in number_data or "max" not in number_data:
+            _LOGGER.warning("Missing min or max for number in %s", entity)
+            return None
+        params["min"] = number_data["min"]
+        params["max"] = number_data["max"]
+        params["precision"] = _data.get(PRECISION)
+        return ModbusNumberEntityDescription
+
+    def _create_description_instance(self, desc_cls, params):
+        """Create an instance of the description class"""
+        try:
+            desc = desc_cls(**{k: v for k, v in params.items() if v is not None})
+            if desc.validate():
+                return desc
+        except TypeError:
+            pass
         return None

@@ -1,7 +1,9 @@
 {
 	"name": "Modbus Local Dev",
-	"image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
-	"postCreateCommand": "pip3 install --user -r requirements-dev.txt",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"postCreateCommand": "uv venv && uv pip install -r requirements-dev.txt --link-mode=copy",
 	"mounts": [
 		"source=${env:HOME}${env:USERPROFILE}/.ssh,target=/root/.ssh,type=bind"
 	],
@@ -36,18 +38,17 @@
 				"esbenp.prettier-vscode",
 				"GitHub.vscode-pull-request-github",
 				"ms-python.pylint",
-				"ms-python.black-formatter",
 				"ms-python.isort",
 				"ms-python.python",
 				"ryanluker.vscode-coverage-gutters",
 				"donjayamanne.git-extension-pack",
 				"github.vscode-github-actions",
-				"elagil.pre-commit-helper"
+				"elagil.pre-commit-helper",
+				"sonarsource.sonarlint-vscode",
+				"charliermarsh.ruff",
+				"ms-azuretools.vscode-docker"
 			],
 			"settings": {
-				"python.testing.pytestArgs": [
-					"--no-cov"
-				],
 				"editor.formatOnPaste": false,
 				"editor.formatOnSave": true,
 				"editor.formatOnType": true,
@@ -67,12 +68,15 @@
 					"!include_dir_list scalar",
 					"!include_dir_merge_list scalar",
 					"!include_dir_merge_named scalar"
-				]
+				],
+				"sonarlint.ls.javaHome": "/usr/lib/jvm/java-17-openjdk-arm64"
 			}
 		}
 	},
 	"remoteUser": "vscode",
 	"features": {
-		"ghcr.io/devcontainers-contrib/features/ffmpeg-apt-get": "latest"
+		"ghcr.io/devcontainers-contrib/features/ffmpeg-apt-get": "latest",
+		"ghcr.io/devcontainers/features/node": "latest",
+		"ghcr.io/va-h/devcontainers-features/uv": "latest"
 	}
 }

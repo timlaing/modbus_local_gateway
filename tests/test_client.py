@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, PropertyMock, patch
 
+import pytest
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
@@ -12,6 +13,7 @@ from pymodbus.pdu.register_message import (
 )
 
 from custom_components.modbus_local_gateway.context import ModbusContext
+from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusBinarySensorEntityDescription,
     ModbusDataType,
@@ -84,6 +86,153 @@ async def test_read_registers_multiple() -> None:
         assert resp.registers == [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
+async def test_write_no_registers() -> None:
+    """Test successful write of a single register."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: False
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        await client._custom_write_registers(  # pylint: disable=protected-access
+            address=1,
+            values=[],
+            slave=1,
+        )
+        client.write_register.assert_not_called()
+        mock_logger.debug.assert_called_with("No values to write, skipping.")
+
+
+async def test_write_single_register_success() -> None:
+    """Test successful write of a single register."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: False
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        await client._custom_write_registers(  # pylint: disable=protected-access
+            address=1,
+            values=[123],
+            slave=1,
+        )
+        client.write_register.assert_called_once_with(
+            address=1,
+            value=123,
+            slave=1,
+        )
+        mock_logger.debug.assert_called_with("Writing successful")
+
+
+async def test_write_single_register_failure() -> None:
+    """Test failed write of a single register."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: True
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        await client._custom_write_registers(  # pylint: disable=protected-access
+            address=1,
+            values=[123],
+            slave=1,
+        )
+        client.write_register.assert_called_once_with(
+            address=1,
+            value=123,
+            slave=1,
+        )
+        mock_logger.error.assert_called_with(
+            "Failed to write value %d to address %d: %s",
+            123,
+            1,
+            client.write_register.return_value,
+        )
+
+
+async def test_write_multiple_registers_success() -> None:
+    """Test successful write of a multiple registers."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.write_registers = AsyncMock(return_value=ModbusPDU())
+    client.write_registers.return_value.isError = lambda: False
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        await client._custom_write_registers(  # pylint: disable=protected-access
+            address=1,
+            values=[123, 456],
+            slave=1,
+        )
+        client.write_registers.assert_called_once_with(
+            address=1,
+            values=[123, 456],
+            slave=1,
+        )
+        mock_logger.debug.assert_called_with(
+            "Writing multiple values using write_registers successful"
+        )
+
+
+async def test_write_multiple_registers_failure() -> None:
+    """Test failed write of a multiple registers."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.write_registers = AsyncMock(return_value=ModbusPDU())
+    client.write_registers.return_value.isError = lambda: True
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: True
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        await client._custom_write_registers(  # pylint: disable=protected-access
+            address=1,
+            values=[123, 456],
+            slave=1,
+        )
+        client.write_registers.assert_called_once_with(
+            address=1,
+            values=[123, 456],
+            slave=1,
+        )
+        mock_logger.error.assert_called_with(
+            "Failed to write value %d to address %d: %s",
+            123,
+            1,
+            client.write_register.return_value,
+        )
+
+
+async def test_write_multiple_registers_success_individual() -> None:
+    """Test failed write of a multiple registers, successfully individually."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.write_registers = AsyncMock(return_value=ModbusPDU())
+    client.write_registers.return_value.isError = lambda: True
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: False
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        await client._custom_write_registers(  # pylint: disable=protected-access
+            address=1,
+            values=[123, 456],
+            slave=1,
+        )
+        client.write_registers.assert_called_once_with(
+            address=1,
+            values=[123, 456],
+            slave=1,
+        )
+        mock_logger.error.assert_not_called()
+        mock_logger.debug.assert_called_with(
+            "All individual writes successful using fallback",
+        )
+
+
 async def test_get_client() -> None:
     """test the class helper method"""
 
@@ -134,10 +283,13 @@ async def test_update_slave_not_connected() -> None:
 
         resp: dict[str, ModbusPDU] = await gateway.update_slave(
             entities=[
-                ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
-                    register_address=1,
-                    key="key",
-                    data_type=ModbusDataType.INPUT_REGISTER,
+                ModbusContext(
+                    slave_id=1,
+                    desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                        register_address=1,
+                        key="key",
+                        data_type=ModbusDataType.INPUT_REGISTER,
+                    ),
                 )
             ],
             max_read_size=3,
@@ -392,7 +544,7 @@ async def test_update_slave_connected_failed_slave_single() -> None:
         assert len(resp) == 0
         gateway.connect.assert_called_once()
         warning.assert_called_once()
-        assert debug.call_count == 1
+        assert debug.call_count == 2
         assert len(lock.mock_calls) == 2
 
 
@@ -483,7 +635,7 @@ async def test_update_slave_connected_success_all_types() -> None:
     """Test update slave with all four Modbus data types"""
     lock = AsyncMock()
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, **_) -> None:
         self.lock = lock
 
     with (
@@ -499,13 +651,14 @@ async def test_update_slave_connected_success_all_types() -> None:
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
         ) as debug,
         patch(
-            "custom_components.modbus_local_gateway.tcp_client.AsyncModbusTcpClientGateway.read_data"
+            "custom_components.modbus_local_gateway.tcp_client."
+            "AsyncModbusTcpClientGateway.read_data"
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
         gateway.connect = AsyncMock()
         connected = PropertyMock(side_effect=[False, True])
-        type(gateway).connected = connected
+        type(gateway).connected = connected  # type: ignore
 
         responses = [
             ReadHoldingRegistersResponse(registers=[1]),
@@ -518,7 +671,7 @@ async def test_update_slave_connected_success_all_types() -> None:
         entities = [
             ModbusContext(
                 slave_id=1,
-                desc=ModbusSensorEntityDescription(
+                desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
                     key="rw_word",
                     register_address=1,
                     data_type=ModbusDataType.HOLDING_REGISTER,
@@ -526,7 +679,7 @@ async def test_update_slave_connected_success_all_types() -> None:
             ),
             ModbusContext(
                 slave_id=1,
-                desc=ModbusSensorEntityDescription(
+                desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
                     key="ro_word",
                     register_address=2,
                     data_type=ModbusDataType.INPUT_REGISTER,
@@ -534,7 +687,7 @@ async def test_update_slave_connected_success_all_types() -> None:
             ),
             ModbusContext(
                 slave_id=1,
-                desc=ModbusSwitchEntityDescription(
+                desc=ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
                     key="rw_bool",
                     register_address=3,
                     data_type=ModbusDataType.COIL,
@@ -543,7 +696,7 @@ async def test_update_slave_connected_success_all_types() -> None:
             ),
             ModbusContext(
                 slave_id=1,
-                desc=ModbusBinarySensorEntityDescription(
+                desc=ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
                     key="ro_bool",
                     register_address=4,
                     data_type=ModbusDataType.DISCRETE_INPUT,
@@ -563,3 +716,187 @@ async def test_update_slave_connected_success_all_types() -> None:
         warning.assert_not_called()
         assert debug.call_count == 5  # 4 reads + 1 completion
         assert len(lock.mock_calls) == 2
+
+
+async def test_write_data_holding_registers_success() -> None:
+    """Test successful write to holding registers."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_registers = AsyncMock(return_value=ModbusPDU())
+    client.write_registers.return_value.isError = lambda: False
+
+    entity = ModbusContext(
+        slave_id=1,
+        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="test",
+            register_address=1,
+            register_count=2,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(Conversion, "convert_to_registers", return_value=[123, 456]),
+    ):
+        with patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+        ) as mock_logger:
+            result: ModbusPDU | None = await client.write_data(entity, value=789)
+            client.write_registers.assert_called_once_with(
+                address=1,
+                values=[123, 456],
+                slave=1,
+            )
+            mock_logger.debug.assert_called_with(
+                "Writing multiple values using write_registers successful"
+            )
+            assert result is None
+
+
+async def test_write_data_coils_success() -> None:
+    """Test successful write to coils."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_coil = AsyncMock(return_value=ModbusPDU())
+    client.write_coil.return_value.isError = lambda: False
+
+    entity = ModbusContext(
+        slave_id=1,
+        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="test",
+            register_address=1,
+            register_count=1,
+            data_type=ModbusDataType.COIL,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+        ) as mock_logger,
+    ):
+        result = await client.write_data(entity, value=True)
+        client.write_coil.assert_called_once_with(
+            address=1,
+            value=True,
+            slave=1,
+        )
+        print(mock_logger.debug.call_count)
+        mock_logger.debug.assert_called_with(
+            "Value before conversion: %s (type: %s)",
+            True,
+            "bool",
+        )
+        assert result is not None
+
+
+async def test_write_data_failed_connection() -> None:
+    """Test failed connection."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+
+    entity = ModbusContext(
+        slave_id=1,
+        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="test",
+            register_address=1,
+            register_count=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=False)
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+        ) as mock_logger,
+    ):
+        result: ModbusPDU | None = await client.write_data(entity, value=123)
+        client.connect.assert_called_once()
+        mock_logger.warning.assert_called_with(
+            "Failed to connect to gateway - %s", client
+        )
+        assert result is None
+
+
+async def test_write_data_unsupported_data_type() -> None:
+    """Test unsupported data type."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+
+    entity = ModbusContext(
+        slave_id=1,
+        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="test",
+            register_address=1,
+            register_count=1,
+            data_type="unsupported",  # type: ignore
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        pytest.raises(ValueError, match="Unsupported data type: unsupported"),
+    ):
+        await client.write_data(entity, value=123)
+
+
+async def test_write_data_incorrect_register_count() -> None:
+    """Test incorrect register count."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+
+    entity = ModbusContext(
+        slave_id=1,
+        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="test",
+            register_address=1,
+            register_count=2,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(Conversion, "convert_to_registers", return_value=[123]),
+        pytest.raises(
+            ModbusException, match="Incorrect number of registers: expected 2, got 1"
+        ),
+    ):
+        await client.write_data(entity, value=789)
+
+
+async def test_write_data_invalid_coil_value_type() -> None:
+    """Test invalid coil value type."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+
+    entity = ModbusContext(
+        slave_id=1,
+        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="test",
+            register_address=1,
+            register_count=1,
+            data_type=ModbusDataType.COIL,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        pytest.raises(TypeError, match="Value for COIL must be boolean, got int"),
+    ):
+        await client.write_data(entity, value=123)

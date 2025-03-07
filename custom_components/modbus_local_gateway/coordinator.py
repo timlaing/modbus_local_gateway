@@ -41,9 +41,11 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             raise TypeError()
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
+        self.coordinator: ModbusCoordinator
 
     @property
     def available(self) -> bool:
+        """Return if entity is available."""
         return super().available and self.coordinator.available
 
 
@@ -101,6 +103,9 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Return True if the coordinator is available"""
         if self._last_successful_update is None:
             return False
+        if not self.update_interval:
+            return True
+
         threshold = timedelta(seconds=self.update_interval.total_seconds() * 2)
         return (datetime.now() - self._last_successful_update) < threshold
 

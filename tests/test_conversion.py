@@ -1,5 +1,7 @@
 """Conversion Tests"""
 
+import pytest
+from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.register_message import ReadInputRegistersResponse
 
 from custom_components.modbus_local_gateway.conversion import Conversion
@@ -413,3 +415,91 @@ async def test_flags_multiple() -> None:
     )
 
     assert value == "One | Good"
+
+
+async def test_convert_from_response_coils() -> None:
+    """Test convert from response"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    value = conversion.convert_from_response(
+        response=ReadCoilsResponse(
+            registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16),
+            bits=[True],
+        ),
+        desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="test",
+            data_type=ModbusDataType.COIL,
+        ),
+    )
+
+    assert value is True
+
+
+async def test_convert_from_response_discrete_inputs() -> None:
+    """Test convert from response"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    value = conversion.convert_from_response(
+        response=ReadDiscreteInputsResponse(
+            registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16),
+            bits=[False],
+        ),
+        desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="test",
+            data_type=ModbusDataType.DISCRETE_INPUT,
+        ),
+    )
+
+    assert value is False
+
+
+async def test_convert_from_response_errors() -> None:
+    """Test convert from response"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    with pytest.raises(TypeError):
+        conversion.convert_from_response(
+            response=ReadDiscreteInputsResponse(
+                registers=client.convert_to_registers(
+                    1, data_type=client.DATATYPE.UINT16
+                ),
+            ),
+            desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=1,
+                key="test",
+                data_type=ModbusDataType.INPUT_REGISTER,
+            ),
+        )
+
+    with pytest.raises(TypeError):
+        conversion.convert_from_response(
+            response=ReadInputRegistersResponse(
+                registers=client.convert_to_registers(
+                    1, data_type=client.DATATYPE.UINT16
+                ),
+            ),
+            desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=1,
+                key="test",
+                data_type=ModbusDataType.COIL,
+            ),
+        )
+
+    with pytest.raises(TypeError):
+        conversion.convert_from_response(
+            response=ReadInputRegistersResponse(
+                registers=client.convert_to_registers(
+                    1, data_type=client.DATATYPE.UINT16
+                ),
+            ),
+            desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                register_address=1,
+                key="test",
+                data_type=ModbusDataType.DISCRETE_INPUT,
+            ),
+        )

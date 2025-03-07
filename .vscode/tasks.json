@@ -34,16 +34,30 @@
       "problemMatcher": []
     },
     {
-      "label": "Unit tests",
+      "label": "Unit tests (all)",
+      "type": "shell",
+      "command": "pytest",
+      "problemMatcher": [],
+      "dependsOn": "Install requirements"
+    },
+    {
+      "label": "Unit tests (coverage)",
       "type": "shell",
       "command": "pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml",
       "problemMatcher": [],
       "dependsOn": "Install requirements"
     },
     {
+      "label": "Unit tests (changed)",
+      "type": "shell",
+      "command": "pytest --picked",
+      "problemMatcher": [],
+      "dependsOn": "Install requirements"
+    },
+    {
       "label": "Reformat code",
       "type": "shell",
-      "command": "isort . &&  black .",
+      "command": "isort . &&  ruff format",
       "problemMatcher": [],
       "dependsOn": "Install requirements"
     }
