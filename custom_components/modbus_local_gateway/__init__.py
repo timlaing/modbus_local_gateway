@@ -25,7 +25,7 @@ async def async_setup_entry(
     """Load the saved entities."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    gateway_key: str = get_gateway_key(entry=entry)
+    gateway_key: str = get_gateway_key(entry=entry, with_slave=True)
 
     device_registry: dr.DeviceRegistry = dr.async_get(hass)
 
