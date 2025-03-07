@@ -25,14 +25,19 @@ async def async_setup_entry(
     """Load the saved entities."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    gateway_key: str = get_gateway_key(entry=entry)
+    gateway_key: str = get_gateway_key(entry=entry, with_slave=True)
 
     device_registry: dr.DeviceRegistry = dr.async_get(hass)
 
     device: dr.DeviceEntry = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, f"ModbusGateway-{gateway_key}")},
-        name=f"Modbus Gateway ({gateway_key})",
+        identifiers={
+            (
+                DOMAIN,
+                f"ModbusGateway-{get_gateway_key(entry=entry, with_slave=False)}",
+            )
+        },
+        name=f"Modbus Gateway ({get_gateway_key(entry=entry, with_slave=False)})",
         configuration_url=f"http://{entry.data[CONF_HOST]}/",
     )
 
