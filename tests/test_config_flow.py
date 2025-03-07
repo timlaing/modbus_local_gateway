@@ -26,7 +26,8 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
     flow.hass = hass
 
     with patch(
-        "custom_components.modbus_local_gateway.config_flow.AsyncModbusTcpClientGateway.async_get_client_connection",
+        "custom_components.modbus_local_gateway.config_flow.AsyncModbusTcpClientGateway"
+        ".async_get_client_connection",
         return_value=mock_client,
     ):
         result: ConfigFlowResult = await flow.async_step_user(
