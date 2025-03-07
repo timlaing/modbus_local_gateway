@@ -38,8 +38,6 @@ async def async_setup_entry(
 class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
     """Switch entity for Modbus gateway"""
 
-    # entity_description: ModbusSwitchEntityDescription
-
     def __init__(
         self,
         coordinator: ModbusCoordinator,
@@ -105,7 +103,6 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
         if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
             self.entity_description, ModbusSwitchEntityDescription
         ):
-            print("here", self.entity_description.data_type)
             if self.entity_description.data_type == ModbusDataType.COIL:
                 value = False
             elif self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER:

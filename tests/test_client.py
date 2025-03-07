@@ -737,23 +737,25 @@ async def test_write_data_holding_registers_success() -> None:
 
     with (
         patch.object(
-            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
         ),
         patch.object(Conversion, "convert_to_registers", return_value=[123, 456]),
-    ):
-        with patch(
+        patch(
             "custom_components.modbus_local_gateway.tcp_client._LOGGER"
-        ) as mock_logger:
-            result: ModbusPDU | None = await client.write_data(entity, value=789)
-            client.write_registers.assert_called_once_with(
-                address=1,
-                values=[123, 456],
-                slave=1,
-            )
-            mock_logger.debug.assert_called_with(
-                "Writing multiple values using write_registers successful"
-            )
-            assert result is None
+        ) as mock_logger,
+    ):
+        result: ModbusPDU | None = await client.write_data(entity, value=789)
+        client.write_registers.assert_called_once_with(
+            address=1,
+            values=[123, 456],
+            slave=1,
+        )
+        mock_logger.debug.assert_called_with(
+            "Writing multiple values using write_registers successful"
+        )
+        assert result is None
 
 
 async def test_write_data_coils_success() -> None:
@@ -787,7 +789,6 @@ async def test_write_data_coils_success() -> None:
             value=True,
             slave=1,
         )
-        print(mock_logger.debug.call_count)
         mock_logger.debug.assert_called_with(
             "Value before conversion: %s (type: %s)",
             True,
