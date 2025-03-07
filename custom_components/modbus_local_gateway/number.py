@@ -65,7 +65,7 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
             if value is not None:
-                self._attr_native_value = float(value)
+                self._set_state(float(value))
                 _LOGGER.debug(
                     "Updating device with %s as %s",
                     self.entity_description.key,
@@ -85,21 +85,14 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
         if isinstance(self.coordinator, ModbusCoordinator):
             await self.coordinator.client.write_data(self.coordinator_context, value)
 
-    @property
-    def state(self) -> int | float | str:
-        """Return the state of the entity, formatted based on precision or else conv_multiplier."""
-        if self._attr_native_value is None:
-            return ""
+    def _set_state(self, value: float) -> None:
+        """Sets the underlying state of the entity,
+        formatted based on precision or else conv_multiplier."""
+        precision: int | float | None = self.coordinator_context.desc.precision
+        multiplier: int | float | None = self.coordinator_context.desc.conv_multiplier
 
-        precision = self.coordinator_context.desc.precision
-        multiplier = self.coordinator_context.desc.conv_multiplier
-
-        keep_float = (precision is not None and precision > 0) or (
+        keep_float: bool = (precision is not None and precision > 0) or (
             precision is None and multiplier is not None and multiplier % 1 != 0
         )
 
-        return (
-            self._attr_native_value
-            if keep_float
-            else int(round(self._attr_native_value))
-        )
+        self._attr_native_value = value if keep_float else int(round(value))

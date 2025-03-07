@@ -4,9 +4,6 @@
   "editor.formatOnType": true,
   "files.eol": "\n",
   "files.trimTrailingWhitespace": true,
-  "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter"
-  },
   "python.testing.pytestEnabled": true,
   "python.analysis.inlayHints.pytestParameters": true,
   "isort.check": true,
@@ -15,14 +12,18 @@
   "python.analysis.autoImportCompletions": true,
   "python.analysis.completeFunctionParens": true,
   "python.createEnvironment.contentButton": "show",
-  "black-formatter.importStrategy": "fromEnvironment",
   "python.terminal.focusAfterLaunch": true,
-  "python.testing.pytestArgs": [
-    "-m not nohomeassistant",
-    "-p no:homeassistant",
-  ],
   "sonarlint.connectedMode.project": {
     "connectionId": "timlaing",
     "projectKey": "timlaing_modbus_local_gateway"
+  },
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "python.defaultInterpreterPath": "./.venv/bin/python",
+  "git.autofetch": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-docker"
   }
 }

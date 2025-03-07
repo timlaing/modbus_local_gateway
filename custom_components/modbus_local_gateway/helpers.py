@@ -37,7 +37,7 @@ async def async_setup_entities(
 ) -> None:
     """Set up the Modbus Local Gateway sensors."""
     config: dict[str, Any] = {**config_entry.data}
-    _LOGGER.debug(f"Setting up entities for config: {config}, platform: {control}")
+    _LOGGER.debug("Setting up entities for config: %s, platform: %s", config, control)
     coordinator: ModbusCoordinator = hass.data[DOMAIN][get_gateway_key(config_entry)]
 
     device_info: ModbusDeviceInfo = await hass.async_add_executor_job(
@@ -62,7 +62,7 @@ async def async_setup_entities(
                 ]
                 if part
             ]
-        ),  # name=f"{get_prefix(config)} {device_info.manufacturer} {device_info.model}",
+        ),
         manufacturer=device_info.manufacturer,
         model=device_info.model,
         via_device=list(coordinator.gateway_device.identifiers)[0],

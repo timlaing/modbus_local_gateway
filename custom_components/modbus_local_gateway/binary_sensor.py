@@ -16,7 +16,7 @@ from .entity_management.base import ModbusBinarySensorEntityDescription
 from .entity_management.const import ControlType
 from .helpers import async_setup_entities
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -34,7 +34,7 @@ async def async_setup_entry(
     )
 
 
-class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):
+class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):  # type: ignore
     """Binary sensor entity for Modbus gateway"""
 
     def __init__(
@@ -52,10 +52,10 @@ class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: bool | None = cast(ModbusCoordinator, self.coordinator).get_data(
+            value = cast(ModbusCoordinator, self.coordinator).get_data(
                 self.coordinator_context
             )
-            if value is not None:
+            if value is not None and isinstance(value, bool):
                 self._attr_is_on = value
                 self.async_write_ha_state()
         except Exception as err:  # pylint: disable=broad-exception-caught

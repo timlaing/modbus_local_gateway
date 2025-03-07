@@ -1,8 +1,8 @@
 """Conversion register functions"""
 
 import logging
-from typing import Any, Optional
 
+from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.pdu import ModbusPDU
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.register_message import (
@@ -12,7 +12,6 @@ from pymodbus.pdu.register_message import (
 
 from .entity_management.base import ModbusEntityDescription
 from .entity_management.const import ModbusDataType
-from .tcp_client import AsyncModbusTcpClient
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -94,7 +93,15 @@ class Conversion:
     def _convert_to_decimal(
         self, registers: list, desc: ModbusEntityDescription
     ) -> float:
-        """Convert to an int type"""
+        """Convert to a float type"""
+        num = self._convert_registers_to_number(registers, desc)
+        num = self._apply_conversion_operations(num, desc)
+        return num
+
+    def _convert_registers_to_number(
+        self, registers: list, desc: ModbusEntityDescription
+    ) -> int | float:
+        """Convert registers to a number based on data type"""
         num: str | int | float | list = self.client.convert_from_registers(
             registers,
             data_type=(
@@ -104,7 +111,7 @@ class Conversion:
             ),
         )
 
-        if desc.conv_sum_scale is not None:
+        if desc.conv_sum_scale is not None and isinstance(num, list):
             num = sum(r * s for r, s in zip(num, desc.conv_sum_scale))
 
         if isinstance(num, int):
@@ -112,9 +119,16 @@ class Conversion:
                 num = num >> desc.conv_shift_bits
             if desc.conv_bits:
                 num = num & int("1" * desc.conv_bits, 2)
-        elif desc.conv_shift_bits or desc.conv_bits:
+            return num
+        elif isinstance(num, float):
+            return num
+        else:  # desc.conv_shift_bits or desc.conv_bits:
             raise InvalidDataTypeError()
 
+    def _apply_conversion_operations(
+        self, num: int | float, desc: ModbusEntityDescription
+    ) -> float:
+        """Apply multiplier and offset to the number"""
         if isinstance(num, (int, float)):
             if desc.conv_multiplier is not None:
                 num = num * desc.conv_multiplier
@@ -158,40 +172,50 @@ class Conversion:
             ModbusDataType.HOLDING_REGISTER,
             ModbusDataType.INPUT_REGISTER,
         ]:
-            if isinstance(
-                response, (ReadHoldingRegistersResponse, ReadInputRegistersResponse)
-            ):
-                registers = response.registers
-                value: Optional[Any] = None
-                if desc.is_string:
-                    value = self._convert_to_string(registers)
-                elif desc.is_float:
-                    value = self._convert_to_float(registers)
-                elif desc.conv_map:
-                    value = self._convert_to_enum(registers, desc)
-                elif desc.conv_flags:
-                    value = self._convert_to_flags(registers, desc)
-                else:
-                    value = self._convert_to_decimal(registers, desc)
-                return value
-            else:
-                raise TypeError("Invalid response type for register")
+            return self._convert_from_register_response(desc, response)
         elif desc.data_type == ModbusDataType.COIL:
-            if isinstance(response, ReadCoilsResponse):
-                return response.bits[0]  # Single bit for single entity
-            else:
-                raise TypeError("Invalid response type for coil")
+            return self._convert_from_coil_response(response)
         elif desc.data_type == ModbusDataType.DISCRETE_INPUT:
-            if isinstance(response, ReadDiscreteInputsResponse):
-                return response.bits[0]  # Single bit for single entity
-            else:
-                raise TypeError("Invalid response type for discrete input")
+            return self._convert_from_discrete_input_response(response)
         else:
             raise ValueError("Invalid data type")
 
+    def _convert_from_register_response(
+        self, desc: ModbusEntityDescription, response: ModbusPDU
+    ) -> str | float | int | None:
+        """Convert from register response"""
+        if not isinstance(
+            response, (ReadHoldingRegistersResponse, ReadInputRegistersResponse)
+        ):
+            raise TypeError("Invalid response type for register")
+
+        registers = response.registers
+        if desc.is_string:
+            return self._convert_to_string(registers)
+        elif desc.is_float:
+            return self._convert_to_float(registers)
+        elif desc.conv_map:
+            return self._convert_to_enum(registers, desc)
+        elif desc.conv_flags:
+            return self._convert_to_flags(registers, desc)
+        else:
+            return self._convert_to_decimal(registers, desc)
+
+    def _convert_from_coil_response(self, response: ModbusPDU) -> bool:
+        """Convert from coil response"""
+        if not isinstance(response, ReadCoilsResponse):
+            raise TypeError("Invalid response type for coil")
+        return response.bits[0]  # Single bit for single entity
+
+    def _convert_from_discrete_input_response(self, response: ModbusPDU) -> bool:
+        """Convert from discrete input response"""
+        if not isinstance(response, ReadDiscreteInputsResponse):
+            raise TypeError("Invalid response type for discrete input")
+        return response.bits[0]  # Single bit for single entity
+
     def convert_to_registers(
         self, desc: ModbusEntityDescription, value: str | float | int
-    ) -> list[int] | int:
+    ) -> list[int]:
         """Entry point for conversion to registers"""
         registers: list[int] | None = None
         if desc.is_string and isinstance(value, str):

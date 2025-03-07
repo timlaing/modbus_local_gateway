@@ -6,18 +6,17 @@
     "configurations": [
         {
             "name": "Python: Debug Tests",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "purpose": [
                 "debug-test"
             ],
-            // "console": "integratedTerminal",
             "justMyCode": false
         },
         {
             "name": "Home Assistant",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "homeassistant",
             "justMyCode": false,

@@ -47,7 +47,7 @@ class UnusedKeysMixin:
     float: bool | None = False  # is_float
     control: str | None = ControlType.SENSOR  # control_type
     number: dict[str, int] | None = None  # min, max
-    options: dict[int, str] | None = None  # select_options
+    # options: dict[int, str] | None = None  # select_options
     switch: dict[str, float] | None = None  # on, off
 
 
