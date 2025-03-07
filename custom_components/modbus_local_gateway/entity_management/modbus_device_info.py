@@ -146,10 +146,10 @@ class ModbusDeviceInfo:
         ):
             if isinstance(self._config.get(section), dict):
                 for entity, entity_data in self._config[section].items():
-                    if isinstance(entity_data, dict):
-                        desc = self._create_description(entity, section, entity_data)
-                        if desc:
-                            descriptions.append(desc)
+                    if isinstance(entity_data, dict) and (
+                        desc := self._create_description(entity, section, entity_data)
+                    ):
+                        descriptions.append(desc)
         return tuple(descriptions)
 
     def get_uom(self, data, control_type) -> dict[str, str | None]:
@@ -262,23 +262,23 @@ class ModbusDeviceInfo:
 
     def _handle_sensor_description(self, params):
         """Handle sensor description specific logic"""
-        if params.get("precision") is None:
-            if (
-                params.get("conv_map") is None
-                and params.get("conv_flags") is None
-                and params.get("is_string") is None
-            ):
-                multiplier = params.get("conv_multiplier")
-                if not multiplier or multiplier % 1 == 0:
-                    params["precision"] = 0
-                elif multiplier > 0.0001:
-                    params["precision"] = (
-                        len(f"{multiplier:.8g}".split(".")[-1].rstrip("0"))
-                        if "." in f"{multiplier:.8g}"
-                        else 0
-                    )
-                else:
-                    params["precision"] = 4
+        if (
+            params.get("precision") is None
+            and params.get("conv_map") is None
+            and params.get("conv_flags") is None
+            and params.get("is_string") is None
+        ):
+            multiplier = params.get("conv_multiplier")
+            if not multiplier or multiplier % 1 == 0:
+                params["precision"] = 0
+            elif multiplier > 0.0001:
+                params["precision"] = (
+                    len(f"{multiplier:.8g}".split(".")[-1].rstrip("0"))
+                    if "." in f"{multiplier:.8g}"
+                    else 0
+                )
+            else:
+                params["precision"] = 4
         return ModbusSensorEntityDescription
 
     def _handle_switch_description(self, params, _data, entity):
