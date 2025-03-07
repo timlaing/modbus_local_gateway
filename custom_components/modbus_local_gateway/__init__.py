@@ -31,8 +31,13 @@ async def async_setup_entry(
 
     device: dr.DeviceEntry = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        identifiers={(DOMAIN, f"ModbusGateway-{gateway_key}")},
-        name=f"Modbus Gateway ({gateway_key})",
+        identifiers={
+            (
+                DOMAIN,
+                f"ModbusGateway-{get_gateway_key(entry=entry, with_slave=False)}",
+            )
+        },
+        name=f"Modbus Gateway ({get_gateway_key(entry=entry, with_slave=False)})",
         configuration_url=f"http://{entry.data[CONF_HOST]}/",
     )
 
