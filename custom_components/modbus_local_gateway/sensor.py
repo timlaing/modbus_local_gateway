@@ -73,17 +73,27 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                 self.entity_description, ModbusSensorEntityDescription
             ):
                 if (
-                    self.native_value is not None
+                    self._attr_native_value is not None
                     and self.state_class == SensorStateClass.TOTAL_INCREASING
-                    and self.native_value > value  # type: ignore
+                    and self._attr_native_value > value  # type: ignore
                 ):
                     if self.entity_description.never_resets:
-                        return
+                        _LOGGER.debug(
+                            "Ignoring device value with %s as %s - never resets %s",
+                            self.entity_description.key,
+                            value,
+                            self._attr_native_value,
+                        )
 
                     self.last_reset = datetime.now()
 
                 self._attr_native_value = value
                 self.async_write_ha_state()
+                _LOGGER.debug(
+                    "Updating device with %s as %s",
+                    self.entity_description.key,
+                    value,
+                )
 
                 if (
                     self._attr_device_info
@@ -95,11 +105,6 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                     ]
                 ):
                     attr: dict[str, str] = {self.entity_description.key: str(value)}
-                    _LOGGER.debug(
-                        "Updating device with %s as %s",
-                        self.entity_description.key,
-                        value,
-                    )
                     device_registry: dr.DeviceRegistry = dr.async_get(self.hass)
                     device: dr.DeviceEntry | None = device_registry.async_get_device(
                         self._attr_device_info["identifiers"]
