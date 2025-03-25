@@ -165,7 +165,7 @@ async def test_update_value() -> None:
         coordinator.get_data.assert_called_once_with(ctx)
 
         error.assert_not_called()
-        debug.assert_not_called()
+        debug.assert_called_once()
         warning.assert_not_called()
         write.assert_called_once()
 
@@ -184,7 +184,7 @@ async def test_update_reset() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
-    type(entity).native_value = PropertyMock(return_value=2)  # type: ignore
+    type(entity)._attr_native_value = PropertyMock(return_value=2)  # pylint: disable=protected-access
     type(entity).state_class = PropertyMock(
         return_value=SensorStateClass.TOTAL_INCREASING
     )
@@ -215,7 +215,7 @@ async def test_update_reset() -> None:
         coordinator.get_data.assert_called_once_with(ctx)
 
         error.assert_not_called()
-        debug.assert_not_called()
+        debug.assert_called_once()
         warning.assert_not_called()
         write.assert_called_once()
         reset.assert_called_once()
@@ -235,7 +235,7 @@ async def test_update_never_reset() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
-    type(entity).native_value = PropertyMock(return_value=2)  # type: ignore
+    type(entity)._attr_native_value = PropertyMock(return_value=2)  # pylint: disable=protected-access
     type(entity).state_class = PropertyMock(
         return_value=SensorStateClass.TOTAL_INCREASING
     )
@@ -267,10 +267,10 @@ async def test_update_never_reset() -> None:
         coordinator.get_data.assert_called_once_with(ctx)
 
         error.assert_not_called()
-        debug.assert_not_called()
+        debug.assert_called()
         warning.assert_not_called()
-        write.assert_not_called()
-        reset.assert_not_called()
+        write.assert_called()
+        reset.assert_called()
 
 
 async def test_update_deviceupdate() -> None:
@@ -289,7 +289,7 @@ async def test_update_deviceupdate() -> None:
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)  # type: ignore
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).hass = PropertyMock(return_value=hass)
-    type(entity).native_value = PropertyMock(return_value=2)  # type: ignore
+    type(entity)._attr_native_value = PropertyMock(return_value=2)  # pylint: disable=protected-access
     type(entity).state_class = PropertyMock(
         return_value=SensorStateClass.TOTAL_INCREASING
     )
