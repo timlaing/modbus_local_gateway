@@ -162,7 +162,7 @@ read_only_word:
     size: 2
 
   Phase 2 Power Factor:
-    address: 32  # Note: Was duplicate "address: 34" like below, corrected to "address: 32"
+    address: 32 # Note: Was duplicate "address: 34" like below, corrected to "address: 32"
     name: Phase 2 Power Factor
     precision: 2
     float: True
@@ -586,7 +586,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   Total kVArh:
@@ -605,7 +605,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L2 Import Energy:
@@ -615,7 +615,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L3 Import Energy:
@@ -625,7 +625,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L1 Export Energy:
@@ -635,7 +635,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L2 Export Energy:
@@ -645,7 +645,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L3 Export Energy:
@@ -655,7 +655,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L1 Total Energy:
@@ -665,7 +665,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L2 Total Energy:
@@ -675,7 +675,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L3 Total Energy:
@@ -685,7 +685,7 @@ read_only_word:
     precision: 2
     float: True
     device_class: energy
-    state_class: measurement
+    state_class: total
     size: 2
 
   L1 Import kVArh:
