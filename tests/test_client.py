@@ -919,7 +919,7 @@ async def test_data_received_error() -> None:
 
 
 async def test_data_received() -> None:
-    """Test the case when an IO error occurs"""
+    """Test normal data reception without errors"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     with patch(
         "custom_components.modbus_local_gateway.tcp_client.TransactionManager.data_received"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from typing import Any, Callable, List
 
@@ -24,10 +25,8 @@ class MyTransactionManager(TransactionManager):
 
     def data_received(self, data: bytes) -> None:
         """Catch any protocol exceptions so they don't pollute the HA logs"""
-        try:
+        with contextlib.suppress(ModbusIOException):
             super().data_received(data)
-        except ModbusIOException:
-            pass
 
 
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
