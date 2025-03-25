@@ -1,5 +1,8 @@
 """The Modbus Local Gateway sensor integration."""
 
+import logging
+
+import getmac
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
@@ -18,6 +21,8 @@ from .coordinator import ModbusCoordinator
 from .helpers import get_gateway_key
 from .tcp_client import AsyncModbusTcpClientGateway
 
+_LOGGER: logging.Logger = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: config_entries.ConfigEntry
@@ -29,6 +34,13 @@ async def async_setup_entry(
 
     device_registry: dr.DeviceRegistry = dr.async_get(hass)
 
+    mac: str | None = getmac.get_mac_address(hostname=entry.data[CONF_HOST])
+    connections: set[tuple[str, str]] | None = (
+        {(dr.CONNECTION_NETWORK_MAC, mac)} if mac else None
+    )
+
+    _LOGGER.debug("mac address for host is: %s", mac)
+
     device: dr.DeviceEntry = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={
@@ -39,6 +51,7 @@ async def async_setup_entry(
         },
         name=f"Modbus Gateway ({get_gateway_key(entry=entry, with_slave=False)})",
         configuration_url=f"http://{entry.data[CONF_HOST]}/",
+        connections=connections,
     )
 
     if gateway_key not in hass.data[DOMAIN]:

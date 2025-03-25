@@ -47,6 +47,7 @@ async def async_setup_entities(
     coordinator.max_read_size = device_info.max_read_size
 
     identifiers: set[tuple[str, str]] = {
+        (DOMAIN, f"{coordinator.gateway}"),
         (DOMAIN, f"{coordinator.gateway}-{config[CONF_SLAVE_ID]}"),
     }
 
