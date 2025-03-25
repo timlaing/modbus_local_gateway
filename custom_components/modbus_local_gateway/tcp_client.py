@@ -7,15 +7,27 @@ import logging
 from typing import Any, Callable, List
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ModbusException
+from pymodbus.exceptions import ModbusException, ModbusIOException
 from pymodbus.framer import FramerType
 from pymodbus.pdu.pdu import ModbusPDU
+from pymodbus.transaction import TransactionManager
 
 from .context import ModbusContext
 from .conversion import Conversion
 from .entity_management.const import ModbusDataType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+
+class MyTransactionManager(TransactionManager):
+    """Custom Transaction Manager to supress exception logging"""
+
+    def data_received(self, data: bytes) -> None:
+        """Catch any protocol exceptions so they don't pollute the HA logs"""
+        try:
+            super().data_received(data)
+        except ModbusIOException:
+            pass
 
 
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
@@ -40,6 +52,15 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         self.lock = asyncio.Lock()
         super().__init__(
             host=host, port=port, framer=framer, source_address=source_address, **kwargs
+        )
+        self.ctx = MyTransactionManager(
+            params=self.ctx.comm_params,
+            framer=self.ctx.framer,
+            retries=self.ctx.retries,
+            is_server=self.ctx.is_server,
+            trace_connect=self.ctx.trace_connect,
+            trace_packet=self.ctx.trace_packet,
+            trace_pdu=self.ctx.trace_pdu,
         )
 
     async def read_data(
@@ -70,6 +91,17 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
             if not hasattr(temp_response, "registers" if is_register_func else "bits"):
                 _LOGGER.error("Invalid response received from slave %d", slave)
+                return None
+
+            if (
+                hasattr(temp_response, "registers")
+                and len(temp_response.registers) != read_count
+            ):
+                _LOGGER.error(
+                    "Invalid response received from slave %d, address: %d (count does not match)",
+                    slave,
+                    current_address,
+                )
                 return None
 
             remaining -= read_count
