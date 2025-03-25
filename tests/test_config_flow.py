@@ -155,8 +155,10 @@ async def test_options_flow_handler(
     hass: HomeAssistant, mock_config_entry: MockConfigEntry
 ) -> None:
     """Test the options flow handler."""
-    flow = OptionsFlowHandler(mock_config_entry)
+    mock_config_entry.add_to_hass(hass)
+    flow = OptionsFlowHandler()
     flow.hass = hass
+    flow.handler = mock_config_entry.entry_id
     hass.data = {DOMAIN: {"localhost:123:1": MagicMock()}}  # type: ignore
 
     result: ConfigFlowResult = await flow.async_step_init(
