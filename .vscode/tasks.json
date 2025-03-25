@@ -4,7 +4,7 @@
     {
       "label": "Install requirements",
       "type": "shell",
-      "command": "pip3 install --user -r requirements-dev.txt",
+      "command": "uv pip install -r requirements-dev.txt",
       "problemMatcher": []
     },
     {
@@ -16,7 +16,7 @@
     {
       "label": "Install home assistant",
       "type": "shell",
-      "command": "pip install --user -r ~/core/requirements_all.txt",
+      "command": "uv pip install -r ~/core/requirements_all.txt",
       "dependsOn": "Clone home assistant",
       "problemMatcher": []
     },
