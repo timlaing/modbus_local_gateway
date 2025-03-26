@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import cast
 
 from homeassistant.components.sensor import RestoreSensor, SensorExtraStoredData
