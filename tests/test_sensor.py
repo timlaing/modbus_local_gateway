@@ -218,7 +218,7 @@ async def test_update_reset() -> None:
         debug.assert_called_once()
         warning.assert_not_called()
         write.assert_called_once()
-        reset.assert_called_once()
+        reset.assert_not_called()
 
 
 async def test_update_never_reset() -> None:
@@ -270,7 +270,7 @@ async def test_update_never_reset() -> None:
         debug.assert_called()
         warning.assert_not_called()
         write.assert_called()
-        reset.assert_called()
+        reset.assert_not_called()
 
 
 async def test_update_deviceupdate() -> None:
@@ -327,4 +327,4 @@ async def test_update_deviceupdate() -> None:
         debug.assert_called()
         warning.assert_not_called()
         write.assert_called_once()
-        reset.assert_called_once()
+        reset.assert_not_called()

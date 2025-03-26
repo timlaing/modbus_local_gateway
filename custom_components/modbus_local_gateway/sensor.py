@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import cast
 
 from homeassistant.components.sensor import RestoreSensor, SensorExtraStoredData
@@ -84,8 +83,6 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                             value,
                             self._attr_native_value,
                         )
-
-                    self.last_reset = datetime.now()
 
                 self._attr_native_value = value
                 self.async_write_ha_state()
