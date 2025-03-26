@@ -85,8 +85,6 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                             self._attr_native_value,
                         )
 
-                    self.last_reset = datetime.now()
-
                 self._attr_native_value = value
                 self.async_write_ha_state()
                 _LOGGER.debug(
