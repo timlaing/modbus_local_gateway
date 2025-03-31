@@ -38,9 +38,8 @@ read_write_word:
     control: select
     float: true
     options:
-      0 = kWh / Ah
-      1 = Mwh / kAh
-
+      0: kWh / Ah
+      1: Mwh / kAh
 read_only_word:
   Phase 1 Voltage:
     address: 0
