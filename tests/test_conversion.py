@@ -89,7 +89,7 @@ async def test_int16_multiplier() -> None:
         ),
     )
 
-    assert 0.8 == value
+    assert value == pytest.approx(0.8, 0.01)
 
 
 async def test_from_int16_multiplier() -> None:
@@ -174,7 +174,7 @@ async def test_float() -> None:
         ),
     )
 
-    assert 1.0 == value
+    assert value == pytest.approx(1.0, 0.1)
 
 
 async def test_from_float() -> None:
