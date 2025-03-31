@@ -48,13 +48,16 @@ class Conversion:
         )
         return registers
 
-    def _convert_to_float(self, registers: list) -> float:
+    def _convert_to_float(
+        self, registers: list, desc: ModbusEntityDescription
+    ) -> float:
         """Convert to a float type"""
         value: str | int | float | list = self.client.convert_from_registers(
             registers,
             data_type=self.client.DATATYPE.FLOAT32,
         )
         if isinstance(value, float):
+            value = self._apply_conversion_operations(value, desc)
             return value
         raise InvalidDataTypeError()
 
@@ -193,7 +196,7 @@ class Conversion:
         if desc.is_string:
             return self._convert_to_string(registers)
         elif desc.is_float:
-            return self._convert_to_float(registers)
+            return self._convert_to_float(registers, desc)
         elif desc.conv_map:
             return self._convert_to_enum(registers, desc)
         elif desc.conv_flags:
