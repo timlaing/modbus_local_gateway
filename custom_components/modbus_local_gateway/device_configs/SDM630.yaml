@@ -31,7 +31,15 @@ read_write_word:
       2: 9600 bps
       3: 19200 bps
       4: 38400 bps
-
+  unit_prefix:
+    name: Energy Units Prefix
+    address: 30
+    size: 2
+    control: select
+    float: true
+    options:
+      0: kWh / Ah
+      1: Mwh / kAh
 read_only_word:
   Phase 1 Voltage:
     address: 0
@@ -293,7 +301,7 @@ read_only_word:
     device_class: energy
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: false
 
   Total Export Active Energy:
     address: 74
@@ -304,7 +312,7 @@ read_only_word:
     device_class: energy
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: false
 
   Total Import Reactive Energy:
     address: 76
@@ -314,7 +322,7 @@ read_only_word:
     float: True
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: false
 
   Total Export Reactive Energy:
     address: 78
@@ -324,7 +332,7 @@ read_only_word:
     float: True
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: false
 
   Total VAh:
     address: 80
@@ -334,7 +342,7 @@ read_only_word:
     float: True
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: false
 
   Ah:
     address: 82
