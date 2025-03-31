@@ -503,3 +503,28 @@ async def test_convert_from_response_errors() -> None:
                 data_type=ModbusDataType.DISCRETE_INPUT,
             ),
         )
+
+
+async def test_float_multiplier() -> None:
+    """Test float with multiplier conversion"""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(
+                7.5, data_type=client.DATATYPE.FLOAT32
+            )
+        ),
+        desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="test",
+            conv_multiplier=0.001,
+            is_float=True,
+            register_count=2,
+            state_class="total_increasing",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+
+    assert value == pytest.approx(0.0075, 0.0001)
