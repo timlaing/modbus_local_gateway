@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from datetime import date, datetime
+from decimal import Decimal
 from typing import cast
 
 from homeassistant.components.sensor import RestoreSensor, SensorExtraStoredData
@@ -18,7 +20,7 @@ from .entity_management.base import ModbusSensorEntityDescription
 from .entity_management.const import ControlType
 from .helpers import async_setup_entities
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -116,9 +118,11 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
 
     @property
-    def native_value(self):  # type: ignore
+    def native_value(self) -> float | str | int | None | date | datetime | Decimal:  # type: ignore
         """Return the state of the sensor."""
-        result = super().native_value
+        result: str | int | float | None | date | datetime | Decimal = (
+            super().native_value
+        )
         if (
             isinstance(self.entity_description, ModbusSensorEntityDescription)
             and self.entity_description.precision is not None
