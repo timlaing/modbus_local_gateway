@@ -131,7 +131,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             entities: list[ModbusContext] = sorted(
                 self.async_contexts(), key=lambda x: x.slave_id
             )
-            data = await self._update_device(entities=entities)
+            data: dict[str, Any] = await self._update_device(entities=entities)
             if data:
                 self._last_successful_update = datetime.now()
             return data
