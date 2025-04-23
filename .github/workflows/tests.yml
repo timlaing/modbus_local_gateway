@@ -23,8 +23,8 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
       - name: Test with pytest
         run: pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Upload code coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage
+          path: coverage.xml
