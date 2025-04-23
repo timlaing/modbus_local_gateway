@@ -1,38 +1,26 @@
 """TCP Client for Modbus Local Gateway"""
 
-from __future__ import annotations
-
 import asyncio
-import contextlib
 import logging
 from typing import Any, Callable, List
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ModbusException, ModbusIOException
+from pymodbus.exceptions import ModbusException
 from pymodbus.framer import FramerType
 from pymodbus.pdu.pdu import ModbusPDU
-from pymodbus.transaction import TransactionManager
 
 from .context import ModbusContext
 from .conversion import Conversion
 from .entity_management.const import ModbusDataType
+from .transaction import MyTransactionManager
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-
-class MyTransactionManager(TransactionManager):
-    """Custom Transaction Manager to supress exception logging"""
-
-    def data_received(self, data: bytes) -> None:
-        """Catch any protocol exceptions so they don't pollute the HA logs"""
-        with contextlib.suppress(ModbusIOException):
-            super().data_received(data)
 
 
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     """Custom Modbus TCP client with request batching based on slave and locking."""
 
-    _CLIENT: dict[str, AsyncModbusTcpClientGateway] = {}
+    _CLIENT: dict[str, "AsyncModbusTcpClientGateway"] = {}
 
     def __init__(
         self,
@@ -345,7 +333,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     @classmethod
     def async_get_client_connection(
         cls, host: str, port: int
-    ) -> AsyncModbusTcpClientGateway:
+    ) -> "AsyncModbusTcpClientGateway":
         """Gets a modbus client object"""
         key: str = f"{host}:{port}"
         if key not in cls._CLIENT:
