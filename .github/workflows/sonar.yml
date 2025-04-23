@@ -20,10 +20,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: code-coverage
-          path: coverage.xml
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
-
+          repository: ${{ github.event.workflow_run.head_repository.full_name }} 
+      - name: Display structure of downloaded files
+        run: ls -R
       - uses: SonarSource/sonarqube-scan-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to get PR information, if any
