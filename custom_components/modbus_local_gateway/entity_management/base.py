@@ -78,6 +78,7 @@ class ModbusEntityDescription(
     never_resets: bool = False
     control_type: str | None = ControlType.SENSOR
     data_type: ModbusDataType
+    max_change: float | None = None
 
     def validate(self) -> bool:
         """Validate the entity description"""
@@ -126,6 +127,14 @@ class ModbusEntityDescription(
                 self.key,
                 REGISTER_COUNT,
                 IS_FLOAT,
+            )
+            valid = False
+        elif self.max_change and self.is_string:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s not valid for %s",
+                self.key,
+                self.max_change,
+                IS_STRING,
             )
             valid = False
         return valid

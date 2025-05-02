@@ -165,6 +165,7 @@ read_only_word:
     state_class: total_increasing
     size: 2
     never_resets: True
+    max_change: 1.0
 
   Export Active Energy:
     address: 74
@@ -176,6 +177,7 @@ read_only_word:
     state_class: total_increasing
     size: 2
     never_resets: True
+    max_change: 1.0
 
   Import Reactive Energy:
     address: 76

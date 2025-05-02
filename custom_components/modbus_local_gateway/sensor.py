@@ -67,24 +67,50 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: str | int | None = cast(
+            value: str | int | float | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
             if value is not None and isinstance(
                 self.entity_description, ModbusSensorEntityDescription
             ):
+                if self._attr_native_value == value:
+                    _LOGGER.debug(
+                        "Ignoring device value with %s as %s - already set",
+                        self.entity_description.key,
+                        value,
+                    )
+                    return
+
                 if (
-                    self._attr_native_value is not None
-                    and self.state_class == SensorStateClass.TOTAL_INCREASING
-                    and self._attr_native_value > value  # type: ignore
+                    isinstance(self._attr_native_value, float)
+                    and isinstance(value, float)
+                ) or (
+                    isinstance(self._attr_native_value, int) and isinstance(value, int)
                 ):
-                    if self.entity_description.never_resets:
-                        _LOGGER.debug(
-                            "Ignoring device value with %s as %s - never resets %s",
+                    if (
+                        self.entity_description.max_change
+                        and self._attr_native_value - value
+                        > self.entity_description.max_change
+                    ):
+                        _LOGGER.warning(
+                            "Ignoring device value with %s as %s - max_change %s",
                             self.entity_description.key,
                             value,
                             self._attr_native_value,
                         )
+                        return
+
+                    if (
+                        self.state_class == SensorStateClass.TOTAL_INCREASING
+                        and self._attr_native_value > value  # type: ignore
+                    ):
+                        if self.entity_description.never_resets:
+                            _LOGGER.warning(
+                                "Ignoring device value with %s as %s - never resets %s",
+                                self.entity_description.key,
+                                value,
+                                self._attr_native_value,
+                            )
 
                 self._attr_native_value = value
                 self.async_write_ha_state()

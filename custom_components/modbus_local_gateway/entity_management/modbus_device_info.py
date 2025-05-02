@@ -35,6 +35,7 @@ from .const import (
     IS_FLOAT,
     IS_STRING,
     MANUFACTURER,
+    MAX_CHANGE,
     MAX_READ,
     MAX_READ_DEFAULT,
     MODEL,
@@ -226,6 +227,7 @@ class ModbusDeviceInfo:
                 "native_unit_of_measurement": uom["native_unit_of_measurement"],
                 "device_class": uom["device_class"],
                 "state_class": uom["state_class"],
+                "max_change": _data.get(MAX_CHANGE),
             }
         )
         return params
