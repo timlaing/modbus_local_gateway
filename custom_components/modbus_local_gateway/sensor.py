@@ -79,9 +79,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                         self.entity_description.key,
                         value,
                     )
-                    return
-
-                if (
+                elif (
                     isinstance(self._attr_native_value, float)
                     and isinstance(value, float)
                 ) or (
