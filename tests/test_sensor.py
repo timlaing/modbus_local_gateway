@@ -268,7 +268,7 @@ async def test_update_never_reset() -> None:
 
         error.assert_not_called()
         debug.assert_called()
-        warning.assert_not_called()
+        warning.assert_called()
         write.assert_called()
         reset.assert_not_called()
 
