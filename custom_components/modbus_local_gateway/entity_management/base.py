@@ -21,6 +21,7 @@ from .const import (
     CONV_SUM_SCALE,
     IS_FLOAT,
     IS_STRING,
+    MAX_CHANGE,
     PRECISION,
     REGISTER_COUNT,
     ControlType,
@@ -78,22 +79,40 @@ class ModbusEntityDescription(
     never_resets: bool = False
     control_type: str | None = ControlType.SENSOR
     data_type: ModbusDataType
+    max_change: float | None = None
 
     def validate(self) -> bool:
         """Validate the entity description"""
-        valid = True
+        if not self._validate_string_and_float():
+            return False
+        if not self._validate_string_constraints():
+            return False
+        if not self._validate_float_constraints():
+            return False
+        if not self._validate_register_count():
+            return False
+        if not self._validate_max_change():
+            return False
+        return True
+
+    def _validate_string_and_float(self) -> bool:
+        """Check if both string and float are defined."""
         if self.is_float and self.is_string:
             _LOGGER.warning(
                 "Unable to create entity for %s: Both string and float defined",
                 self.key,
             )
-            valid = False
-        elif (
+            return False
+        return True
+
+    def _validate_string_constraints(self) -> bool:
+        """Check constraints for string entities."""
+        if self.is_string and (
             self.conv_shift_bits
             or self.conv_bits
             or self.precision
             or (self.conv_multiplier and int(self.conv_multiplier) != 1)
-        ) and self.is_string:
+        ):
             _LOGGER.warning(
                 "Unable to create entity for %s: %s, %s, %s, %s, %s, and %s not valid for %s",
                 self.key,
@@ -105,12 +124,16 @@ class ModbusEntityDescription(
                 PRECISION,
                 IS_STRING,
             )
-            valid = False
-        elif (
+            return False
+        return True
+
+    def _validate_float_constraints(self) -> bool:
+        """Check constraints for float entities."""
+        if self.is_float and (
             self.conv_shift_bits
             or self.conv_bits
             or (self.conv_multiplier is not None and int(self.conv_multiplier) != 1)
-        ) and self.is_float:
+        ):
             _LOGGER.warning(
                 "Unable to create entity for %s: %s, %s, and %s not valid for %s",
                 self.key,
@@ -119,16 +142,40 @@ class ModbusEntityDescription(
                 CONV_MULTIPLIER,
                 IS_FLOAT,
             )
-            valid = False
-        elif self.register_count != 2 and self.is_float:
+            return False
+        return True
+
+    def _validate_register_count(self) -> bool:
+        """Check if register count is valid for float entities."""
+        if self.is_float and self.register_count != 2:
             _LOGGER.warning(
                 "Unable to create entity for %s: %s outside valid range not valid for %s",
                 self.key,
                 REGISTER_COUNT,
                 IS_FLOAT,
             )
-            valid = False
-        return valid
+            return False
+        return True
+
+    def _validate_max_change(self) -> bool:
+        """Check if max_change is valid."""
+        if self.max_change is not None:
+            if self.is_string:
+                _LOGGER.warning(
+                    "Unable to create entity for %s: %s not valid for %s",
+                    self.key,
+                    self.max_change,
+                    IS_STRING,
+                )
+                return False
+            if self.max_change < 0:
+                _LOGGER.warning(
+                    "Unable to create entity for %s: %s must be ≥ 0",
+                    self.key,
+                    MAX_CHANGE,
+                )
+                return False
+        return True
 
 
 @dataclass(kw_only=True, frozen=True)
