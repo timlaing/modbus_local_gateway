@@ -22,7 +22,7 @@ jobs:
           name: code-coverage
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
-          repository: ${{ github.event.workflow_run.head_repository.full_name }} 
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
       - name: Display structure of downloaded files
         run: ls -R
       - uses: SonarSource/sonarqube-scan-action@master

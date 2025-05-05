@@ -37,7 +37,7 @@ read_only_word:
     name: Total system power demand
     unit_of_measurement: Watts
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
 
@@ -46,17 +46,17 @@ read_only_word:
     name: Maximum total system power demand
     unit_of_measurement: Watts
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
-    never_resets: True
+    never_resets: true
 
   Current system import power demand:
     address: 88
     name: Current system import power demand
     unit_of_measurement: Watts
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
 
@@ -65,17 +65,17 @@ read_only_word:
     name: Maximum system import power demand
     unit_of_measurement: Watts
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
-    never_resets: True
+    never_resets: true
 
   Current system export power demand:
     address: 92
     name: Current system export power demand
     unit_of_measurement: Watts
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
 
@@ -84,17 +84,17 @@ read_only_word:
     name: Maximum system export power demand
     unit_of_measurement: Watts
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
-    never_resets: True
+    never_resets: true
 
   Voltage:
     address: 0
     name: Voltage
     unit_of_measurement: Volts
     precision: 2
-    float: True
+    float: true
     size: 2
 
   Current:
@@ -102,7 +102,7 @@ read_only_word:
     name: Current
     unit_of_measurement: Amps
     precision: 2
-    float: True
+    float: true
     size: 2
 
   Active Power:
@@ -110,7 +110,7 @@ read_only_word:
     name: Active Power
     unit_of_measurement: Watts
     precision: 2
-    float: True
+    float: true
     size: 2
 
   Apparent Power:
@@ -118,7 +118,7 @@ read_only_word:
     name: Apparent Power
     unit_of_measurement: VoltAmps
     precision: 2
-    float: True
+    float: true
     size: 2
 
   Reactive Power:
@@ -126,14 +126,14 @@ read_only_word:
     name: Reactive Power
     unit_of_measurement: VAr
     precision: 2
-    float: True
+    float: true
     size: 2
 
   Power Factor:
     address: 30
     name: Power Factor
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
 
@@ -142,7 +142,7 @@ read_only_word:
     name: Phase Angle
     unit_of_measurement: Degrees
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
 
@@ -151,7 +151,7 @@ read_only_word:
     name: Frequency
     unit_of_measurement: Hz
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
 
@@ -160,11 +160,11 @@ read_only_word:
     name: Import Active Energy
     unit_of_measurement: kWh
     precision: 2
-    float: True
+    float: true
     device_class: energy
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: true
     max_change: 1.0
 
   Export Active Energy:
@@ -172,11 +172,11 @@ read_only_word:
     name: Export Active Energy
     unit_of_measurement: kWh
     precision: 2
-    float: True
+    float: true
     device_class: energy
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: true
     max_change: 1.0
 
   Import Reactive Energy:
@@ -184,27 +184,27 @@ read_only_word:
     name: Import Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
-    float: True
+    float: true
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: true
 
   Export Reactive Energy:
     address: 78
     name: Export Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
-    float: True
+    float: true
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: true
 
   Current demand:
     address: 258
     name: Current demand
     unit_of_measurement: Amps
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
 
@@ -213,31 +213,32 @@ read_only_word:
     name: Maximum current Demand
     unit_of_measurement: Amps
     precision: 2
-    float: True
+    float: true
     state_class: measurement
     size: 2
-    never_resets: True
+    never_resets: true
 
   Total Active Energy:
     address: 342
     name: Total Active Energy
     unit_of_measurement: kWh
     precision: 2
-    float: True
+    float: true
     device_class: energy
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: true
+    max_change: 1.0
 
   Total Reactive Energy:
     address: 344
     name: Total Reactive Energy
     unit_of_measurement: kVArh
     precision: 2
-    float: True
+    float: true
     state_class: total_increasing
     size: 2
-    never_resets: True
+    never_resets: true
 
 read_write_boolean:
 

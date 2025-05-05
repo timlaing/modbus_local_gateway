@@ -328,3 +328,154 @@ async def test_update_deviceupdate() -> None:
         warning.assert_not_called()
         write.assert_called_once()
         reset.assert_not_called()
+
+
+async def test_handle_coordinator_update_ignore_same_value() -> None:
+    """Test _handle_coordinator_update ignores the same value."""
+    coordinator = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(
+        return_value=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            register_address=1,
+            data_type=ModbusDataType.INPUT_REGISTER,
+        )
+    )
+    type(entity)._attr_native_value = PropertyMock(return_value=10)  # pylint: disable=protected-access
+    coordinator.get_data.return_value = 10
+
+    with patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug:
+        entity._handle_coordinator_update()  # pylint: disable=protected-access
+
+        coordinator.get_data.assert_called_once_with(ctx)
+        debug.assert_called_once_with(
+            "Ignoring device value with %s as %s - already set",
+            "key",
+            10,
+        )
+
+
+async def test_handle_coordinator_update_ignore_large_change() -> None:
+    """Test _handle_coordinator_update ignores large changes."""
+    coordinator = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(
+        return_value=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            register_address=1,
+            data_type=ModbusDataType.INPUT_REGISTER,
+            max_change=5,
+        )
+    )
+    type(entity)._attr_native_value = PropertyMock(return_value=10)  # pylint: disable=protected-access
+    coordinator.get_data.return_value = 20
+
+    with patch(
+        "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
+    ) as warning:
+        entity._handle_coordinator_update()  # pylint: disable=protected-access
+
+        coordinator.get_data.assert_called_once_with(ctx)
+        warning.assert_called_once_with(
+            ("Ignoring device value for %s: %s – change Δ=%s exceeds max_change=%s"),
+            "key",
+            20,
+            10,
+            5,
+        )
+
+
+async def test_handle_coordinator_update_update_value() -> None:
+    """Test _handle_coordinator_update updates the value."""
+    coordinator = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(
+        return_value=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            register_address=1,
+            data_type=ModbusDataType.INPUT_REGISTER,
+        )
+    )
+    type(entity)._attr_native_value = PropertyMock(return_value=10)  # pylint: disable=protected-access
+    coordinator.get_data.return_value = 15
+    write = MagicMock()
+    entity.async_write_ha_state = write
+
+    with patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug:
+        entity._handle_coordinator_update()  # pylint: disable=protected-access
+
+        coordinator.get_data.assert_called_once_with(ctx)
+        write.assert_called_once()
+        debug.assert_called_with(
+            "Updating device with %s as %s",
+            "key",
+            15,
+        )
+
+
+async def test_handle_coordinator_update_never_resets() -> None:
+    """Test _handle_coordinator_update ignores decreasing values for never resets."""
+    coordinator = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).entity_description = PropertyMock(
+        return_value=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            key="key",
+            register_address=1,
+            data_type=ModbusDataType.INPUT_REGISTER,
+            never_resets=True,
+        )
+    )
+    type(entity)._attr_native_value = PropertyMock(return_value=15)  # pylint: disable=protected-access
+    type(entity).state_class = PropertyMock(
+        return_value=SensorStateClass.TOTAL_INCREASING
+    )
+    coordinator.get_data.return_value = 10
+
+    with patch(
+        "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
+    ) as warning:
+        entity._handle_coordinator_update()  # pylint: disable=protected-access
+
+        coordinator.get_data.assert_called_once_with(ctx)
+        warning.assert_called_once_with(
+            "Ignoring device value with %s as %s - never resets %s",
+            "key",
+            10,
+            15,
+        )

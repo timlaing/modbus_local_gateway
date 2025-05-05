@@ -86,29 +86,33 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                     isinstance(self._attr_native_value, int) and isinstance(value, int)
                 ):
                     if (
-                        self.entity_description.max_change
-                        and self._attr_native_value - value
+                        self.entity_description.max_change is not None
+                        and abs(self._attr_native_value - value)
                         > self.entity_description.max_change
                     ):
                         _LOGGER.warning(
-                            "Ignoring device value with %s as %s - max_change %s",
+                            (
+                                "Ignoring device value for %s: %s – change Δ=%s exceeds "
+                                "max_change=%s"
+                            ),
                             self.entity_description.key,
                             value,
-                            self._attr_native_value,
+                            abs(self._attr_native_value - value),
+                            self.entity_description.max_change,
                         )
                         return
 
                     if (
                         self.state_class == SensorStateClass.TOTAL_INCREASING
-                        and self._attr_native_value > value  # type: ignore
+                        and self._attr_native_value > value  # type: ignore[attr-defined]
+                        and self.entity_description.never_resets
                     ):
-                        if self.entity_description.never_resets:
-                            _LOGGER.warning(
-                                "Ignoring device value with %s as %s - never resets %s",
-                                self.entity_description.key,
-                                value,
-                                self._attr_native_value,
-                            )
+                        _LOGGER.warning(
+                            "Ignoring device value with %s as %s - never resets %s",
+                            self.entity_description.key,
+                            value,
+                            self._attr_native_value,
+                        )
 
                 self._attr_native_value = value
                 self.async_write_ha_state()

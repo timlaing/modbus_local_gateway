@@ -21,6 +21,7 @@ from .const import (
     CONV_SUM_SCALE,
     IS_FLOAT,
     IS_STRING,
+    MAX_CHANGE,
     PRECISION,
     REGISTER_COUNT,
     ControlType,
@@ -129,12 +130,20 @@ class ModbusEntityDescription(
                 IS_FLOAT,
             )
             valid = False
-        elif self.max_change and self.is_string:
+        elif self.max_change is not None and self.is_string:
             _LOGGER.warning(
                 "Unable to create entity for %s: %s not valid for %s",
                 self.key,
                 self.max_change,
                 IS_STRING,
+            )
+            valid = False
+        # Sanity check – must be non-negative
+        elif self.max_change is not None and self.max_change < 0:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s must be ≥ 0",
+                self.key,
+                MAX_CHANGE,
             )
             valid = False
         return valid
