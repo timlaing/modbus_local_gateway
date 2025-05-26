@@ -225,7 +225,7 @@ class Conversion:
         registers: list[int] | None = None
         if desc.is_string and isinstance(value, str):
             registers = self._convert_from_string(value)
-        elif desc.is_float and (isinstance(value, float) or isinstance(value, int)):
+        elif desc.is_float and isinstance(value, (float, int)):
             registers = self._convert_from_float(value)
         elif desc.conv_map:
             raise NotSupportedError("Setting of maps is not supported")
