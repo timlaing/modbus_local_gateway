@@ -302,7 +302,7 @@ read_only_word:
     state_class: total_increasing
     size: 2
     never_resets: false
-    max_change: 1.0
+    max_change: 500.0
 
   Total Export Active Energy:
     address: 74
@@ -314,7 +314,7 @@ read_only_word:
     state_class: total_increasing
     size: 2
     never_resets: false
-    max_change: 1.0
+    max_change: 500.0
 
   Total Import Reactive Energy:
     address: 76

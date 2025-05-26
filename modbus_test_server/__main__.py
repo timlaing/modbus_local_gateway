@@ -20,16 +20,41 @@ _logger: logging.Logger = logging.getLogger(__file__)
 _logger.setLevel(logging.INFO)
 
 
+class CallbackDataBlock(ModbusSequentialDataBlock):
+    """A datablock that stores the new value in memory,.
+
+    and passes the operation to a message queue for further processing.
+    """
+
+    def setValues(self, address, values) -> None:
+        """Set the requested values of the datastore."""
+        super().setValues(address, values)
+        txt = f"Callback from setValues with address {address}, value {values}"
+        _logger.info(txt)
+
+    def getValues(self, address, count=1):
+        """Return the requested values from the datastore."""
+        result = super().getValues(address, count=count)
+        txt = f"Callback from getValues with address {address}, count {count}, data {result}"
+        _logger.debug(txt)
+        return result
+
+
 def _server_context(slave_id=1) -> ModbusServerContext:
     """Create a Modbus server context with a single slave."""
     _logger.info("### Create datastore")
     context: dict[int, ModbusSlaveContext] = {}
     context[slave_id] = ModbusSlaveContext(
-        di=ModbusSequentialDataBlock(0x00, [0] * 100),  # Discrete Inputs
-        co=ModbusSequentialDataBlock(0x00, [0] * 100),  # Coils
-        hr=ModbusSequentialDataBlock(0x00, [0x1A] * 100),  # Holding Registers
-        ir=ModbusSequentialDataBlock(0x00, [13] * 100),  # Input Registers
+        di=CallbackDataBlock(0x00, [0] * 65536),  # Discrete Inputs
+        co=CallbackDataBlock(0x00, [0] * 65536),  # Coils
+        hr=CallbackDataBlock(0x00, [0] * 65536),  # Holding Registers
+        ir=CallbackDataBlock(0x00, [0] * 65536),  # Input Registers
     )
+
+    context[slave_id].setValues(0x04, 72, [17723, 32768])
+    context[slave_id].setValues(0x03, 64512, [17658, 0])
+    context[slave_id].setValues(0x03, 28, [16512, 0])
+
     return ModbusServerContext(slaves=context, single=False)
 
 
