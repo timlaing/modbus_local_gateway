@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
@@ -42,6 +42,13 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
+        self._updated = False
+
+    @callback
+    def async_write_ha_state(self) -> None:
+        """Update the state of the entity."""
+        self._updated = True
+        super().async_write_ha_state()
 
     @property
     def available(self) -> bool:
@@ -74,7 +81,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             name=f"Modbus Coordinator - {self._gateway}",
             update_interval=timedelta(seconds=update_interval),
             update_method=self.async_update,  # type: ignore
-            always_update=False,
+            always_update=True,
         )
 
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._async_enable_sync)
