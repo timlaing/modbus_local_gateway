@@ -58,5 +58,14 @@ class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):  # 
             if value is not None and isinstance(value, bool):
                 self._attr_is_on = value
                 self.async_write_ha_state()
+            elif (
+                value is not None
+                and isinstance(value, int)
+                and isinstance(
+                    self.entity_description, ModbusBinarySensorEntityDescription
+                )
+            ):
+                self._attr_is_on = value == self.entity_description.on
+                self.async_write_ha_state()
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)

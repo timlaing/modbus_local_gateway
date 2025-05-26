@@ -115,7 +115,7 @@ async def test_update_exception() -> None:
         error.assert_called_once()
 
 
-async def test_update_value() -> None:
+async def test_update_value_bool() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
     ctx = ModbusContext(
@@ -131,6 +131,37 @@ async def test_update_value() -> None:
     entity = ModbusBinarySensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
     coordinator.get_data.return_value = True
+    write = MagicMock()
+    entity.async_write_ha_state = write
+
+    with patch(
+        "custom_components.modbus_local_gateway.binary_sensor._LOGGER.error"
+    ) as error:
+        entity._handle_coordinator_update()  # pylint: disable=protected-access
+
+        coordinator.get_data.assert_called_once_with(ctx)
+        error.assert_not_called()
+        write.assert_called_once()
+        assert entity.is_on is True
+
+
+async def test_update_value_int() -> None:
+    """Test the coordinator update function"""
+    coordinator = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            register_address=1,
+            key="key",
+            data_type=ModbusDataType.DISCRETE_INPUT,
+            control_type="binary_sensor",
+            on=10,
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusBinarySensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).name = PropertyMock(return_value="Test")
+    coordinator.get_data.return_value = 10
     write = MagicMock()
     entity.async_write_ha_state = write
 

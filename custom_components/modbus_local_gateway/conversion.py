@@ -10,7 +10,9 @@ from pymodbus.pdu.register_message import (
     ReadInputRegistersResponse,
 )
 
-from .entity_management.base import ModbusEntityDescription
+from .entity_management.base import (
+    ModbusEntityDescription,
+)
 from .entity_management.const import ModbusDataType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -95,9 +97,9 @@ class Conversion:
 
     def _convert_to_decimal(
         self, registers: list, desc: ModbusEntityDescription
-    ) -> float:
+    ) -> float | int:
         """Convert to a float type"""
-        num = self._convert_registers_to_number(registers, desc)
+        num: int | float = self._convert_registers_to_number(registers, desc)
         num = self._apply_conversion_operations(num, desc)
         return num
 

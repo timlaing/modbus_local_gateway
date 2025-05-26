@@ -550,7 +550,7 @@ read_only_word:
   FaultCode:
     name: Storage Fault code
     address: 3167
-  WarningCopde:
+  WarningCode:
     name: Storage Warning code
     address: 3168
   vbat:
