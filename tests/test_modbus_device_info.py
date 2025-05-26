@@ -29,6 +29,29 @@ read_write_word:
     name: Read-Write Entity
     address: 1
 
+  entity_invalid_bits:
+    name: Entity Invalid Bits
+    address: 2
+    control: switch
+    bits: 1
+
+  entity_invalid_shift:
+    name: Entity Invalid Shift
+    address: 3
+    control: switch
+    shift_bits: 1
+
+  entity_invalid_switch:
+    name: Entity Invalid Switch
+    address: 4
+    control: switch
+    switch: true
+
+  entity_text:
+    name: Entity Text
+    address: 5
+    control: text
+
 read_only_word:
   entity_ro:
     name: Read-Only Entity
@@ -52,7 +75,7 @@ read_only_boolean:
         device = ModbusDeviceInfo("test.yaml")
 
         entities = device.entity_descriptions
-        assert len(entities) == 4
+        assert len(entities) == 5
         assert device.model == "Model"
         assert device.manufacturer == "Manufacturer"
         assert any(
@@ -70,6 +93,25 @@ read_only_boolean:
             e.key == "discrete_ro" and e.data_type == ModbusDataType.DISCRETE_INPUT
             for e in entities
         )
+        assert any(
+            e.key == "entity_text" and e.data_type == ModbusDataType.HOLDING_REGISTER
+            for e in entities
+        )
+        assert not any(
+            e.key == "entity_invalid_bits"
+            and e.data_type == ModbusDataType.HOLDING_REGISTER
+            for e in entities
+        )
+        assert not any(
+            e.key == "entity_invalid_shift"
+            and e.data_type == ModbusDataType.HOLDING_REGISTER
+            for e in entities
+        )
+        assert not any(
+            e.key == "entity_invalid_switch"
+            and e.data_type == ModbusDataType.HOLDING_REGISTER
+            for e in entities
+        )
 
 
 def test_entity_create_basic() -> None:
@@ -83,7 +125,13 @@ def test_entity_create_basic() -> None:
             "test_coil": {"name": "Title Coil", "address": 3, "control": "switch"}
         },
         "read_only_boolean": {
-            "test_discrete": {"name": "Title Discrete", "address": 4}
+            "test_discrete1": {"name": "Title Discrete 1", "address": 4},
+            "test_discrete2": {"name": "Title Discrete 2", "address": 5, "bits": 1},
+            "test_discrete3": {
+                "name": "Title Discrete 3",
+                "address": 6,
+                "shift_bits": 1,
+            },
         },
     }
 
@@ -113,8 +161,20 @@ def test_entity_create_basic() -> None:
             for e in entities
         )
         assert any(
-            e.name == "Test Title Discrete"
+            e.name == "Test Title Discrete 1"
             and e.register_address == 4
+            and e.data_type == ModbusDataType.DISCRETE_INPUT
+            for e in entities
+        )
+        assert not any(
+            e.name == "Test Title Discrete 2"
+            and e.register_address == 5
+            and e.data_type == ModbusDataType.DISCRETE_INPUT
+            for e in entities
+        )
+        assert not any(
+            e.name == "Test Title Discrete 3"
+            and e.register_address == 6
             and e.data_type == ModbusDataType.DISCRETE_INPUT
             for e in entities
         )
