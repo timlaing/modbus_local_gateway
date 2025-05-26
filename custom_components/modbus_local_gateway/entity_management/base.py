@@ -67,7 +67,7 @@ class ModbusEntityDescription(
 
     register_count: int | None = 1
     conv_sum_scale: list[float] | None = None
-    conv_multiplier: float | None = 1.0
+    conv_multiplier: float | None = None
     conv_offset: float | None = None
     conv_shift_bits: int | None = None
     conv_bits: int | None = None
@@ -215,4 +215,7 @@ class ModbusNumberEntityDescription(NumberEntityDescription, ModbusEntityDescrip
 class ModbusBinarySensorEntityDescription(
     BinarySensorEntityDescription, ModbusEntityDescription
 ):
-    """Describes Modbus binary sensor entity for Discrete Inputs."""
+    """Describes Modbus binary sensor entity for Discrete Inputs and Registers."""
+
+    on: int | None = 1
+    off: int | None = 0

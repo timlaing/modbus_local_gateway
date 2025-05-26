@@ -81,7 +81,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 return None
 
             if (
-                hasattr(temp_response, "registers")
+                is_register_func
+                and hasattr(temp_response, "registers")
                 and len(temp_response.registers) != read_count
             ):
                 _LOGGER.error(

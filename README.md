@@ -200,6 +200,14 @@ read_write_word:
       "on": 1
       "off": 0
 
+  register_1:
+    name: "Boolean Register"
+    address: 0x0004
+    bits: 1
+    shift_bits: 4
+    device_class: running
+    control: binary_sensor
+
 read_only_word:
 
   voltage:

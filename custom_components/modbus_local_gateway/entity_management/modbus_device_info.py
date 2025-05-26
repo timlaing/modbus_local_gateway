@@ -93,8 +93,12 @@ class ModbusDeviceInfo:
                 ControlType.SELECT,
                 ControlType.TEXT,
                 ControlType.SWITCH,
+                ControlType.BINARY_SENSOR,
             ],
-            ModbusDataType.INPUT_REGISTER: [ControlType.SENSOR],
+            ModbusDataType.INPUT_REGISTER: [
+                ControlType.SENSOR,
+                ControlType.BINARY_SENSOR,
+            ],
             ModbusDataType.COIL: [ControlType.BINARY_SENSOR, ControlType.SWITCH],
             ModbusDataType.DISCRETE_INPUT: [ControlType.BINARY_SENSOR],
         }
@@ -198,7 +202,9 @@ class ModbusDeviceInfo:
         if "entity_category" in params:
             self._handle_entity_category(params, entity)
 
-        desc_cls = self._select_description_class(control_type, params, _data, entity)
+        desc_cls: None | type[DESCRIPTION_TYPE] = self._select_description_class(
+            control_type, params, _data, entity
+        )
         if desc_cls:
             return self._create_description_instance(desc_cls, params)
         return None
@@ -217,7 +223,7 @@ class ModbusDeviceInfo:
                 "conv_sum_scale": _data.get(CONV_SUM_SCALE),
                 "conv_shift_bits": _data.get(CONV_SHIFT_BITS),
                 "conv_bits": _data.get(CONV_BITS),
-                "conv_multiplier": _data.get(CONV_MULTIPLIER, 1.0),
+                "conv_multiplier": _data.get(CONV_MULTIPLIER),
                 "conv_offset": _data.get(CONV_OFFSET),
                 "conv_map": _data.get(CONV_MAP),
                 "conv_flags": _data.get(CONV_FLAGS),
@@ -232,7 +238,7 @@ class ModbusDeviceInfo:
         )
         return params
 
-    def _handle_entity_category(self, params, entity):
+    def _handle_entity_category(self, params, entity) -> None:
         """Handle entity category in parameters"""
         try:
             params["entity_category"] = EntityCategory(params["entity_category"])
@@ -244,12 +250,30 @@ class ModbusDeviceInfo:
             )
             del params["entity_category"]
 
-    def _select_description_class(self, control_type, params, _data, entity):
+    def _select_description_class(
+        self, control_type, params, _data, entity
+    ) -> None | type[DESCRIPTION_TYPE]:
         """Select the appropriate description class based on control type"""
+        if params["data_type"] in [ModbusDataType.COIL, ModbusDataType.DISCRETE_INPUT]:
+            if _data.get(CONV_BITS):
+                _LOGGER.warning(
+                    "bits cannot be set for %s or %s",
+                    ModbusDataType.COIL,
+                    ModbusDataType.DISCRETE_INPUT,
+                )
+                return None
+            if _data.get(CONV_SHIFT_BITS):
+                _LOGGER.warning(
+                    "shift bits cannot be set for %s or %s",
+                    ModbusDataType.COIL,
+                    ModbusDataType.DISCRETE_INPUT,
+                )
+                return None
+
         if control_type == ControlType.SENSOR:
             return self._handle_sensor_description(params)
         elif control_type == ControlType.BINARY_SENSOR:
-            return ModbusBinarySensorEntityDescription
+            return self._handle_binary_sensor_description(params, _data)
         elif control_type == ControlType.SWITCH:
             return self._handle_switch_description(params, _data, entity)
         elif control_type == ControlType.SELECT:
@@ -262,7 +286,7 @@ class ModbusDeviceInfo:
             _LOGGER.warning("Unsupported control_type %s", control_type)
             return None
 
-    def _handle_sensor_description(self, params):
+    def _handle_sensor_description(self, params) -> type[ModbusSensorEntityDescription]:
         """Handle sensor description specific logic"""
         if (
             params.get("precision") is None
@@ -283,9 +307,23 @@ class ModbusDeviceInfo:
                 params["precision"] = 4
         return ModbusSensorEntityDescription
 
-    def _handle_switch_description(self, params, _data, entity):
+    def _handle_binary_sensor_description(
+        self, params, _data
+    ) -> None | type[ModbusBinarySensorEntityDescription]:
+        """Handle binary sensor description specific logic"""
+        params["on"] = _data.get("on", 1)
+        params["off"] = _data.get("off", 0)
+        return ModbusBinarySensorEntityDescription
+
+    def _handle_switch_description(
+        self, params, _data, entity
+    ) -> None | type[ModbusSwitchEntityDescription]:
         """Handle switch description specific logic"""
         switch_data = _data.get("switch", {})
+        if _data.get(CONV_BITS) or _data.get(CONV_SHIFT_BITS):
+            _LOGGER.warning("bits / shift bits cannot be set for Switches")
+            return None
+
         if not isinstance(switch_data, dict):
             _LOGGER.warning(
                 "Switch configuration for %s should be a dictionary", entity
@@ -295,7 +333,9 @@ class ModbusDeviceInfo:
         params["off"] = switch_data.get("off", 0)
         return ModbusSwitchEntityDescription
 
-    def _handle_select_description(self, params, _data):
+    def _handle_select_description(
+        self, params, _data
+    ) -> None | type[ModbusSelectEntityDescription]:
         """Handle select description specific logic"""
         params["select_options"] = _data.get("options")
         if not params["select_options"]:
@@ -303,7 +343,9 @@ class ModbusDeviceInfo:
             return None
         return ModbusSelectEntityDescription
 
-    def _handle_number_description(self, params, _data, entity):
+    def _handle_number_description(
+        self, params, _data, entity
+    ) -> None | type[ModbusNumberEntityDescription]:
         """Handle number description specific logic"""
         number_data = _data.get("number", {})
         if not isinstance(number_data, dict):
@@ -319,10 +361,14 @@ class ModbusDeviceInfo:
         params["precision"] = _data.get(PRECISION)
         return ModbusNumberEntityDescription
 
-    def _create_description_instance(self, desc_cls, params):
+    def _create_description_instance(
+        self, desc_cls: type[DESCRIPTION_TYPE], params
+    ) -> DESCRIPTION_TYPE | None:
         """Create an instance of the description class"""
         try:
-            desc = desc_cls(**{k: v for k, v in params.items() if v is not None})
+            desc: DESCRIPTION_TYPE = desc_cls(
+                **{k: v for k, v in params.items() if v is not None}
+            )
             if desc.validate():
                 return desc
         except TypeError:

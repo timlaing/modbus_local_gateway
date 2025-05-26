@@ -58,6 +58,7 @@ async def test_read_registers_single_invalid_response_length() -> None:
 
     with patch.object(AsyncModbusTcpClientGateway, "__init__", __init__):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
+        client.read_input_registers = func
         resp = await client.read_data(
             func=func, address=1, count=1, slave=1, max_read_size=3
         )
