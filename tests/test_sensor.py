@@ -375,7 +375,7 @@ async def test_handle_coordinator_update_ignore_large_change() -> None:
 
 
 async def test_handle_coordinator_update_allow_large_change_on_initial() -> None:
-    """Test _handle_coordinator_update ignores large changes."""
+    """Test _handle_coordinator_update allows large changes on initial update."""
     coordinator = MagicMock()
     desc = ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
         key="key",
@@ -392,7 +392,7 @@ async def test_handle_coordinator_update_allow_large_change_on_initial() -> None
     type(entity).entity_description = PropertyMock(return_value=desc)
     entity._attr_native_value = 10  # pylint: disable=protected-access
     entity._updated = False  # pylint: disable=protected-access
-    coordinator.get_data.side_effect = [20, 100]
+    coordinator.get_data.return_value = 20
 
     with patch(
         "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
