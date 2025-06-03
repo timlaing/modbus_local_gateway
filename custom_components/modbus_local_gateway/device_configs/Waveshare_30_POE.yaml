@@ -1,0 +1,252 @@
+device:
+  manufacturer: Waveshare
+  model: Modbus POE ETH Relay 30CH
+
+read_write_word:
+  sw_version:
+    address: 0x8000
+    name: Software Version
+    size: 1
+    precision: 3
+    multiplier: 0.01
+    entity_category: diagnostic
+read_write_boolean:
+  relay_1:
+    address: 0x0000
+    name: Relay 1
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_2:
+    address: 0x0001
+    name: Relay 2
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_3:
+    address: 0x0002
+    name: Relay 3
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_4:
+    address: 0x0003
+    name: Relay 4
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_5:
+    address: 0x0004
+    name: Relay 5
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_6:
+    address: 0x0005
+    name: Relay 6
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_7:
+    address: 0x0006
+    name: Relay 7
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_8:
+    address: 0x0007
+    name: Relay 8
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_9:
+    address: 0x0008
+    name: Relay 9
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_10:
+    address: 0x0009
+    name: Relay 10
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_11:
+    address: 0x000A
+    name: Relay 11
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_12:
+    address: 0x000B
+    name: Relay 12
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_13:
+    address: 0x000C
+    name: Relay 13
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_14:
+    address: 0x000D
+    name: Relay 14
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_15:
+    address: 0x000E
+    name: Relay 15
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_16:
+    address: 0x000F
+    name: Relay 16
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_17:
+    address: 0x0010
+    name: Relay 17
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_18:
+    address: 0x0011
+    name: Relay 18
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_19:
+    address: 0x0012
+    name: Relay 19
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_20:
+    address: 0x0013
+    name: Relay 20
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_21:
+    address: 0x0014
+    name: Relay 21
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_22:
+    address: 0x0015
+    name: Relay 22
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_23:
+    address: 0x0016
+    name: Relay 23
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_24:
+    address: 0x0017
+    name: Relay 24
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_25:
+    address: 0x0018
+    name: Relay 25
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_26:
+    address: 0x0019
+    name: Relay 26
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_27:
+    address: 0x001A
+    name: Relay 27
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_28:
+    address: 0x001B
+    name: Relay 28
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_29:
+    address: 0x001C
+    name: Relay 29
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
+
+  relay_30:
+    address: 0x001D
+    name: Relay 30
+    control: switch
+    switch:
+      "off": 0x0000
+      "on": 0xFF00
