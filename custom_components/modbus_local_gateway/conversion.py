@@ -1,6 +1,7 @@
 """Conversion register functions"""
 
 import logging
+from decimal import Decimal, localcontext
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.pdu import ModbusPDU
@@ -136,7 +137,8 @@ class Conversion:
         """Apply multiplier and offset to the number"""
         if isinstance(num, (int, float)):
             if desc.conv_multiplier is not None:
-                num = num * desc.conv_multiplier
+                with localcontext(prec=desc.precision):  # Set precision for Decimal
+                    num = float(Decimal(num) * Decimal(desc.conv_multiplier))
             if desc.conv_offset:
                 num += desc.conv_offset
         elif desc.conv_multiplier is not None or desc.conv_offset:
@@ -151,7 +153,8 @@ class Conversion:
         if desc.conv_offset:
             num -= desc.conv_offset
         if desc.conv_multiplier is not None:
-            num = num / desc.conv_multiplier
+            with localcontext(prec=desc.precision):
+                num = float(Decimal(num) / Decimal(desc.conv_multiplier))
         if desc.conv_bits:
             raise NotSupportedError("Setting of bit fields is not supported")
         if desc.conv_shift_bits:

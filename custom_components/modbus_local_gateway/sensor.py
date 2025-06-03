@@ -87,7 +87,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                 ):
                     if (
                         self.entity_description.max_change is not None
-                        and value - self._attr_native_value
+                        and abs(value - self._attr_native_value)
                         > self.entity_description.max_change
                         and self._updated
                     ):
@@ -98,14 +98,14 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                             ),
                             self.entity_description.key,
                             value,
-                            value - self._attr_native_value,
+                            abs(value - self._attr_native_value),
                             self.entity_description.max_change,
                         )
                         return
 
                     if (
                         self.state_class == SensorStateClass.TOTAL_INCREASING
-                        and float(self._attr_native_value) > float(value)
+                        and int(self._attr_native_value) > int(value)
                         and self.entity_description.never_resets
                     ):
                         _LOGGER.warning(
