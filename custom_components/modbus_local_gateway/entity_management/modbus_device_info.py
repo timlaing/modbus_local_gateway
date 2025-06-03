@@ -305,6 +305,10 @@ class ModbusDeviceInfo:
                 )
             else:
                 params["precision"] = 4
+
+        if params.get("precision") is not None:
+            params["suggested_display_precision"] = params["precision"]
+
         return ModbusSensorEntityDescription
 
     def _handle_binary_sensor_description(
@@ -359,6 +363,7 @@ class ModbusDeviceInfo:
         params["min"] = number_data["min"]
         params["max"] = number_data["max"]
         params["precision"] = _data.get(PRECISION)
+        params["suggested_display_precision"] = _data.get(PRECISION)
         return ModbusNumberEntityDescription
 
     def _create_description_instance(
