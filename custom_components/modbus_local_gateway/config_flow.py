@@ -50,6 +50,8 @@ class OptionsFlowHandler(OptionsFlow):
                 seconds=user_input.get(OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH)
             )
 
+            coordinator.async_set_updated_data(data=coordinator.data)
+
             return self.async_create_entry(title="", data=user_input)
 
         return self.async_show_form(
@@ -147,7 +149,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         )
 
         # This title is shown in the main devices list under the Modbus Local Gateway integration
-        title = " ".join(
+        title: str = " ".join(
             [
                 part
                 for part in [
