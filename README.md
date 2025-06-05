@@ -131,7 +131,7 @@ For all entity definitions:
   - `control: text`: Creates a text entity.
 
 - **Data Types**:
-  - `signed: true`: Signed integer values rather than the deault of unsigned (requires `size: 1`, `size: 2` or `size: 4`).
+  - `signed: true`: Signed integer values rather than the default of unsigned (requires `size: 1`, `size: 2` or `size: 4`).
   - `float: true`: Raw 32-bit float (requires `size: 2` or `size: 4`).
   - `string: true`: String (requires `size:` = length / 2).
     - E.g.
