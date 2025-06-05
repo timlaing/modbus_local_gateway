@@ -1,6 +1,7 @@
 
 -r requirements.txt
 fuzzywuzzy
+homeassistant==2025.5.3
 isort
 levenshtein
 pre-commit
@@ -11,3 +12,4 @@ pytest-cov
 pytest-homeassistant-custom-component
 pytest-picked
 ruff
+yarl==1.20.0
