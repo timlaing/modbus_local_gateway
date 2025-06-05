@@ -38,6 +38,34 @@ async def async_setup_entry(
     )
 
 
+class SameValue(Exception):
+    """Exception raised when the value is the same as the previous value."""
+
+    def __init__(self, desc: ModbusSensorEntityDescription, value) -> None:
+        """Initialize the exception."""
+        super().__init__("Ignoring device value - same as previous value.")
+        _LOGGER.debug(
+            ("Ignoring device value for %s: %s – same as previous value"),
+            desc.key,
+            value,
+        )
+
+
+class MaxChangeExceeded(Exception):
+    """Exception raised when the change in value exceeds the maximum allowed change."""
+
+    def __init__(self, desc: ModbusSensorEntityDescription, value, prev_value) -> None:
+        """Initialize the exception."""
+        super().__init__("Change in value exceeds maximum allowed change.")
+        _LOGGER.warning(
+            ("Ignoring device value for %s: %s – change Δ=%s exceeds max_change=%s"),
+            desc.key,
+            value,
+            abs(value - prev_value),
+            desc.max_change,
+        )
+
+
 class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignore
     """Sensor entity for Modbus gateway"""
 
@@ -50,6 +78,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
         """Initialize a PVOutput sensor."""
         super().__init__(coordinator, ctx=ctx, device=device)
         self._attr_native_state: State | None
+        self._updated: bool = False
 
     async def async_added_to_hass(self) -> None:
         """Restore the state when sensor is added."""
@@ -74,11 +103,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                 self.entity_description, ModbusSensorEntityDescription
             ):
                 if self._attr_native_value == value:
-                    _LOGGER.debug(
-                        "Ignoring device value with %s as %s - already set",
-                        self.entity_description.key,
-                        value,
-                    )
+                    raise SameValue(self.entity_description, value)
                 elif (
                     isinstance(self._attr_native_value, float)
                     and isinstance(value, float)
@@ -91,17 +116,11 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                         > self.entity_description.max_change
                         and self._updated
                     ):
-                        _LOGGER.warning(
-                            (
-                                "Ignoring device value for %s: %s – change Δ=%s exceeds "
-                                "max_change=%s"
-                            ),
-                            self.entity_description.key,
+                        raise MaxChangeExceeded(
+                            self.entity_description,
                             value,
-                            abs(value - self._attr_native_value),
-                            self.entity_description.max_change,
+                            self._attr_native_value,
                         )
-                        return
 
                     if (
                         self.state_class == SensorStateClass.TOTAL_INCREASING
@@ -116,7 +135,8 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                         )
 
                 self._attr_native_value = value
-                self.async_write_ha_state()
+                self._updated = True
+
                 _LOGGER.debug(
                     "Updating device with %s as %s",
                     self.entity_description.key,
@@ -143,8 +163,12 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                             **attr,  # type: ignore
                         )
 
+        except (MaxChangeExceeded, SameValue):
+            pass
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
+
+        super()._handle_coordinator_update()
 
     @property
     def native_value(self) -> float | str | int | None | date | datetime | Decimal:  # type: ignore

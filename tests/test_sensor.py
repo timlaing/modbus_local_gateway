@@ -89,11 +89,13 @@ async def test_update_none() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    entity.async_write_ha_state = AsyncMock()
 
     coordinator.get_data.return_value = None
     entity._handle_coordinator_update()  # pylint: disable=protected-access
 
     coordinator.get_data.assert_called_once_with(ctx)
+    entity.async_write_ha_state.assert_called_once()
 
 
 async def test_update_exception() -> None:
@@ -111,6 +113,7 @@ async def test_update_exception() -> None:
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
     coordinator.get_data.side_effect = Exception()
+    entity.async_write_ha_state = AsyncMock()
 
     with (
         patch(
@@ -126,6 +129,7 @@ async def test_update_exception() -> None:
         debug.assert_not_called()
         warning.assert_not_called()
         error.assert_called_once()
+        entity.async_write_ha_state.assert_called_once()
 
 
 async def test_update_value() -> None:
@@ -145,8 +149,7 @@ async def test_update_value() -> None:
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).entity_description = PropertyMock(return_value=desc)
     coordinator.get_data.return_value = 1
-    write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = AsyncMock()
 
     with (
         patch(
@@ -162,7 +165,7 @@ async def test_update_value() -> None:
         error.assert_not_called()
         debug.assert_called_once()
         warning.assert_not_called()
-        write.assert_called_once()
+        entity.async_write_ha_state.assert_called_once()
 
 
 async def test_update_reset() -> None:
@@ -188,8 +191,7 @@ async def test_update_reset() -> None:
 
     reset = PropertyMock()
     type(entity).last_reset = reset
-    write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = AsyncMock()
 
     coordinator.get_data.return_value = 1
 
@@ -207,7 +209,7 @@ async def test_update_reset() -> None:
         error.assert_not_called()
         debug.assert_called_once()
         warning.assert_not_called()
-        write.assert_called_once()
+        entity.async_write_ha_state.assert_called_once()
         reset.assert_not_called()
 
 
@@ -235,8 +237,7 @@ async def test_update_never_reset() -> None:
 
     reset = PropertyMock()
     type(entity).last_reset = reset
-    write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = AsyncMock()
 
     coordinator.get_data.return_value = 1
 
@@ -254,7 +255,7 @@ async def test_update_never_reset() -> None:
         error.assert_not_called()
         debug.assert_called()
         warning.assert_called()
-        write.assert_called()
+        entity.async_write_ha_state.assert_called_once()
         reset.assert_not_called()
 
 
@@ -283,8 +284,7 @@ async def test_update_deviceupdate() -> None:
 
     reset = PropertyMock()
     type(entity).last_reset = reset
-    write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = AsyncMock()
 
     coordinator.get_data.return_value = 1
 
@@ -306,7 +306,7 @@ async def test_update_deviceupdate() -> None:
         error.assert_not_called()
         debug.assert_called()
         warning.assert_not_called()
-        write.assert_called_once()
+        entity.async_write_ha_state.assert_called_once()
         reset.assert_not_called()
 
 
@@ -327,16 +327,19 @@ async def test_handle_coordinator_update_ignore_same_value() -> None:
     type(entity).entity_description = PropertyMock(return_value=desc)
     type(entity)._attr_native_value = PropertyMock(return_value=10)  # pylint: disable=protected-access
     coordinator.get_data.return_value = 10
+    entity.async_write_ha_state = AsyncMock()
 
     with patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug:
         entity._handle_coordinator_update()  # pylint: disable=protected-access
 
         coordinator.get_data.assert_called_once_with(ctx)
         debug.assert_called_once_with(
-            "Ignoring device value with %s as %s - already set",
+            "Ignoring device value for %s: %s – same as previous value",
             "key",
             10,
         )
+
+        entity.async_write_ha_state.assert_called_once()
 
 
 async def test_handle_coordinator_update_ignore_large_change() -> None:
@@ -358,6 +361,7 @@ async def test_handle_coordinator_update_ignore_large_change() -> None:
     type(entity)._attr_native_value = PropertyMock(return_value=10)  # pylint: disable=protected-access
     entity._updated = True  # pylint: disable=protected-access
     coordinator.get_data.return_value = 20
+    entity.async_write_ha_state = AsyncMock()
 
     with patch(
         "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
@@ -372,6 +376,8 @@ async def test_handle_coordinator_update_ignore_large_change() -> None:
             10,
             5,
         )
+
+        entity.async_write_ha_state.assert_called_once()
 
 
 async def test_handle_coordinator_update_allow_large_change_on_initial() -> None:
@@ -393,6 +399,7 @@ async def test_handle_coordinator_update_allow_large_change_on_initial() -> None
     entity._attr_native_value = 10  # pylint: disable=protected-access
     entity._updated = False  # pylint: disable=protected-access
     coordinator.get_data.return_value = 20
+    entity.async_write_ha_state = AsyncMock()
 
     with patch(
         "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
@@ -401,6 +408,7 @@ async def test_handle_coordinator_update_allow_large_change_on_initial() -> None
         coordinator.get_data.assert_called_once_with(ctx)
         warning.assert_not_called()
         assert entity._updated  # pylint: disable=protected-access
+        entity.async_write_ha_state.assert_called_once()
 
 
 async def test_handle_coordinator_update_update_value() -> None:
@@ -420,14 +428,13 @@ async def test_handle_coordinator_update_update_value() -> None:
     type(entity).entity_description = PropertyMock(return_value=desc)
     type(entity)._attr_native_value = PropertyMock(return_value=10)  # pylint: disable=protected-access
     coordinator.get_data.return_value = 15
-    write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = AsyncMock()
 
     with patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug:
         entity._handle_coordinator_update()  # pylint: disable=protected-access
 
         coordinator.get_data.assert_called_once_with(ctx)
-        write.assert_called_once()
+        entity.async_write_ha_state.assert_called_once()
         debug.assert_called_with(
             "Updating device with %s as %s",
             "key",
@@ -453,14 +460,13 @@ async def test_handle_coordinator_update_update_smaller_value() -> None:
     type(entity).entity_description = PropertyMock(return_value=desc)
     type(entity)._attr_native_value = PropertyMock(return_value=100)  # pylint: disable=protected-access
     coordinator.get_data.return_value = 15
-    write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = AsyncMock()
 
     with patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug:
         entity._handle_coordinator_update()  # pylint: disable=protected-access
 
         coordinator.get_data.assert_called_once_with(ctx)
-        write.assert_called_once()
+        entity.async_write_ha_state.assert_called_once()
         debug.assert_called_with(
             "Updating device with %s as %s",
             "key",
@@ -488,6 +494,7 @@ async def test_handle_coordinator_update_never_resets() -> None:
     type(entity).state_class = PropertyMock(
         return_value=SensorStateClass.TOTAL_INCREASING
     )
+    entity.async_write_ha_state = AsyncMock()
     coordinator.get_data.return_value = 10
 
     with patch(
@@ -502,3 +509,5 @@ async def test_handle_coordinator_update_never_resets() -> None:
             10,
             15,
         )
+
+        entity.async_write_ha_state.assert_called_once()

@@ -4,6 +4,7 @@ import logging
 from decimal import Decimal, localcontext
 
 from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu import ModbusPDU
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.register_message import (
@@ -14,7 +15,7 @@ from pymodbus.pdu.register_message import (
 from .entity_management.base import (
     ModbusEntityDescription,
 )
-from .entity_management.const import ModbusDataType
+from .entity_management.const import ModbusDataType, SwapType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -33,7 +34,24 @@ class Conversion:
     def __init__(self, client: type[AsyncModbusTcpClient]) -> None:
         self.client: type[AsyncModbusTcpClient] = client
 
-    def _convert_to_string(self, registers: list) -> str:
+    def _swap_registers(
+        self, registers: list[int], desc: ModbusEntityDescription
+    ) -> list[int]:
+        """Do swap as needed."""
+        if desc.conv_swap in (SwapType.BYTE, SwapType.WORD_BYTE):
+            # convert [12][34] --> [21][43]
+            for i, register in enumerate(registers):
+                registers[i] = int.from_bytes(
+                    register.to_bytes(2, byteorder="little"),
+                    byteorder="big",
+                    signed=False,
+                )
+        if desc.conv_swap in (SwapType.WORD, SwapType.WORD_BYTE):
+            # convert [12][34] ==> [34][12]
+            registers.reverse()
+        return registers
+
+    def _convert_to_string(self, registers: list[int]) -> str:
         """Convert to a string type"""
         value: str | int | float | list = self.client.convert_from_registers(
             registers,
@@ -57,18 +75,28 @@ class Conversion:
         """Convert to a float type"""
         value: str | int | float | list = self.client.convert_from_registers(
             registers,
-            data_type=self.client.DATATYPE.FLOAT32,
+            data_type=(
+                self.client.DATATYPE.FLOAT32
+                if desc.register_count == 2
+                else self.client.DATATYPE.FLOAT64
+            ),
         )
         if isinstance(value, float):
             value = self._apply_conversion_operations(value, desc)
             return value
         raise InvalidDataTypeError()
 
-    def _convert_from_float(self, value: float) -> list[int]:
+    def _convert_from_float(
+        self, value: float, desc: ModbusEntityDescription
+    ) -> list[int]:
         """Convert from a float type"""
         registers: list[int] = self.client.convert_to_registers(
             value,
-            data_type=self.client.DATATYPE.FLOAT32,
+            data_type=(
+                self.client.DATATYPE.FLOAT32
+                if desc.register_count == 2
+                else self.client.DATATYPE.FLOAT64
+            ),
         )
         return registers
 
@@ -82,7 +110,7 @@ class Conversion:
             return value
 
     def _convert_to_flags(
-        self, registers: list, desc: ModbusEntityDescription
+        self, registers: list[int], desc: ModbusEntityDescription
     ) -> str | None:
         """Convert to a flags type"""
         int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
@@ -97,24 +125,41 @@ class Conversion:
             return ret_val
 
     def _convert_to_decimal(
-        self, registers: list, desc: ModbusEntityDescription
+        self, registers: list[int], desc: ModbusEntityDescription
     ) -> float | int:
         """Convert to a float type"""
         num: int | float = self._convert_registers_to_number(registers, desc)
         num = self._apply_conversion_operations(num, desc)
         return num
 
+    def _get_int_data_type(
+        self, desc: ModbusEntityDescription
+    ) -> ModbusClientMixin.DATATYPE:
+        """Get the data type for integer conversion"""
+        if desc.register_count == 4:
+            return (
+                ModbusClientMixin.DATATYPE.INT64
+                if desc.is_signed
+                else ModbusClientMixin.DATATYPE.UINT64
+            )
+        if desc.register_count == 2:
+            return (
+                ModbusClientMixin.DATATYPE.INT32
+                if desc.is_signed
+                else ModbusClientMixin.DATATYPE.UINT32
+            )
+        return (
+            ModbusClientMixin.DATATYPE.INT16
+            if desc.is_signed
+            else ModbusClientMixin.DATATYPE.UINT16
+        )
+
     def _convert_registers_to_number(
-        self, registers: list, desc: ModbusEntityDescription
+        self, registers: list[int], desc: ModbusEntityDescription
     ) -> int | float:
         """Convert registers to a number based on data type"""
         num: str | int | float | list = self.client.convert_from_registers(
-            registers,
-            data_type=(
-                self.client.DATATYPE.UINT32
-                if desc.register_count == 2
-                else self.client.DATATYPE.UINT16
-            ),
+            registers, data_type=self._get_int_data_type(desc)
         )
 
         if desc.conv_sum_scale is not None and isinstance(num, list):
@@ -164,11 +209,7 @@ class Conversion:
 
         registers: list[int] = self.client.convert_to_registers(
             int(round(num)),
-            data_type=(
-                self.client.DATATYPE.UINT32
-                if desc.register_count == 2
-                else self.client.DATATYPE.UINT16
-            ),
+            data_type=self._get_int_data_type(desc),
         )
         return registers
 
@@ -197,17 +238,17 @@ class Conversion:
         ):
             raise TypeError("Invalid response type for register")
 
-        registers = response.registers
+        registers: list[int] = self._swap_registers(response.registers, desc)
         if desc.is_string:
             return self._convert_to_string(registers)
-        elif desc.is_float:
+        if desc.is_float:
             return self._convert_to_float(registers, desc)
-        elif desc.conv_map:
+        if desc.conv_map:
             return self._convert_to_enum(registers, desc)
-        elif desc.conv_flags:
+        if desc.conv_flags:
             return self._convert_to_flags(registers, desc)
-        else:
-            return self._convert_to_decimal(registers, desc)
+
+        return self._convert_to_decimal(registers, desc)
 
     def _convert_from_coil_response(self, response: ModbusPDU) -> bool:
         """Convert from coil response"""
@@ -229,7 +270,7 @@ class Conversion:
         if desc.is_string and isinstance(value, str):
             registers = self._convert_from_string(value)
         elif desc.is_float and isinstance(value, (float, int)):
-            registers = self._convert_from_float(value)
+            registers = self._convert_from_float(value, desc)
         elif desc.conv_map:
             raise NotSupportedError("Setting of maps is not supported")
         elif desc.conv_flags:
@@ -238,4 +279,4 @@ class Conversion:
             registers = self._convert_from_decimal(value, desc)
         else:
             raise InvalidDataTypeError()
-        return registers
+        return self._swap_registers(registers, desc)

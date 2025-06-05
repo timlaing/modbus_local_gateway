@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     TimestampDataUpdateCoordinator,
+    UpdateFailed,
 )
 from pymodbus.pdu.pdu import ModbusPDU
 
@@ -42,18 +43,6 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
-        self._updated = False
-
-    @callback
-    def async_write_ha_state(self) -> None:
-        """Update the state of the entity."""
-        self._updated = True
-        super().async_write_ha_state()
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return super().available and self.coordinator.available
 
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
@@ -73,7 +62,6 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self._max_read_size: int
         self._gateway_device: dr.DeviceEntry = gateway_device
         self.started: bool = hass.is_running
-        self._last_successful_update: datetime | None = None
 
         super().__init__(
             hass,
@@ -105,32 +93,10 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Return the current max register read size"""
         return self._max_read_size
 
-    @property
-    def available(self) -> bool:
-        """Return True if the coordinator is available"""
-        if self._last_successful_update is None:
-            return False
-        if not self.update_interval:
-            return True
-
-        threshold = timedelta(seconds=self.update_interval.total_seconds() * 2)
-        return (datetime.now() - self._last_successful_update) < threshold
-
     @max_read_size.setter
     def max_read_size(self, value: int) -> None:
         """Sets the max register read size"""
         self._max_read_size = value
-
-    async def _async_refresh(
-        self,
-        log_failures: bool = False,
-        raise_on_auth_failed: bool = False,
-        scheduled: bool = False,
-        raise_on_entry_error: bool = False,
-    ) -> None:
-        return await super()._async_refresh(
-            log_failures, raise_on_auth_failed, scheduled, raise_on_entry_error
-        )
 
     async def async_update(self) -> dict[str, Any] | None:
         """Fetch updated data for all registered entities"""
@@ -140,8 +106,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             )
             data: dict[str, Any] = await self._update_device(entities=entities)
             if data:
-                self._last_successful_update = datetime.now()
-            return data
+                return data
+            raise UpdateFailed()
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         """Update data for a list of entities"""

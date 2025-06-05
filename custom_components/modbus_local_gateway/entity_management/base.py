@@ -19,7 +19,9 @@ from .const import (
     CONV_OFFSET,
     CONV_SHIFT_BITS,
     CONV_SUM_SCALE,
+    CONV_SWAP,
     IS_FLOAT,
+    IS_SIGNED,
     IS_STRING,
     MAX_CHANGE,
     PRECISION,
@@ -37,6 +39,7 @@ class UnusedKeysMixin:
 
     address: int | None = 0  # register_address
     size: int | None = 1  # register_count
+    swap: str | None = None  # conv_sum_scale
     sum_scale: list[float] | None = None  # conv_sum_scale
     multiplier: float | None = 1.0  # conv_multiplier
     offset: float | None = None  # conv_offset
@@ -46,9 +49,9 @@ class UnusedKeysMixin:
     flags: dict[int, str] | None = None  # conv_flags
     string: bool | None = False  # is_string
     float: bool | None = False  # is_float
+    signed: bool | None = False  # is_signed
     control: str | None = ControlType.SENSOR  # control_type
     number: dict[str, int] | None = None  # min, max
-    # options: dict[int, str] | None = None  # select_options
     switch: dict[str, float] | None = None  # on, off
 
 
@@ -66,6 +69,8 @@ class ModbusEntityDescription(
     """Describes Modbus sensor entity."""
 
     register_count: int | None = 1
+    is_signed: bool | None = False
+    conv_swap: str | None = None
     conv_sum_scale: list[float] | None = None
     conv_multiplier: float | None = None
     conv_offset: float | None = None
@@ -111,16 +116,20 @@ class ModbusEntityDescription(
             self.conv_shift_bits
             or self.conv_bits
             or self.precision
+            or self.conv_swap
+            or self.signed
             or (self.conv_multiplier and int(self.conv_multiplier) != 1)
         ):
             _LOGGER.warning(
-                "Unable to create entity for %s: %s, %s, %s, %s, %s, and %s not valid for %s",
+                "Unable to create entity for %s: %s, %s, %s, %s, %s, %s, %s, and %s not valid for %s",
                 self.key,
                 CONV_SUM_SCALE,
                 CONV_SHIFT_BITS,
                 CONV_BITS,
                 CONV_MULTIPLIER,
                 CONV_OFFSET,
+                CONV_SWAP,
+                IS_SIGNED,
                 PRECISION,
                 IS_STRING,
             )
@@ -132,13 +141,15 @@ class ModbusEntityDescription(
         if self.is_float and (
             self.conv_shift_bits
             or self.conv_bits
+            or self.signed
             or (self.conv_multiplier is not None and int(self.conv_multiplier) != 1)
         ):
             _LOGGER.warning(
-                "Unable to create entity for %s: %s, %s, and %s not valid for %s",
+                "Unable to create entity for %s: %s, %s, %s, and %s not valid for %s",
                 self.key,
                 CONV_BITS,
                 CONV_SHIFT_BITS,
+                IS_SIGNED,
                 CONV_MULTIPLIER,
                 IS_FLOAT,
             )
@@ -147,7 +158,7 @@ class ModbusEntityDescription(
 
     def _validate_register_count(self) -> bool:
         """Check if register count is valid for float entities."""
-        if self.is_float and self.register_count != 2:
+        if self.is_float and self.register_count not in (2, 4):
             _LOGGER.warning(
                 "Unable to create entity for %s: %s outside valid range not valid for %s",
                 self.key,
@@ -155,6 +166,15 @@ class ModbusEntityDescription(
                 IS_FLOAT,
             )
             return False
+
+        if not self.is_string and self.register_count not in (1, 2, 4):
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s outside valid range not valid for int",
+                self.key,
+                REGISTER_COUNT,
+            )
+            return False
+
         return True
 
     def _validate_max_change(self) -> bool:

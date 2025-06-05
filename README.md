@@ -131,7 +131,8 @@ For all entity definitions:
   - `control: text`: Creates a text entity.
 
 - **Data Types**:
-  - `float: true`: Raw 32-bit float (requires `size: 2`).
+  - `signed: true`: Signed integer values rather than the deault of unsigned (requires `size: 1`, `size: 2` or `size: 4`).
+  - `float: true`: Raw 32-bit float (requires `size: 2` or `size: 4`).
   - `string: true`: String (requires `size:` = length / 2).
     - E.g.
       ```yaml
@@ -139,6 +140,7 @@ For all entity definitions:
       size: 5       # For a 10 byte string
       ```
 - **Math Operations** (applied in order):
+  - `swap`: updates the byte ordering of the registers (`byte`, `word` or `word_byte`)
   - `sum_scale`: List of scaling factors applied to consecutive registers.
     - E.g., `sum_scale: [1, 10000]` for two registers starting at `address: 5` uses r1=5, r2=6, calculating r1 * 1 + r2 * 10000.
   - `shift_bits`: Bit shift right (integer).

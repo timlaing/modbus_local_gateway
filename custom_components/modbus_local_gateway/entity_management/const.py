@@ -28,16 +28,18 @@ NAME = "name"
 CONTROL_TYPE = "control"
 REGISTER_ADDRESS = "address"
 REGISTER_COUNT = "size"
+CONV_BITS = "bits"
+CONV_FLAGS = "flags"
+CONV_MAP = "map"
 CONV_MULTIPLIER = "multiplier"
 CONV_OFFSET = "offset"
-CONV_BITS = "bits"
 CONV_SHIFT_BITS = "shift_bits"
 CONV_SUM_SCALE = "sum_scale"
-CONV_MAP = "map"
-CONV_FLAGS = "flags"
+CONV_SWAP = "swap"
 PRECISION = "precision"
-IS_STRING = "string"
 IS_FLOAT = "float"
+IS_STRING = "string"
+IS_SIGNED = "signed"
 NEVER_RESETS = "never_resets"
 MAX_CHANGE = "max_change"
 UOM = "unit_of_measurement"
@@ -83,6 +85,14 @@ class Units(StrEnum):
     VA = "VoltAmps"
     SECONDS = "Seconds"
     PERCENT = "%"
+
+
+class SwapType(StrEnum):
+    """Modbus data types"""
+
+    WORD = "word"
+    BYTE = "byte"
+    WORD_BYTE = "word_byte"
 
 
 UOM_MAPPING = {
