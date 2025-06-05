@@ -162,7 +162,15 @@ cython_debug/
 /live/**
 custom_components/modbus_local_gateway/devices/Test-Device.yaml
 temp.py
-/config/*
-!/config/*.yaml
 
 .DS_Store
+
+# misc
+.coverage
+.vscode
+coverage.xml
+.ruff_cache
+
+# Home Assistant configuration
+config/*
+!config/configuration.yaml

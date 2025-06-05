@@ -1,9 +1,7 @@
 {
 	"name": "Modbus Local Dev",
-	"build": {
-		"dockerfile": "Dockerfile"
-	},
-	"postCreateCommand": "uv venv && uv pip install -r requirements-dev.txt --link-mode=copy",
+	"image": "mcr.microsoft.com/devcontainers/python:3.13",
+	"postCreateCommand": "scripts/setup",
 	"mounts": [
 		"source=${env:HOME}${env:USERPROFILE}/.ssh,target=/root/.ssh,type=bind"
 	],
@@ -18,15 +16,8 @@
 	],
 	"portsAttributes": {
 		"8123": {
-			"label": "Home Assistant"
-		},
-		"0-8122": {
-			"label": "Auto-Forwarded - Other",
-			"onAutoForward": "ignore"
-		},
-		"8124-999999": {
-			"label": "Auto-Forwarded - Other",
-			"onAutoForward": "ignore"
+			"label": "Home Assistant",
+			"onAutoForward": "notify"
 		}
 	},
 	"customizations": {
@@ -49,15 +40,18 @@
 				"ms-azuretools.vscode-docker"
 			],
 			"settings": {
-				"editor.formatOnPaste": false,
+				"editor.formatOnPaste": true,
 				"editor.formatOnSave": true,
-				"editor.formatOnType": true,
+				"editor.formatOnType": false,
 				"files.eol": "\n",
 				"editor.tabSize": 4,
 				"files.trimTrailingWhitespace": true,
 				"terminal.integrated.profiles.linux": {
 					"zsh": {
-						"path": "/usr/bin/zsh"
+						"path": "/usr/bin/zsh",
+						"args": [
+							"-l"
+						]
 					}
 				},
 				"terminal.integrated.defaultProfile.linux": "zsh",
@@ -69,14 +63,41 @@
 					"!include_dir_merge_list scalar",
 					"!include_dir_merge_named scalar"
 				],
-				"sonarlint.ls.javaHome": "/usr/lib/jvm/java-17-openjdk-arm64"
+				"sonarlint.ls.javaHome": "/usr/local/sdkman/candidates/java/current",
+				"python.analysis.typeCheckingMode": "basic",
+				"python.analysis.autoImportCompletions": true,
+				"python.defaultInterpreterPath": "/workspaces/modbus_local_gateway/.venv/bin/python"
 			}
 		}
 	},
 	"remoteUser": "vscode",
 	"features": {
-		"ghcr.io/devcontainers-contrib/features/ffmpeg-apt-get": "latest",
-		"ghcr.io/devcontainers/features/node": "latest",
-		"ghcr.io/va-h/devcontainers-features/uv": "latest"
+		"ghcr.io/devcontainers-extra/features/apt-packages:1": {
+			"packages": [
+				"ffmpeg",
+				"libturbojpeg0",
+				"libpcap-dev"
+			]
+		},
+		"ghcr.io/devcontainers/features/github-cli:1": {
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/java:1": {
+			"version": "latest",
+			"jdkDistro": "open",
+			"gradleVersion": "latest",
+			"mavenVersion": "latest",
+			"antVersion": "latest",
+			"groovyVersion": "latest"
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts",
+			"pnpmVersion": "latest",
+			"nvmVersion": "latest"
+		},
+		"ghcr.io/va-h/devcontainers-features/uv:1": {
+			"shellautocompletion": true,
+			"version": "latest"
+		}
 	}
 }
