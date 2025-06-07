@@ -35,9 +35,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
     ) -> None:
         """Initialize an entity."""
         super().__init__(coordinator, context=ctx)
-        if isinstance(ctx.desc, ModbusEntityDescription):
-            self.entity_description = ctx.desc
-        else:
+        if not isinstance(ctx.desc, ModbusEntityDescription):
             raise TypeError()
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
@@ -57,6 +55,11 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             raise UpdateFailed from exc
 
         await self.coordinator.async_request_refresh()
+
+    @property
+    def entity_description(self) -> ModbusEntityDescription:
+        """Return the entity description."""
+        return self.coordinator_context.desc
 
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
