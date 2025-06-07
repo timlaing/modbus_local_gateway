@@ -2,23 +2,47 @@ device:
   manufacturer: Test
   model: Test Model (DO NOT USE)
 
-# read_write_boolean:
-#   coil1:
-#     name: coil1
-#     address: 0x0001
-#     control: switch
+read_write_boolean:
+  coil1:
+    name: coil1
+    address: 0x0001
+    control: switch
 
-#   coil2:
-#     name: coil2
-#     address: 0x0001
+  coil2:
+    name: coil2
+    address: 0x0001
 
-# read_only_boolean:
-#   di1:
-#     name: di1
-#     address: 0x0002
-#     device_class: power
+  coil3:
+    name: coil3
+    address: 0x0001
+    control: switch
+    switch:
+      "on": False
+      "off": True
+
+  coil4:
+    name: coil4
+    address: 0x0001
+    control: binary_sensor
+    "on": False
+    "off": True
+
+read_only_boolean:
+  di1:
+    name: di1
+    address: 0x0003
+    device_class: power
 
 read_write_word:
+  on_off:
+    name: Remote On/Off
+    address: 0
+    control: switch
+    icon: mdi:power
+    switch:
+      "off": 0
+      "on": 1
+
   nibe_energy_lo:
     name: Energy LO (2180)
     address: 2180
@@ -39,51 +63,49 @@ read_write_word:
     address: 2180
     size: 2
     float: true
-    # sum_scale: [65536, 1]
-    # multiplier: 0.1
-    swap: byte
+    swap: word_byte
     unit_of_measurement: "kWh"
     device_class: energy
     state_class: total_increasing
     precision: 2
     entity_category: diagnostic
 
-  # hotwater_demand:
-  #   name: "Heißwasser Nachfrage"
-  #   address: 0x0003
-  #   bits: 1
-  #   device_class: heat
-  #   control: binary_sensor
-  #   icon: mdi:water-boiler
-  #   entity_category: diagnostic
-  #   entity_registry_enabled_default: True
+  hotwater_demand:
+    name: "Heißwasser Nachfrage"
+    address: 0x0003
+    bits: 1
+    device_class: heat
+    control: binary_sensor
+    icon: mdi:water-boiler
+    entity_category: diagnostic
+    entity_registry_enabled_default: True
 
-  # heating_demand:
-  #   name: "Heizung Nachfrage"
-  #   address: 0x0003
-  #   bits: 1
-  #   shift_bits: 1
-  #   device_class: heat
-  #   control: binary_sensor
-  #   icon: mdi:heating-coil
-  #   entity_category: diagnostic
-  #   entity_registry_enabled_default: True
+  heating_demand:
+    name: "Heizung Nachfrage"
+    address: 0x0003
+    bits: 1
+    shift_bits: 1
+    device_class: heat
+    control: binary_sensor
+    icon: mdi:heating-coil
+    entity_category: diagnostic
+    entity_registry_enabled_default: True
 
-  # antilegionella_on:
-  #   name: "Antilegionellen Aktiv"
-  #   address: 0x0003
-  #   bits: 1
-  #   shift_bits: 4
-  #   device_class: running
-  #   control: binary_sensor
-  #   icon: mdi:virus-off
-  #   entity_category: diagnostic
-  #   entity_registry_enabled_default: True
+  antilegionella_on:
+    name: "Antilegionellen Aktiv"
+    address: 0x0003
+    bits: 1
+    shift_bits: 4
+    device_class: running
+    control: binary_sensor
+    icon: mdi:virus-off
+    entity_category: diagnostic
+    entity_registry_enabled_default: True
 
-  # register_1:
-  #   name: "Boolean Register"
-  #   address: 0x0004
-  #   bits: 1
-  #   shift_bits: 4
-  #   device_class: running
-  #   control: binary_sensor
+  register_1:
+    name: "Boolean Register"
+    address: 0x0004
+    bits: 1
+    shift_bits: 4
+    device_class: running
+    control: binary_sensor

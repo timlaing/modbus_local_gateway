@@ -160,14 +160,12 @@ cython_debug/
 #.idea/
 
 /live/**
-custom_components/modbus_local_gateway/devices/Test-Device.yaml
 temp.py
 
 .DS_Store
 
 # misc
 .coverage
-.vscode
 coverage.xml
 .ruff_cache
 

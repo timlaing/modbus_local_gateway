@@ -6,7 +6,6 @@ import logging
 from datetime import timedelta
 from typing import Any
 
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -44,6 +43,17 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
 
+    async def write_data(
+        self,
+        value: str | int | float | bool | None,
+    ) -> None:
+        """Write data to the Modbus device"""
+        if value is None:
+            _LOGGER.error("Cannot write None value to Modbus device")
+            return
+        await self.coordinator.client.write_data(self.coordinator_context, value)
+        await self.coordinator.async_request_refresh()
+
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
     """Update coordinator for modbus entries"""
@@ -59,9 +69,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Initialise the coordinator"""
         self.client: AsyncModbusTcpClientGateway = client
         self._gateway: str = gateway
-        self._max_read_size: int
+        self._max_read_size: int = 1
         self._gateway_device: dr.DeviceEntry = gateway_device
-        self.started: bool = hass.is_running
 
         super().__init__(
             hass,
@@ -71,12 +80,6 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             update_method=self.async_update,  # type: ignore
             always_update=True,
         )
-
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._async_enable_sync)
-
-    async def _async_enable_sync(self, _) -> None:
-        """Allow sync of devices after startup"""
-        self.started = True
 
     @property
     def gateway_device(self) -> dr.DeviceEntry:
@@ -100,13 +103,12 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
 
     async def async_update(self) -> dict[str, Any]:
         """Fetch updated data for all registered entities"""
-        if self.started:
-            entities: list[ModbusContext] = sorted(
-                self.async_contexts(), key=lambda x: x.slave_id
-            )
-            data: dict[str, Any] = await self._update_device(entities=entities)
-            if data:
-                return data
+        entities: list[ModbusContext] = sorted(
+            self.async_contexts(), key=lambda x: x.slave_id
+        )
+        data: dict[str, Any] = await self._update_device(entities=entities)
+        if data:
+            return data
         raise UpdateFailed()
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:

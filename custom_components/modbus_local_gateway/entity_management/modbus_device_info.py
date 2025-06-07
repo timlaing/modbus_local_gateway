@@ -319,8 +319,8 @@ class ModbusDeviceInfo:
         self, params, _data
     ) -> None | type[ModbusBinarySensorEntityDescription]:
         """Handle binary sensor description specific logic"""
-        params["on"] = _data.get("on", 1)
-        params["off"] = _data.get("off", 0)
+        params["on"] = _data.get("on", True)
+        params["off"] = _data.get("off", False)
         return ModbusBinarySensorEntityDescription
 
     def _handle_switch_description(
@@ -337,8 +337,8 @@ class ModbusDeviceInfo:
                 "Switch configuration for %s should be a dictionary", entity
             )
             return None
-        params["on"] = switch_data.get("on", 1)
-        params["off"] = switch_data.get("off", 0)
+        params["on"] = switch_data.get("on", True)
+        params["off"] = switch_data.get("off", False)
         return ModbusSwitchEntityDescription
 
     def _handle_select_description(
@@ -367,7 +367,6 @@ class ModbusDeviceInfo:
         params["min"] = number_data["min"]
         params["max"] = number_data["max"]
         params["precision"] = _data.get(PRECISION)
-        params["suggested_display_precision"] = _data.get(PRECISION)
         return ModbusNumberEntityDescription
 
     def _create_description_instance(
@@ -380,6 +379,8 @@ class ModbusDeviceInfo:
             )
             if desc.validate():
                 return desc
-        except TypeError:
-            pass
+        except TypeError as err:
+            _LOGGER.warning(
+                "Failed to create description instance for %s: %s", desc_cls, err
+            )
         return None

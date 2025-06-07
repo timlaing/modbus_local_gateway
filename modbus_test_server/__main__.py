@@ -51,7 +51,11 @@ def _server_context(slave_id=1) -> ModbusServerContext:
         ir=CallbackDataBlock(0x00, [0] * 65536),  # Input Registers
     )
 
-    context[slave_id].setValues(0x03, 2180, [0xF147, 0x003F])
+    context[slave_id].setValues(0x04, 72, [17723, 32768])
+    context[slave_id].setValues(0x03, 64512, [17658, 0])
+    context[slave_id].setValues(0x03, 28, [16512, 0])
+    context[slave_id].setValues(0x03, 32768, [201])
+    context[slave_id].setValues(0x03, 2180, [0x0020, 0xF147])
 
     return ModbusServerContext(slaves=context, single=False)
 

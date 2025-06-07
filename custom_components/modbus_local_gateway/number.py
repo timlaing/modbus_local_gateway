@@ -71,7 +71,7 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
                     self.entity_description.key,
                     value,
                 )
-                self.async_write_ha_state()
+            super()._handle_coordinator_update()
 
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)

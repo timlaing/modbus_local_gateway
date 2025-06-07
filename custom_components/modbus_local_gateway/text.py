@@ -59,7 +59,7 @@ class ModbusTextEntity(ModbusCoordinatorEntity, TextEntity):  # type: ignore
                     self.entity_description.key,
                     value,
                 )
-                self.async_write_ha_state()
+            super()._handle_coordinator_update()
 
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
@@ -71,4 +71,4 @@ class ModbusTextEntity(ModbusCoordinatorEntity, TextEntity):  # type: ignore
     async def async_set_value(self, value: str) -> None:
         """Set new value."""
         if isinstance(self.coordinator, ModbusCoordinator):
-            await self.coordinator.client.write_data(self.coordinator_context, value)
+            await self.write_data(value)

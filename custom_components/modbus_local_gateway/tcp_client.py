@@ -203,6 +203,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     async def write_data(self, entity: ModbusContext, value: Any) -> ModbusPDU | None:
         """Writes data to Holding Registers or Coils"""
+        pdu: ModbusPDU | None = None
         async with self.lock:
             if not self.connected:
                 await self.connect()
@@ -236,7 +237,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         "Incorrect number of registers: expected "
                         f"{entity.desc.register_count}, got {len(registers)}"
                     )
-                return await self._custom_write_registers(
+                pdu = await self._custom_write_registers(
                     address=entity.desc.register_address,
                     values=registers,
                     slave=entity.slave_id,
@@ -246,13 +247,23 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     raise TypeError(
                         f"Value for COIL must be boolean, got {type(value).__name__}"
                     )
-                return await self.write_coil(
+                pdu = await self.write_coil(
                     address=entity.desc.register_address,
                     value=value,
                     slave=entity.slave_id,
                 )
             else:
                 raise ValueError(f"Unsupported data type: {entity.desc.data_type}")
+
+            if pdu and pdu.isError():
+                _LOGGER.error(
+                    "Error writing data to %s (%s): %s",
+                    entity.desc.key,
+                    entity.desc.data_type,
+                    pdu,
+                )
+
+            return pdu
 
     async def update_slave(
         self, entities: list[ModbusContext], max_read_size: int

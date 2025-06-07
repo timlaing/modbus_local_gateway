@@ -208,8 +208,8 @@ class ModbusSensorEntityDescription(SensorEntityDescription, ModbusEntityDescrip
 class ModbusSwitchEntityDescription(SwitchEntityDescription, ModbusEntityDescription):
     """Describes Modbus switch holding register entity."""
 
-    on: int | None = None
-    off: int | None = None
+    on: bool | int | None = None
+    off: bool | int | None = None
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -238,5 +238,5 @@ class ModbusBinarySensorEntityDescription(
 ):
     """Describes Modbus binary sensor entity for Discrete Inputs and Registers."""
 
-    on: int | None = 1
-    off: int | None = 0
+    on: bool | int | None = None
+    off: bool | int | None = None

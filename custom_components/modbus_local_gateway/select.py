@@ -72,7 +72,7 @@ class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
                     self.entity_description.key,
                     self._attr_current_option,
                 )
-                self.async_write_ha_state()
+            super()._handle_coordinator_update()
 
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
@@ -91,4 +91,4 @@ class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
             value: int = list(self.entity_description.select_options.keys())[
                 list(self.entity_description.select_options.values()).index(option)
             ]
-            await self.coordinator.client.write_data(self.coordinator_context, value)
+            await self.write_data(value)
