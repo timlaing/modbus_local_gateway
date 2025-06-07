@@ -1,6 +1,6 @@
 # Modbus Local Gateway Integration for Home Assistant
 
-[![Build Status](https://github.com/timlaing/modbus_local_gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/timlaing/modbus_local_gateway/actions/workflows/ci.yml)
+[![Build Status](https://github.com/timlaing/modbus_local_gateway/actions/workflows/tests.yml/badge.svg)](https://github.com/timlaing/modbus_local_gateway/actions/workflows/tests.yml)
 [![GitHub stars](https://img.shields.io/github/stars/timlaing/modbus_local_gateway.svg)](https://github.com/timlaing/modbus_local_gateway/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/timlaing/modbus_local_gateway.svg)](https://github.com/timlaing/modbus_local_gateway/issues)
 [![GitHub license](https://img.shields.io/github/license/timlaing/modbus_local_gateway.svg)](LICENSE)
@@ -35,6 +35,8 @@ Or use these buttons (requires *My Home Assistant*):
 [![Open HACS Repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=timlaing&repository=modbus_local_gateway&category=integration)
 
 Restart Home Assistant after installation.
+
+For support and discussions, join our Discord community: [Join our Discord community](https://discord.gg/rQ2cZ6K5YY)
 
 ## Configuration
 
