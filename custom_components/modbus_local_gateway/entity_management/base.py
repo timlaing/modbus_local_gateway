@@ -117,7 +117,7 @@ class ModbusEntityDescription(
             or self.conv_bits
             or self.precision
             or self.conv_swap
-            or self.signed
+            or self.is_signed
             or (self.conv_multiplier and int(self.conv_multiplier) != 1)
         ):
             _LOGGER.warning(

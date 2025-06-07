@@ -191,7 +191,13 @@ For all entity definitions:
         "on": 1       # default: 1
         "off": 0      # default: 0
       ```
-
+  - `control: binary_sensor`: Creates a binary_sensor entity.
+    - E.g.:
+      ```yaml
+      control: binary_sensor
+      "on": False       # Optional - default: True
+      "off": True       # Optional - default: False
+      ```
 ### Example YAML
 
 ```yaml

@@ -286,7 +286,7 @@ class Conversion:
             raise NotSupportedError("Setting of maps is not supported")
         elif desc.conv_flags:
             raise NotSupportedError("Setting of flags is not supported")
-        elif isinstance(value, int | float):
+        elif isinstance(value, (int, float)):
             registers = self._convert_from_decimal(value, desc)
         else:
             raise InvalidDataTypeError()

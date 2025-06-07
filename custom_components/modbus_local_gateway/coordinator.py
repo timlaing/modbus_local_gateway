@@ -48,10 +48,14 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         value: str | int | float | bool | None,
     ) -> None:
         """Write data to the Modbus device"""
-        if value is None:
-            _LOGGER.error("Cannot write None value to Modbus device")
-            return
-        await self.coordinator.client.write_data(self.coordinator_context, value)
+        try:
+            await self.coordinator.client.write_data(self.coordinator_context, value)
+        except Exception as exc:  # pylint: disable=broad-except
+            _LOGGER.error(
+                "Failed to write %s to %s: %s", value, self.coordinator_context, exc
+            )
+            raise UpdateFailed from exc
+
         await self.coordinator.async_request_refresh()
 
 
