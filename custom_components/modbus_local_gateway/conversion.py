@@ -38,18 +38,57 @@ class Conversion:
         self, registers: list[int], desc: ModbusEntityDescription
     ) -> list[int]:
         """Do swap as needed."""
+        _registers: list[int] = registers.copy()
         if desc.conv_swap in (SwapType.BYTE, SwapType.WORD_BYTE):
             # convert [12][34] --> [21][43]
-            for i, register in enumerate(registers):
-                registers[i] = int.from_bytes(
+            for i, register in enumerate(_registers):
+                _registers[i] = int.from_bytes(
                     register.to_bytes(2, byteorder="little"),
                     byteorder="big",
                     signed=False,
                 )
         if desc.conv_swap in (SwapType.WORD, SwapType.WORD_BYTE):
             # convert [12][34] ==> [34][12]
-            registers.reverse()
-        return registers
+            _registers.reverse()
+        return _registers
+
+    def _get_number_data_type(
+        self, desc: ModbusEntityDescription
+    ) -> ModbusClientMixin.DATATYPE:
+        """Get the data type for integer conversion"""
+        if desc.register_count == 4:
+            return (
+                ModbusClientMixin.DATATYPE.INT64
+                if desc.is_signed
+                else ModbusClientMixin.DATATYPE.UINT64
+            )
+        if desc.register_count == 2:
+            return (
+                ModbusClientMixin.DATATYPE.INT32
+                if desc.is_signed
+                else ModbusClientMixin.DATATYPE.UINT32
+            )
+        if desc.register_count == 1:
+            return (
+                ModbusClientMixin.DATATYPE.INT16
+                if desc.is_signed
+                else ModbusClientMixin.DATATYPE.UINT16
+            )
+        raise InvalidDataTypeError(
+            f"Invalid register count for integer conversion: {desc.register_count}"
+        )
+
+    def _get_float_data_type(
+        self, desc: ModbusEntityDescription
+    ) -> ModbusClientMixin.DATATYPE:
+        """Get the data type for float conversion"""
+        if desc.register_count == 4:
+            return ModbusClientMixin.DATATYPE.FLOAT64
+        if desc.register_count == 2:
+            return ModbusClientMixin.DATATYPE.FLOAT32
+        raise InvalidDataTypeError(
+            f"Invalid register count for float conversion: {desc.register_count}"
+        )
 
     def _convert_to_string(self, registers: list[int]) -> str:
         """Convert to a string type"""
@@ -75,11 +114,7 @@ class Conversion:
         """Convert to a float type"""
         value: str | int | float | list = self.client.convert_from_registers(
             registers,
-            data_type=(
-                self.client.DATATYPE.FLOAT32
-                if desc.register_count == 2
-                else self.client.DATATYPE.FLOAT64
-            ),
+            data_type=self._get_float_data_type(desc),
         )
         if isinstance(value, float):
             value = self._apply_conversion_operations(value, desc)
@@ -92,11 +127,7 @@ class Conversion:
         """Convert from a float type"""
         registers: list[int] = self.client.convert_to_registers(
             value,
-            data_type=(
-                self.client.DATATYPE.FLOAT32
-                if desc.register_count == 2
-                else self.client.DATATYPE.FLOAT64
-            ),
+            data_type=self._get_float_data_type(desc),
         )
         return registers
 
@@ -132,38 +163,19 @@ class Conversion:
         num = self._apply_conversion_operations(num, desc)
         return num
 
-    def _get_int_data_type(
-        self, desc: ModbusEntityDescription
-    ) -> ModbusClientMixin.DATATYPE:
-        """Get the data type for integer conversion"""
-        if desc.register_count == 4:
-            return (
-                ModbusClientMixin.DATATYPE.INT64
-                if desc.is_signed
-                else ModbusClientMixin.DATATYPE.UINT64
-            )
-        if desc.register_count == 2:
-            return (
-                ModbusClientMixin.DATATYPE.INT32
-                if desc.is_signed
-                else ModbusClientMixin.DATATYPE.UINT32
-            )
-        return (
-            ModbusClientMixin.DATATYPE.INT16
-            if desc.is_signed
-            else ModbusClientMixin.DATATYPE.UINT16
-        )
-
     def _convert_registers_to_number(
         self, registers: list[int], desc: ModbusEntityDescription
     ) -> int | float:
         """Convert registers to a number based on data type"""
         num: str | int | float | list = self.client.convert_from_registers(
-            registers, data_type=self._get_int_data_type(desc)
+            registers, data_type=self._get_number_data_type(desc)
         )
 
         if desc.conv_sum_scale is not None and isinstance(num, list):
             num = sum(r * s for r, s in zip(num, desc.conv_sum_scale))
+
+        if isinstance(num, float):
+            return num
 
         if isinstance(num, int):
             if desc.conv_shift_bits:
@@ -171,10 +183,9 @@ class Conversion:
             if desc.conv_bits:
                 num = num & int("1" * desc.conv_bits, 2)
             return num
-        elif isinstance(num, float):
-            return num
-        else:  # desc.conv_shift_bits or desc.conv_bits:
-            raise InvalidDataTypeError()
+        raise InvalidDataTypeError(
+            f"Invalid data type for conversion: {type(num).__name__}"
+        )
 
     def _apply_conversion_operations(
         self, num: int | float, desc: ModbusEntityDescription
@@ -209,7 +220,7 @@ class Conversion:
 
         registers: list[int] = self.client.convert_to_registers(
             int(round(num)),
-            data_type=self._get_int_data_type(desc),
+            data_type=self._get_number_data_type(desc),
         )
         return registers
 

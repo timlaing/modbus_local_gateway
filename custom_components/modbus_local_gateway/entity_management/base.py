@@ -39,7 +39,7 @@ class UnusedKeysMixin:
 
     address: int | None = 0  # register_address
     size: int | None = 1  # register_count
-    swap: str | None = None  # conv_sum_scale
+    swap: str | None = None  # conv_swap
     sum_scale: list[float] | None = None  # conv_sum_scale
     multiplier: float | None = 1.0  # conv_multiplier
     offset: float | None = None  # conv_offset
@@ -121,7 +121,8 @@ class ModbusEntityDescription(
             or (self.conv_multiplier and int(self.conv_multiplier) != 1)
         ):
             _LOGGER.warning(
-                "Unable to create entity for %s: %s, %s, %s, %s, %s, %s, %s, and %s not valid for %s",
+                "Unable to create entity for %s: %s, %s, %s, %s, %s, %s, %s, "
+                "and %s not valid for %s",
                 self.key,
                 CONV_SUM_SCALE,
                 CONV_SHIFT_BITS,
@@ -169,7 +170,7 @@ class ModbusEntityDescription(
 
         if not self.is_string and self.register_count not in (1, 2, 4):
             _LOGGER.warning(
-                "Unable to create entity for %s: %s outside valid range not valid for int",
+                "Unable to create entity for %s: %s must be 1, 2, or 4 for non-string entities",
                 self.key,
                 REGISTER_COUNT,
             )

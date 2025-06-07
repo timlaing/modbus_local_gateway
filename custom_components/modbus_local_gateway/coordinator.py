@@ -98,7 +98,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Sets the max register read size"""
         self._max_read_size = value
 
-    async def async_update(self) -> dict[str, Any] | None:
+    async def async_update(self) -> dict[str, Any]:
         """Fetch updated data for all registered entities"""
         if self.started:
             entities: list[ModbusContext] = sorted(
@@ -107,7 +107,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             data: dict[str, Any] = await self._update_device(entities=entities)
             if data:
                 return data
-            raise UpdateFailed()
+        raise UpdateFailed()
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         """Update data for a list of entities"""
