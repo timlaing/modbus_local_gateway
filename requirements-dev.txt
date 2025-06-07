@@ -1,5 +1,6 @@
 
 -r requirements.txt
+coverage>=7.7.0
 fuzzywuzzy
 homeassistant==2025.5.3
 isort
