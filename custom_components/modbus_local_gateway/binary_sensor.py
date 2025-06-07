@@ -63,13 +63,13 @@ class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):  # 
                 )
             ):
                 self._attr_is_on = value == self.entity_description.on
-            else:
+                _LOGGER.debug(
+                    "Updating device with %s as %s",
+                    self.entity_description.key,
+                    self._attr_is_on,
+                )
+            elif value is not None:
                 raise ValueError("Invalid value for binary sensor")
-            _LOGGER.debug(
-                "Updating device with %s as %s",
-                self.entity_description.key,
-                self._attr_is_on,
-            )
             super()._handle_coordinator_update()
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
