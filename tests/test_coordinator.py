@@ -328,7 +328,8 @@ def test_modbus_coordinator_entity_init_sets_attributes() -> None:
 
 
 def test_modbus_coordinator_entity_init_raises_typeerror_on_invalid_desc() -> None:
-    """Test ModbusCoordinatorEntity __init__ raises TypeError if desc is not ModbusEntityDescription."""
+    """Test ModbusCoordinatorEntity __init__ raises TypeError
+    if desc is not ModbusEntityDescription."""
     coordinator = MagicMock()
     device = MagicMock()
 

@@ -121,7 +121,7 @@ async def test_update_exception() -> None:
         ) as warning,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.error") as error,
-        patch.object(type(entity), "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "name", new_callable=PropertyMock) as mocked_name,
     ):
         mocked_name.return_value = "Test"
         entity._handle_coordinator_update()  # pylint: disable=protected-access
@@ -157,7 +157,7 @@ async def test_update_value() -> None:
         ) as warning,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.error") as error,
-        patch.object(type(entity), "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "name", new_callable=PropertyMock) as mocked_name,
     ):
         mocked_name.return_value = "Test"
         entity._handle_coordinator_update()  # pylint: disable=protected-access
@@ -197,15 +197,13 @@ async def test_update_reset() -> None:
         ) as warning,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.error") as error,
-        patch.object(type(entity), "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "state_class", new_callable=PropertyMock) as mocked_state,
         patch.object(
-            type(entity), "state_class", new_callable=PropertyMock
-        ) as mocked_state,
-        patch.object(
-            type(entity), "last_reset", new_callable=PropertyMock
+            entity, "last_reset", new_callable=PropertyMock
         ) as mocked_last_reset,
         patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
+            entity, "_attr_native_value", new_callable=PropertyMock
         ) as mocked_attr_native_value,
     ):
         mocked_name.return_value = "Test"
@@ -251,21 +249,15 @@ async def test_update_never_reset() -> None:
         ) as warning,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.error") as error,
-        patch.object(type(entity), "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "name", new_callable=PropertyMock) as mocked_name,
         patch.object(
-            type(entity), "state_class", new_callable=PropertyMock
-        ) as mocked_state,
-        patch.object(
-            type(entity), "last_reset", new_callable=PropertyMock
+            entity, "last_reset", new_callable=PropertyMock
         ) as mocked_last_reset,
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
     ):
         mocked_name.return_value = "Test"
-        mocked_state.return_value = SensorStateClass.TOTAL_INCREASING
         mocked_last_reset.return_value = None
-        mocked_attr_native_value.return_value = 2
+        entity._attr_native_value = 2  # pylint: disable=protected-access
+        entity.state_class = SensorStateClass.TOTAL_INCREASING
         entity._handle_coordinator_update()  # pylint: disable=protected-access
 
         coordinator.get_data.assert_called_once_with(ctx)
@@ -304,15 +296,13 @@ async def test_update_deviceupdate_hw_version() -> None:
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.error") as error,
         patch("custom_components.modbus_local_gateway.sensor.dr.async_get") as dr,
-        patch.object(type(entity), "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "state_class", new_callable=PropertyMock) as mocked_state,
         patch.object(
-            type(entity), "state_class", new_callable=PropertyMock
-        ) as mocked_state,
-        patch.object(
-            type(entity), "last_reset", new_callable=PropertyMock
+            entity, "last_reset", new_callable=PropertyMock
         ) as mocked_last_reset,
         patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
+            entity, "_attr_native_value", new_callable=PropertyMock
         ) as mocked_attr_native_value,
     ):
         mocked_name.return_value = "Test"
@@ -360,15 +350,13 @@ async def test_update_deviceupdate_sw_version() -> None:
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.error") as error,
         patch("custom_components.modbus_local_gateway.sensor.dr.async_get") as dr,
-        patch.object(type(entity), "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "name", new_callable=PropertyMock) as mocked_name,
+        patch.object(entity, "state_class", new_callable=PropertyMock) as mocked_state,
         patch.object(
-            type(entity), "state_class", new_callable=PropertyMock
-        ) as mocked_state,
-        patch.object(
-            type(entity), "last_reset", new_callable=PropertyMock
+            entity, "last_reset", new_callable=PropertyMock
         ) as mocked_last_reset,
         patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
+            entity, "_attr_native_value", new_callable=PropertyMock
         ) as mocked_attr_native_value,
     ):
         mocked_name.return_value = "Test"
@@ -410,11 +398,8 @@ async def test_handle_coordinator_update_ignore_same_value() -> None:
     )
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
     ):
-        mocked_attr_native_value.return_value = 10
+        entity._attr_native_value = 10  # pylint: disable=protected-access
 
         entity._handle_coordinator_update()  # pylint: disable=protected-access
 
@@ -453,11 +438,8 @@ async def test_handle_coordinator_update_ignore_large_change() -> None:
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
         ) as warning,
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
     ):
-        mocked_attr_native_value.return_value = 10
+        entity._attr_native_value = 10  # pylint: disable=protected-access
         entity._handle_coordinator_update()  # pylint: disable=protected-access
 
         coordinator.get_data.assert_called_once_with(ctx)
@@ -528,7 +510,7 @@ async def test_handle_coordinator_update_update_value() -> None:
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
+            entity, "_attr_native_value", new_callable=PropertyMock
         ) as mocked_attr_native_value,
     ):
         mocked_attr_native_value.return_value = 10
@@ -566,7 +548,7 @@ async def test_handle_coordinator_update_update_smaller_value() -> None:
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
+            entity, "_attr_native_value", new_callable=PropertyMock
         ) as mocked_attr_native_value,
     ):
         mocked_attr_native_value.return_value = 100
@@ -603,15 +585,9 @@ async def test_handle_coordinator_update_never_resets() -> None:
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
         ) as warning,
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
-        patch.object(
-            type(entity), "state_class", new_callable=PropertyMock
-        ) as mocked_state,
     ):
-        mocked_attr_native_value.return_value = 15
-        mocked_state.return_value = SensorStateClass.TOTAL_INCREASING
+        entity._attr_native_value = 15  # pylint: disable=protected-access
+        entity.state_class = SensorStateClass.TOTAL_INCREASING
         entity._handle_coordinator_update()  # pylint: disable=protected-access
 
         coordinator.get_data.assert_called_once_with(ctx)
@@ -645,14 +621,10 @@ async def test_native_value_rounds_float_with_precision() -> None:
     patch.object(
         entity, "entity_description", new_callable=PropertyMock, return_value=desc
     )
-    with (
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
-    ):
-        mocked_attr_native_value.return_value = 12.3456
-        result = entity.native_value
-        assert result == pytest.approx(12.35)
+
+    entity._attr_native_value = 12.3456  # pylint: disable=protected-access
+    result = entity.native_value
+    assert result == pytest.approx(12.35)
 
 
 async def test_native_value_returns_non_float() -> None:
@@ -675,14 +647,10 @@ async def test_native_value_returns_non_float() -> None:
     patch.object(
         entity, "entity_description", new_callable=PropertyMock, return_value=desc
     )
-    with (
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
-    ):
-        mocked_attr_native_value.return_value = 42
-        result = entity.native_value
-        assert result == 42
+
+    entity._attr_native_value = 42  # pylint: disable=protected-access
+    result = entity.native_value
+    assert result == 42
 
 
 async def test_native_value_no_precision() -> None:
@@ -705,14 +673,10 @@ async def test_native_value_no_precision() -> None:
     patch.object(
         entity, "entity_description", new_callable=PropertyMock, return_value=desc
     )
-    with (
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
-    ):
-        mocked_attr_native_value.return_value = 12.3456
-        result = entity.native_value
-        assert result == pytest.approx(12.3456)
+
+    entity._attr_native_value = 12.3456  # pylint: disable=protected-access
+    result = entity.native_value
+    assert result == pytest.approx(12.3456)
 
 
 async def test_native_value_none_result() -> None:
@@ -735,14 +699,10 @@ async def test_native_value_none_result() -> None:
     patch.object(
         entity, "entity_description", new_callable=PropertyMock, return_value=desc
     )
-    with (
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
-    ):
-        mocked_attr_native_value.return_value = None
-        result = entity.native_value
-        assert result is None
+
+    entity._attr_native_value = None  # pylint: disable=protected-access
+    result = entity.native_value
+    assert result is None
 
 
 async def test_native_value_non_modbus_description() -> None:
@@ -765,11 +725,7 @@ async def test_native_value_non_modbus_description() -> None:
     patch.object(
         entity, "entity_description", new_callable=PropertyMock, return_value=desc
     )
-    with (
-        patch.object(
-            type(entity), "_attr_native_value", new_callable=PropertyMock
-        ) as mocked_attr_native_value,
-    ):
-        mocked_attr_native_value.return_value = 12.3456
-        result = entity.native_value
-        assert result == pytest.approx(12.3456)
+
+    entity._attr_native_value = 12.3456  # pylint: disable=protected-access
+    result = entity.native_value
+    assert result == pytest.approx(12.3456)
