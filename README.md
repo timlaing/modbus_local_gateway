@@ -1,6 +1,6 @@
 # Modbus Local Gateway Integration for Home Assistant
 
-[![Build Status](https://github.com/timlaing/modbus_local_gateway/actions/workflows/tests.yml/badge.svg)](https://github.com/timlaing/modbus_local_gateway/actions/workflows/ci.yml)
+[![Build Status](https://github.com/timlaing/modbus_local_gateway/actions/workflows/tests.yml/badge.svg)](https://github.com/timlaing/modbus_local_gateway/actions/workflows/tests.yml)
 [![GitHub stars](https://img.shields.io/github/stars/timlaing/modbus_local_gateway.svg)](https://github.com/timlaing/modbus_local_gateway/stargazers)
 [![GitHub issues](https://img.shields.io/github/issues/timlaing/modbus_local_gateway.svg)](https://github.com/timlaing/modbus_local_gateway/issues)
 [![GitHub license](https://img.shields.io/github/license/timlaing/modbus_local_gateway.svg)](LICENSE)
