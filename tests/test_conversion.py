@@ -1,14 +1,19 @@
 """Conversion Tests"""
 
 import pytest
+from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.register_message import ReadInputRegistersResponse
 
-from custom_components.modbus_local_gateway.conversion import Conversion
+from custom_components.modbus_local_gateway.conversion import (
+    Conversion,
+    InvalidDataTypeError,
+)
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusDataType,
     ModbusSensorEntityDescription,
 )
+from custom_components.modbus_local_gateway.entity_management.const import SwapType
 from custom_components.modbus_local_gateway.tcp_client import AsyncModbusTcpClient
 
 
@@ -528,3 +533,113 @@ async def test_float_multiplier() -> None:
     )
 
     assert value == pytest.approx(0.0075, 0.0001)
+
+
+@pytest.mark.parametrize(
+    "registers,swap_type,expected",
+    [
+        # NONE: no change
+        ([0x1234, 0x5678], None, [0x1234, 0x5678]),
+        # BYTE: swap bytes in each register
+        ([0x1234, 0x5678], SwapType.BYTE, [0x3412, 0x7856]),
+        # WORD: reverse register order
+        ([0x1234, 0x5678], SwapType.WORD, [0x5678, 0x1234]),
+        # WORD_BYTE: reverse order and swap bytes in each
+        ([0x1234, 0x5678], SwapType.WORD_BYTE, [0x7856, 0x3412]),
+        # Single register, BYTE
+        ([0x1234], SwapType.BYTE, [0x3412]),
+        # Single register, WORD (should be same as input)
+        ([0x1234], SwapType.WORD, [0x1234]),
+        # Single register, WORD_BYTE (should swap bytes)
+        ([0x1234], SwapType.WORD_BYTE, [0x3412]),
+    ],
+)
+def test_swap_registers(
+    registers: list[int], swap_type: None | SwapType, expected: list[int]
+) -> None:
+    """Test _swap_registers with various swap types."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        register_address=1,
+        key="test",
+        conv_swap=swap_type,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    result: list[int] = conversion._swap_registers(registers, desc)  # pylint: disable=protected-access
+    assert result == expected
+
+
+def test_swap_registers_does_not_modify_input() -> None:
+    """Test that _swap_registers does not modify the input list."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        register_address=1,
+        key="test",
+        conv_swap=SwapType.WORD_BYTE,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    original: list[int] = [0x1234, 0x5678]
+    input_copy: list[int] = original.copy()
+    _: list[int] = conversion._swap_registers(original, desc)  # pylint: disable=protected-access
+    assert original == input_copy
+
+
+@pytest.mark.parametrize(
+    "signed,size,expected",
+    [
+        (False, 1, ModbusClientMixin.DATATYPE.UINT16),
+        (False, 2, ModbusClientMixin.DATATYPE.UINT32),
+        (False, 4, ModbusClientMixin.DATATYPE.UINT64),
+        (True, 1, ModbusClientMixin.DATATYPE.INT16),
+        (True, 2, ModbusClientMixin.DATATYPE.INT32),
+        (True, 4, ModbusClientMixin.DATATYPE.INT64),
+        (False, 3, None),  # Invalid size
+        (True, 3, None),  # Invalid size
+    ],
+)
+def test_get_number_type(
+    signed: bool, size: int, expected: ModbusClientMixin.DATATYPE
+) -> None:
+    """Test _get_number_data_type with various signed and size combinations."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        register_address=1,
+        key="test",
+        is_float=False,
+        is_signed=signed,
+        register_count=size,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    if expected is None:
+        with pytest.raises(InvalidDataTypeError):
+            conversion._get_number_data_type(desc)  # pylint: disable=protected-access
+    else:
+        result: ModbusClientMixin.DATATYPE = conversion._get_number_data_type(desc)  # pylint: disable=protected-access
+        assert result == expected
+
+
+@pytest.mark.parametrize(
+    "size,expected",
+    [
+        (2, ModbusClientMixin.DATATYPE.FLOAT32),
+        (4, ModbusClientMixin.DATATYPE.FLOAT64),
+        (3, None),  # Invalid size for float
+        (1, None),  # Invalid size for float
+    ],
+)
+def test_get_float_type(size: int, expected: ModbusClientMixin.DATATYPE) -> None:
+    """Test _get_float_data_type with various sizes."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        register_address=1,
+        key="test",
+        is_float=True,
+        register_count=size,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    if expected is None:
+        with pytest.raises(InvalidDataTypeError):
+            conversion._get_float_data_type(desc)  # pylint: disable=protected-access
+    else:
+        result: ModbusClientMixin.DATATYPE = conversion._get_float_data_type(desc)  # pylint: disable=protected-access
+        assert result == expected

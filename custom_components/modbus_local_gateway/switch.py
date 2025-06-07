@@ -57,13 +57,9 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
             if value is not None and isinstance(
                 self.entity_description, ModbusSwitchEntityDescription
             ):
-                if (
-                    self.entity_description.data_type == ModbusDataType.COIL
-                    and isinstance(value, bool)
-                ):
-                    self._attr_is_on = value
-                elif (
-                    self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER
+                if self.entity_description.data_type in (
+                    ModbusDataType.COIL,
+                    ModbusDataType.HOLDING_REGISTER,
                 ):
                     self._attr_is_on = value == self.entity_description.on
                 else:
@@ -71,9 +67,9 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
                 _LOGGER.debug(
                     "Updating device with %s as %s",
                     self.entity_description.key,
-                    value,
+                    self._attr_is_on,
                 )
-                self.async_write_ha_state()
+                super()._handle_coordinator_update()
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
 
@@ -86,13 +82,14 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
         if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
             self.entity_description, ModbusSwitchEntityDescription
         ):
-            if self.entity_description.data_type == ModbusDataType.COIL:
-                value = True
-            elif self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER:
-                value = self.entity_description.on
+            if self.entity_description.data_type in (
+                ModbusDataType.COIL,
+                ModbusDataType.HOLDING_REGISTER,
+            ):
+                value: bool | int | None = self.entity_description.on
             else:
                 raise ValueError(INVALID_DATA_TYPE)
-            await self.coordinator.client.write_data(self.coordinator_context, value)
+            await self.write_data(value)
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
@@ -103,10 +100,11 @@ class ModbusSwitchEntity(ModbusCoordinatorEntity, SwitchEntity):  # type: ignore
         if isinstance(self.coordinator, ModbusCoordinator) and isinstance(
             self.entity_description, ModbusSwitchEntityDescription
         ):
-            if self.entity_description.data_type == ModbusDataType.COIL:
-                value = False
-            elif self.entity_description.data_type == ModbusDataType.HOLDING_REGISTER:
-                value = self.entity_description.off
+            if self.entity_description.data_type in (
+                ModbusDataType.COIL,
+                ModbusDataType.HOLDING_REGISTER,
+            ):
+                value: bool | int | None = self.entity_description.off
             else:
                 raise ValueError(INVALID_DATA_TYPE)
-            await self.coordinator.client.write_data(self.coordinator_context, value)
+            await self.write_data(value)

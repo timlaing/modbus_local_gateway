@@ -55,17 +55,21 @@ class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):  # 
             value = cast(ModbusCoordinator, self.coordinator).get_data(
                 self.coordinator_context
             )
-            if value is not None and isinstance(value, bool):
-                self._attr_is_on = value
-                self.async_write_ha_state()
-            elif (
+            if (
                 value is not None
-                and isinstance(value, int)
+                and isinstance(value, (int | bool))
                 and isinstance(
                     self.entity_description, ModbusBinarySensorEntityDescription
                 )
             ):
                 self._attr_is_on = value == self.entity_description.on
-                self.async_write_ha_state()
+                _LOGGER.debug(
+                    "Updating device with %s as %s",
+                    self.entity_description.key,
+                    self._attr_is_on,
+                )
+            elif value is not None:
+                raise ValueError("Invalid value for binary sensor")
+            super()._handle_coordinator_update()
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)

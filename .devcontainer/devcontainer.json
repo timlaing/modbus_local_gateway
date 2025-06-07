@@ -1,6 +1,6 @@
 {
 	"name": "Modbus Local Dev",
-	"image": "mcr.microsoft.com/devcontainers/python:3.13",
+	"image": "mcr.microsoft.com/devcontainers/python:3.13-bookworm",
 	"postCreateCommand": "scripts/setup",
 	"mounts": [
 		"source=${env:HOME}${env:USERPROFILE}/.ssh,target=/root/.ssh,type=bind"
@@ -37,7 +37,8 @@
 				"elagil.pre-commit-helper",
 				"sonarsource.sonarlint-vscode",
 				"charliermarsh.ruff",
-				"ms-azuretools.vscode-docker"
+				"ms-azuretools.vscode-docker",
+				"coderabbit.coderabbit-vscode"
 			],
 			"settings": {
 				"editor.formatOnPaste": true,

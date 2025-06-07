@@ -71,8 +71,6 @@ async def async_setup_entities(
 
     _LOGGER.debug(device)
 
-    await coordinator.async_config_entry_first_refresh()
-
     async_add_entities(
         [
             entity_class(

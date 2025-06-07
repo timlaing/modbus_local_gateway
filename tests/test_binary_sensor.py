@@ -125,6 +125,7 @@ async def test_update_value_bool() -> None:
             key="key",
             data_type=ModbusDataType.DISCRETE_INPUT,
             control_type="binary_sensor",
+            on=True,
         ),
     )
     device = MagicMock()

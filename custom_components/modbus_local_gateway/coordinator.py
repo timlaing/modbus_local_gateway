@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
-from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
     TimestampDataUpdateCoordinator,
+    UpdateFailed,
 )
 from pymodbus.pdu.pdu import ModbusPDU
 
@@ -35,25 +35,31 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
     ) -> None:
         """Initialize an entity."""
         super().__init__(coordinator, context=ctx)
-        if isinstance(ctx.desc, ModbusEntityDescription):
-            self.entity_description = ctx.desc
-        else:
+        if not isinstance(ctx.desc, ModbusEntityDescription):
             raise TypeError()
         self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
-        self._updated = False
 
-    @callback
-    def async_write_ha_state(self) -> None:
-        """Update the state of the entity."""
-        self._updated = True
-        super().async_write_ha_state()
+    async def write_data(
+        self,
+        value: str | int | float | bool | None,
+    ) -> None:
+        """Write data to the Modbus device"""
+        try:
+            await self.coordinator.client.write_data(self.coordinator_context, value)
+        except Exception as exc:  # pylint: disable=broad-except
+            _LOGGER.error(
+                "Failed to write %s to %s: %s", value, self.coordinator_context, exc
+            )
+            raise UpdateFailed from exc
+
+        await self.coordinator.async_request_refresh()
 
     @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return super().available and self.coordinator.available
+    def entity_description(self) -> ModbusEntityDescription:
+        """Return the entity description."""
+        return self.coordinator_context.desc
 
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
@@ -70,10 +76,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Initialise the coordinator"""
         self.client: AsyncModbusTcpClientGateway = client
         self._gateway: str = gateway
-        self._max_read_size: int
+        self._max_read_size: int = 1
         self._gateway_device: dr.DeviceEntry = gateway_device
-        self.started: bool = hass.is_running
-        self._last_successful_update: datetime | None = None
 
         super().__init__(
             hass,
@@ -83,12 +87,6 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             update_method=self.async_update,  # type: ignore
             always_update=True,
         )
-
-        hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, self._async_enable_sync)
-
-    async def _async_enable_sync(self, _) -> None:
-        """Allow sync of devices after startup"""
-        self.started = True
 
     @property
     def gateway_device(self) -> dr.DeviceEntry:
@@ -105,43 +103,20 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Return the current max register read size"""
         return self._max_read_size
 
-    @property
-    def available(self) -> bool:
-        """Return True if the coordinator is available"""
-        if self._last_successful_update is None:
-            return False
-        if not self.update_interval:
-            return True
-
-        threshold = timedelta(seconds=self.update_interval.total_seconds() * 2)
-        return (datetime.now() - self._last_successful_update) < threshold
-
     @max_read_size.setter
     def max_read_size(self, value: int) -> None:
         """Sets the max register read size"""
         self._max_read_size = value
 
-    async def _async_refresh(
-        self,
-        log_failures: bool = False,
-        raise_on_auth_failed: bool = False,
-        scheduled: bool = False,
-        raise_on_entry_error: bool = False,
-    ) -> None:
-        return await super()._async_refresh(
-            log_failures, raise_on_auth_failed, scheduled, raise_on_entry_error
-        )
-
-    async def async_update(self) -> dict[str, Any] | None:
+    async def async_update(self) -> dict[str, Any]:
         """Fetch updated data for all registered entities"""
-        if self.started:
-            entities: list[ModbusContext] = sorted(
-                self.async_contexts(), key=lambda x: x.slave_id
-            )
-            data: dict[str, Any] = await self._update_device(entities=entities)
-            if data:
-                self._last_successful_update = datetime.now()
+        entities: list[ModbusContext] = sorted(
+            self.async_contexts(), key=lambda x: x.slave_id
+        )
+        data: dict[str, Any] = await self._update_device(entities=entities)
+        if data:
             return data
+        raise UpdateFailed()
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         """Update data for a list of entities"""

@@ -33,6 +33,13 @@
                 "-c",
                 "${workspaceFolder}/config"
             ]
+        },
+        {
+            "name": "Test Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "modbus_test_server",
+            "justMyCode": true,
         }
     ]
 }

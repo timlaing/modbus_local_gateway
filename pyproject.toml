@@ -4,3 +4,15 @@ profile = "black"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "modbus_test_*/*",
+]
+
+[tool.coverage.paths]
+source = [
+    "custom_components/",
+    "tests/"
+]

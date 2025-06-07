@@ -38,6 +38,34 @@ async def async_setup_entry(
     )
 
 
+class SameValue(Exception):
+    """Exception raised when the value is the same as the previous value."""
+
+    def __init__(
+        self, desc: ModbusSensorEntityDescription, value: str | int | float
+    ) -> None:
+        """Initialize the exception."""
+        super().__init__("Ignoring device value - same as previous value.")
+        self.desc: ModbusSensorEntityDescription = desc
+        self.value: str | int | float = value
+
+
+class MaxChangeExceeded(Exception):
+    """Exception raised when the change in value exceeds the maximum allowed change."""
+
+    def __init__(
+        self,
+        desc: ModbusSensorEntityDescription,
+        value: int | float,
+        prev_value: int | float,
+    ) -> None:
+        """Initialize the exception."""
+        super().__init__("Change in value exceeds maximum allowed change.")
+        self.desc: ModbusSensorEntityDescription = desc
+        self.value: int | float = value
+        self.prev_value: int | float = prev_value
+
+
 class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignore
     """Sensor entity for Modbus gateway"""
 
@@ -50,6 +78,8 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
         """Initialize a PVOutput sensor."""
         super().__init__(coordinator, ctx=ctx, device=device)
         self._attr_native_state: State | None
+        self._first_update_received: bool = False
+        self.entity_description: ModbusSensorEntityDescription
 
     async def async_added_to_hass(self) -> None:
         """Restore the state when sensor is added."""
@@ -70,81 +100,94 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
             value: str | int | float | None = cast(
                 ModbusCoordinator, self.coordinator
             ).get_data(self.coordinator_context)
-            if value is not None and isinstance(
-                self.entity_description, ModbusSensorEntityDescription
-            ):
-                if self._attr_native_value == value:
-                    _LOGGER.debug(
-                        "Ignoring device value with %s as %s - already set",
-                        self.entity_description.key,
-                        value,
-                    )
-                elif (
-                    isinstance(self._attr_native_value, float)
-                    and isinstance(value, float)
-                ) or (
-                    isinstance(self._attr_native_value, int) and isinstance(value, int)
-                ):
-                    if (
-                        self.entity_description.max_change is not None
-                        and abs(value - self._attr_native_value)
-                        > self.entity_description.max_change
-                        and self._updated
-                    ):
-                        _LOGGER.warning(
-                            (
-                                "Ignoring device value for %s: %s – change Δ=%s exceeds "
-                                "max_change=%s"
-                            ),
-                            self.entity_description.key,
-                            value,
-                            abs(value - self._attr_native_value),
-                            self.entity_description.max_change,
-                        )
-                        return
-
-                    if (
-                        self.state_class == SensorStateClass.TOTAL_INCREASING
-                        and int(self._attr_native_value) > int(value)
-                        and self.entity_description.never_resets
-                    ):
-                        _LOGGER.warning(
-                            "Ignoring device value with %s as %s - never resets %s",
-                            self.entity_description.key,
-                            value,
-                            self._attr_native_value,
-                        )
-
-                self._attr_native_value = value
-                self.async_write_ha_state()
-                _LOGGER.debug(
-                    "Updating device with %s as %s",
-                    self.entity_description.key,
-                    value,
-                )
-
-                if (
-                    self._attr_device_info
-                    and "identifiers" in self._attr_device_info
-                    and self.entity_description.key
-                    in [
-                        "hw_version",
-                        "sw_version",
-                    ]
-                ):
-                    attr: dict[str, str] = {self.entity_description.key: str(value)}
-                    device_registry: dr.DeviceRegistry = dr.async_get(self.hass)
-                    device: dr.DeviceEntry | None = device_registry.async_get_device(
-                        self._attr_device_info["identifiers"]
-                    )
-                    if device:
-                        device_registry.async_update_device(
-                            device_id=device.id,
-                            **attr,  # type: ignore
-                        )
-
+            if value is not None:
+                self._validate_and_update_value(value)
+                self._update_device_versions(value)
+        except SameValue as err:
+            _LOGGER.debug(
+                "Ignoring device value for %s: %s – same as previous value",
+                err.desc.key,
+                err.value,
+            )
+        except MaxChangeExceeded as err:
+            _LOGGER.warning(
+                "Ignoring device value for %s: %s – change Δ=%s exceeds max_change=%s",
+                err.desc.key,
+                err.value,
+                abs(err.value - err.prev_value),
+                err.desc.max_change,
+            )
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Unable to get data for %s %s", self.name, err)
+
+        super()._handle_coordinator_update()
+
+    def _validate_and_update_value(self, value: str | int | float) -> None:
+        """Validate the value and update the state."""
+        if self._attr_native_value == value:
+            raise SameValue(self.entity_description, value)
+        if (
+            isinstance(self._attr_native_value, float) and isinstance(value, float)
+        ) or (isinstance(self._attr_native_value, int) and isinstance(value, int)):
+            if (
+                self.entity_description.max_change is not None
+                and abs(value - self._attr_native_value)
+                > self.entity_description.max_change
+                and self._first_update_received
+            ):
+                raise MaxChangeExceeded(
+                    self.entity_description,
+                    value,
+                    self._attr_native_value,
+                )
+
+            if (
+                self.state_class == SensorStateClass.TOTAL_INCREASING
+                and int(self._attr_native_value) > int(value)
+                and self.entity_description.never_resets
+            ):
+                _LOGGER.warning(
+                    "Ignoring device value with %s as %s - never resets %s",
+                    self.entity_description.key,
+                    value,
+                    self._attr_native_value,
+                )
+
+        self._attr_native_value = value
+        self._first_update_received = True
+
+        _LOGGER.debug(
+            "Updating device with %s as %s",
+            self.entity_description.key,
+            value,
+        )
+
+    def _update_device_versions(self, value: str | int | float) -> None:
+        """Update device registry for version keys."""
+        if (
+            self._attr_device_info
+            and "identifiers" in self._attr_device_info
+            and self.entity_description.key
+            in [
+                "hw_version",
+                "sw_version",
+            ]
+        ):
+            device_registry: dr.DeviceRegistry = dr.async_get(self.hass)
+            device: dr.DeviceEntry | None = device_registry.async_get_device(
+                self._attr_device_info["identifiers"]
+            )
+            if device:
+                if self.entity_description.key == "hw_version":
+                    device_registry.async_update_device(
+                        device_id=device.id,
+                        hw_version=str(value),
+                    )
+                elif self.entity_description.key == "sw_version":
+                    device_registry.async_update_device(
+                        device_id=device.id,
+                        sw_version=str(value),
+                    )
 
     @property
     def native_value(self) -> float | str | int | None | date | datetime | Decimal:  # type: ignore

@@ -29,10 +29,12 @@ from .const import (
     CONV_OFFSET,
     CONV_SHIFT_BITS,
     CONV_SUM_SCALE,
+    CONV_SWAP,
     DEFAULT_STATE_CLASS,
     DEVICE,
     DEVICE_CLASS,
     IS_FLOAT,
+    IS_SIGNED,
     IS_STRING,
     MANUFACTURER,
     MAX_CHANGE,
@@ -220,15 +222,17 @@ class ModbusDeviceInfo:
                 "control_type": control_type,
                 "register_address": _data.get(REGISTER_ADDRESS),
                 "register_count": _data.get(REGISTER_COUNT, 1),
-                "conv_sum_scale": _data.get(CONV_SUM_SCALE),
-                "conv_shift_bits": _data.get(CONV_SHIFT_BITS),
                 "conv_bits": _data.get(CONV_BITS),
+                "conv_flags": _data.get(CONV_FLAGS),
+                "conv_map": _data.get(CONV_MAP),
                 "conv_multiplier": _data.get(CONV_MULTIPLIER),
                 "conv_offset": _data.get(CONV_OFFSET),
-                "conv_map": _data.get(CONV_MAP),
-                "conv_flags": _data.get(CONV_FLAGS),
+                "conv_shift_bits": _data.get(CONV_SHIFT_BITS),
+                "conv_sum_scale": _data.get(CONV_SUM_SCALE),
+                "conv_swap": _data.get(CONV_SWAP),
                 "is_float": _data.get(IS_FLOAT, False),
                 "is_string": _data.get(IS_STRING, False),
+                "is_signed": _data.get(IS_SIGNED, False),
                 "never_resets": _data.get(NEVER_RESETS, False),
                 "native_unit_of_measurement": uom["native_unit_of_measurement"],
                 "device_class": uom["device_class"],
@@ -315,8 +319,8 @@ class ModbusDeviceInfo:
         self, params, _data
     ) -> None | type[ModbusBinarySensorEntityDescription]:
         """Handle binary sensor description specific logic"""
-        params["on"] = _data.get("on", 1)
-        params["off"] = _data.get("off", 0)
+        params["on"] = _data.get("on", True)
+        params["off"] = _data.get("off", False)
         return ModbusBinarySensorEntityDescription
 
     def _handle_switch_description(
@@ -333,8 +337,8 @@ class ModbusDeviceInfo:
                 "Switch configuration for %s should be a dictionary", entity
             )
             return None
-        params["on"] = switch_data.get("on", 1)
-        params["off"] = switch_data.get("off", 0)
+        params["on"] = switch_data.get("on", True)
+        params["off"] = switch_data.get("off", False)
         return ModbusSwitchEntityDescription
 
     def _handle_select_description(
@@ -363,7 +367,6 @@ class ModbusDeviceInfo:
         params["min"] = number_data["min"]
         params["max"] = number_data["max"]
         params["precision"] = _data.get(PRECISION)
-        params["suggested_display_precision"] = _data.get(PRECISION)
         return ModbusNumberEntityDescription
 
     def _create_description_instance(
@@ -376,6 +379,8 @@ class ModbusDeviceInfo:
             )
             if desc.validate():
                 return desc
-        except TypeError:
-            pass
+        except TypeError as err:
+            _LOGGER.warning(
+                "Failed to create description instance for %s: %s", desc_cls, err
+            )
         return None

@@ -12,13 +12,64 @@ read_write_boolean:
     name: coil2
     address: 0x0001
 
+  coil3:
+    name: coil3
+    address: 0x0001
+    control: switch
+    switch:
+      "on": False
+      "off": True
+
+  coil4:
+    name: coil4
+    address: 0x0001
+    control: binary_sensor
+    "on": False
+    "off": True
+
 read_only_boolean:
   di1:
     name: di1
-    address: 0x0002
+    address: 0x0003
     device_class: power
 
 read_write_word:
+  on_off:
+    name: Remote On/Off
+    address: 0
+    control: switch
+    icon: mdi:power
+    switch:
+      "off": 0
+      "on": 1
+
+  nibe_energy_lo:
+    name: Energy LO (2180)
+    address: 2180
+    size: 1
+    precision: 0
+    entity_category: diagnostic
+
+  nibe_energy_hi:
+    name: Energy HI (2181)
+    address: 2181
+    size: 1
+    precision: 0
+    entity_category: diagnostic
+    max_change: 5
+
+  nibe_total_energy_i_2180:
+    name: Total energy
+    address: 2180
+    size: 2
+    float: true
+    swap: word_byte
+    unit_of_measurement: "kWh"
+    device_class: energy
+    state_class: total_increasing
+    precision: 2
+    entity_category: diagnostic
+
   hotwater_demand:
     name: "Heißwasser Nachfrage"
     address: 0x0003
