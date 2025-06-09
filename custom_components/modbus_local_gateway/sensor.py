@@ -129,9 +129,14 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
         if (
             isinstance(self._attr_native_value, float) and isinstance(value, float)
         ) or (isinstance(self._attr_native_value, int) and isinstance(value, int)):
+            if self._round_value(self._attr_native_value) == self._round_value(value):
+                raise SameValue(self.entity_description, value)
             if (
                 self.entity_description.max_change is not None
-                and abs(value - self._attr_native_value)
+                and abs(
+                    self._round_value(value)
+                    - self._round_value(self._attr_native_value)
+                )
                 > self.entity_description.max_change
                 and self._first_update_received
             ):
@@ -189,6 +194,16 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                         sw_version=str(value),
                     )
 
+    def _round_value(self, value: float | int) -> float | int:
+        """Round the value based on the entity description precision."""
+        if (
+            isinstance(self.entity_description, ModbusSensorEntityDescription)
+            and self.entity_description.precision is not None
+            and isinstance(value, float)
+        ):
+            return round(value, self.entity_description.precision)
+        return value
+
     @property
     def native_value(self) -> float | str | int | None | date | datetime | Decimal:  # type: ignore
         """Return the state of the sensor."""
@@ -201,5 +216,5 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
             and result
             and isinstance(result, float)
         ):
-            result = round(result, self.entity_description.precision)
+            result = self._round_value(result)
         return result

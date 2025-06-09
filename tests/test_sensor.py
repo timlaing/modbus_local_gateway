@@ -563,6 +563,41 @@ async def test_handle_coordinator_update_update_smaller_value() -> None:
         )
 
 
+async def test_handle_coordinator_update_smaller_than_precision() -> None:
+    """Test _handle_coordinator_update updates the value if smaller."""
+    coordinator = MagicMock()
+    desc = ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        register_address=1,
+        key="key",
+        data_type=ModbusDataType.INPUT_REGISTER,
+        precision=2,
+    )
+    ctx = ModbusContext(
+        1,
+        desc,
+    )
+    device = MagicMock()
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    coordinator.get_data.return_value = 100.0015
+    entity.async_write_ha_state = MagicMock()
+    patch.object(
+        entity, "entity_description", new_callable=PropertyMock, return_value=desc
+    )
+    with (
+        patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
+    ):
+        entity._attr_native_value = 100.001  # pylint: disable=protected-access
+        entity._handle_coordinator_update()  # pylint: disable=protected-access
+
+        coordinator.get_data.assert_called_once_with(ctx)
+        entity.async_write_ha_state.assert_called_once()
+        debug.assert_called_with(
+            "Ignoring device value for %s: %s – same as previous value",
+            "key",
+            100.0015,
+        )
+
+
 async def test_handle_coordinator_update_never_resets() -> None:
     """Test _handle_coordinator_update ignores decreasing values for never resets."""
     coordinator = MagicMock()
