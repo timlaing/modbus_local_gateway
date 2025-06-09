@@ -6,7 +6,7 @@ import logging
 from os.path import join
 from typing import Any
 
-from homeassistant.const import EntityCategory
+from homeassistant.const import CONF_SCAN_INTERVAL, EntityCategory
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.yaml import load_yaml
 from homeassistant.util.yaml.loader import JSON_TYPE
@@ -238,6 +238,7 @@ class ModbusDeviceInfo:
                 "device_class": uom["device_class"],
                 "state_class": uom["state_class"],
                 "max_change": _data.get(MAX_CHANGE),
+                "scan_interval": _data.get(CONF_SCAN_INTERVAL),
             }
         )
         return params

@@ -85,6 +85,7 @@ class ModbusEntityDescription(
     control_type: str | None = ControlType.SENSOR
     data_type: ModbusDataType
     max_change: float | None = None
+    scan_interval: int | None = None
 
     def validate(self) -> bool:
         """Validate the entity description"""
