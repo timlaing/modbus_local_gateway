@@ -313,8 +313,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 address=entity.desc.register_address,
                 count=entity.desc.register_count
                 * (
-                    len(entity.desc.sum_scale)
-                    if entity.desc.sum_scale is not None
+                    len(entity.desc.conv_sum_scale)
+                    if entity.desc.conv_sum_scale is not None
                     else 1
                 ),
                 slave=entity.slave_id,

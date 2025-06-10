@@ -18,6 +18,9 @@ from custom_components.modbus_local_gateway.const import (
     OPTIONS_REFRESH,
 )
 
+# pylint: disable=unexpected-keyword-arg
+# pylint: disable=protected-access
+
 
 @pytest.mark.asyncio
 async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> None:

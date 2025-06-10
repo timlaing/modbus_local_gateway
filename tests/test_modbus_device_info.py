@@ -2,7 +2,9 @@
 
 from unittest.mock import patch
 
+import pytest
 import yaml
+from pytest import LogCaptureFixture
 
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSensorEntityDescription,
@@ -16,6 +18,19 @@ from custom_components.modbus_local_gateway.entity_management.device_loader impo
 from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
     ModbusDeviceInfo,
 )
+
+# pylint: disable=unexpected-keyword-arg
+# pylint: disable=protected-access
+
+
+def _make_desc(scan_interval) -> ModbusSensorEntityDescription:
+    """Create a ModbusSensorEntityDescription for testing."""
+    return ModbusSensorEntityDescription(
+        register_address=1,
+        key="test_key",
+        data_type=ModbusDataType.INPUT_REGISTER,
+        scan_interval=scan_interval,
+    )
 
 
 def test_entity_load() -> None:
@@ -326,6 +341,50 @@ def test_entity_invalid_control_type() -> None:
         entities = device.entity_descriptions
         log.assert_called_once()
         assert len(entities) == 0
+
+
+@pytest.mark.parametrize(
+    (
+        "scan_interval",
+        "num_entities",
+        "log_message",
+    ),
+    [
+        (None, 1, None),
+        (10, 1, None),
+        (0, 0, "scan_interval must be > 0"),
+        (-5, 0, "scan_interval must be > 0"),
+    ],
+)
+def test_validate_scan_interval(
+    scan_interval: int | None,
+    num_entities: int,
+    log_message: str,
+    caplog: LogCaptureFixture,
+) -> None:
+    """Test _validate_scan_interval with various scan_interval values."""
+    _config = {
+        "device": {"manufacturer": "Test", "model": "Test"},
+        "read_write_word": {
+            "test": {"name": "Test", "address": 1, "scan_interval": scan_interval}
+        },
+        "read_only_word": {},
+        "read_write_boolean": {},
+        "read_only_boolean": {},
+    }
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.entity_management."
+            "modbus_device_info.load_yaml",
+            return_value=_config,
+        ),
+        caplog.at_level("WARNING"),
+    ):
+        device = ModbusDeviceInfo("test.yaml")
+        entities = device.entity_descriptions
+        assert len(entities) == num_entities
+        if log_message:
+            assert log_message in caplog.text
 
 
 async def test_devices_yaml(hass) -> None:

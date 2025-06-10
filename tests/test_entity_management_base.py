@@ -7,6 +7,9 @@ from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusEntityDescription,
 )
 
+# pylint: disable=unexpected-keyword-arg
+# pylint: disable=protected-access
+
 
 def test_validate_both_float_and_string(
     valid_entity_description: ModbusEntityDescription,

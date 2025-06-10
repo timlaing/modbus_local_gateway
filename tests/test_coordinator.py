@@ -575,7 +575,8 @@ async def test_async_will_remove_from_hass_calls_super_and_cancels() -> None:
     entity._async_cancel_update_polling = AsyncMock()
     entity._async_cancel_future_pending_update = AsyncMock()
     with patch(
-        "custom_components.modbus_local_gateway.coordinator.CoordinatorEntity.async_will_remove_from_hass"
+        "custom_components.modbus_local_gateway.coordinator.CoordinatorEntity"
+        ".async_will_remove_from_hass"
     ) as mock_super:
         await entity.async_will_remove_from_hass()
         entity._async_cancel_update_polling.assert_called_once()

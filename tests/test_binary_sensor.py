@@ -18,6 +18,9 @@ from custom_components.modbus_local_gateway.entity_management.modbus_device_info
     ModbusDeviceInfo,
 )
 
+# pylint: disable=unexpected-keyword-arg
+# pylint: disable=protected-access
+
 
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
@@ -41,7 +44,7 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            ModbusBinarySensorEntityDescription(
                 key="discrete_ro",
                 register_address=1,
                 data_type=ModbusDataType.DISCRETE_INPUT,
@@ -73,7 +76,7 @@ async def test_update_none() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusBinarySensorEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.DISCRETE_INPUT,
@@ -84,7 +87,7 @@ async def test_update_none() -> None:
     entity = ModbusBinarySensorEntity(coordinator=coordinator, ctx=ctx, device=device)
 
     coordinator.get_data.return_value = None
-    entity._handle_coordinator_update()  # pylint: disable=protected-access
+    entity._handle_coordinator_update()
 
     coordinator.get_data.assert_called_once_with(ctx)
 
@@ -94,7 +97,7 @@ async def test_update_exception() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusBinarySensorEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.DISCRETE_INPUT,
@@ -109,7 +112,7 @@ async def test_update_exception() -> None:
     with patch(
         "custom_components.modbus_local_gateway.binary_sensor._LOGGER.error"
     ) as error:
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
         error.assert_called_once()
@@ -120,7 +123,7 @@ async def test_update_value_bool() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusBinarySensorEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.DISCRETE_INPUT,
@@ -138,7 +141,7 @@ async def test_update_value_bool() -> None:
     with patch(
         "custom_components.modbus_local_gateway.binary_sensor._LOGGER.error"
     ) as error:
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
         error.assert_not_called()
@@ -151,7 +154,7 @@ async def test_update_value_int() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusBinarySensorEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.DISCRETE_INPUT,
@@ -169,7 +172,7 @@ async def test_update_value_int() -> None:
     with patch(
         "custom_components.modbus_local_gateway.binary_sensor._LOGGER.error"
     ) as error:
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
         error.assert_not_called()
