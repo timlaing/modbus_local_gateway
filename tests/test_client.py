@@ -1,5 +1,6 @@
 """Tcp Client tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -138,7 +139,7 @@ async def test_write_no_registers() -> None:
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
     ) as mock_logger:
-        await client._custom_write_registers(  # pylint: disable=protected-access
+        await client._custom_write_registers(
             address=1,
             values=[],
             slave=1,
@@ -156,7 +157,7 @@ async def test_write_single_register_success() -> None:
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
     ) as mock_logger:
-        await client._custom_write_registers(  # pylint: disable=protected-access
+        await client._custom_write_registers(
             address=1,
             values=[123],
             slave=1,
@@ -178,7 +179,7 @@ async def test_write_single_register_failure() -> None:
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
     ) as mock_logger:
-        await client._custom_write_registers(  # pylint: disable=protected-access
+        await client._custom_write_registers(
             address=1,
             values=[123],
             slave=1,
@@ -205,7 +206,7 @@ async def test_write_multiple_registers_success() -> None:
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
     ) as mock_logger:
-        await client._custom_write_registers(  # pylint: disable=protected-access
+        await client._custom_write_registers(
             address=1,
             values=[123, 456],
             slave=1,
@@ -231,7 +232,7 @@ async def test_write_multiple_registers_failure() -> None:
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
     ) as mock_logger:
-        await client._custom_write_registers(  # pylint: disable=protected-access
+        await client._custom_write_registers(
             address=1,
             values=[123, 456],
             slave=1,
@@ -260,7 +261,7 @@ async def test_write_multiple_registers_success_individual() -> None:
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
     ) as mock_logger:
-        await client._custom_write_registers(  # pylint: disable=protected-access
+        await client._custom_write_registers(
             address=1,
             values=[123, 456],
             slave=1,
@@ -328,7 +329,7 @@ async def test_update_slave_not_connected() -> None:
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusEntityDescription(
                         register_address=1,
                         key="key",
                         data_type=ModbusDataType.INPUT_REGISTER,
@@ -420,7 +421,7 @@ async def test_update_slave_connected_sucess_slave_single() -> None:
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key",
                         register_address=1,
                         register_count=1,
@@ -476,7 +477,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key1",
                         register_address=1,
                         register_count=1,
@@ -485,7 +486,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key2",
                         register_address=1,
                         register_count=1,
@@ -494,7 +495,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key3",
                         register_address=1,
                         register_count=1,
@@ -547,7 +548,7 @@ async def test_update_slave_connected_failed_slave_single() -> None:
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key",
                         register_address=1,
                         register_count=1,
@@ -602,7 +603,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
             entities=[
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key1",
                         register_address=1,
                         register_count=1,
@@ -611,7 +612,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key2",
                         register_address=1,
                         register_count=1,
@@ -620,7 +621,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
                 ),
                 ModbusContext(
                     slave_id=1,
-                    desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                    desc=ModbusSensorEntityDescription(
                         key="key3",
                         register_address=1,
                         register_count=1,
@@ -675,7 +676,7 @@ async def test_update_slave_connected_success_all_types() -> None:
         entities = [
             ModbusContext(
                 slave_id=1,
-                desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                desc=ModbusSensorEntityDescription(
                     key="rw_word",
                     register_address=1,
                     data_type=ModbusDataType.HOLDING_REGISTER,
@@ -683,7 +684,7 @@ async def test_update_slave_connected_success_all_types() -> None:
             ),
             ModbusContext(
                 slave_id=1,
-                desc=ModbusSensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                desc=ModbusSensorEntityDescription(
                     key="ro_word",
                     register_address=2,
                     data_type=ModbusDataType.INPUT_REGISTER,
@@ -691,7 +692,7 @@ async def test_update_slave_connected_success_all_types() -> None:
             ),
             ModbusContext(
                 slave_id=1,
-                desc=ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                desc=ModbusSwitchEntityDescription(
                     key="rw_bool",
                     register_address=3,
                     data_type=ModbusDataType.COIL,
@@ -700,7 +701,7 @@ async def test_update_slave_connected_success_all_types() -> None:
             ),
             ModbusContext(
                 slave_id=1,
-                desc=ModbusBinarySensorEntityDescription(  # pylint: disable=unexpected-keyword-arg
+                desc=ModbusBinarySensorEntityDescription(
                     key="ro_bool",
                     register_address=4,
                     data_type=ModbusDataType.DISCRETE_INPUT,
@@ -731,7 +732,7 @@ async def test_write_data_holding_registers_success() -> None:
 
     entity = ModbusContext(
         slave_id=1,
-        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        desc=ModbusEntityDescription(
             key="test",
             register_address=1,
             register_count=2,
@@ -771,7 +772,7 @@ async def test_write_data_coils_success() -> None:
 
     entity = ModbusContext(
         slave_id=1,
-        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        desc=ModbusEntityDescription(
             key="test",
             register_address=1,
             register_count=1,
@@ -808,7 +809,7 @@ async def test_write_data_failed_connection() -> None:
 
     entity = ModbusContext(
         slave_id=1,
-        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        desc=ModbusEntityDescription(
             key="test",
             register_address=1,
             register_count=1,
@@ -839,7 +840,7 @@ async def test_write_data_unsupported_data_type() -> None:
 
     entity = ModbusContext(
         slave_id=1,
-        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        desc=ModbusEntityDescription(
             key="test",
             register_address=1,
             register_count=1,
@@ -863,7 +864,7 @@ async def test_write_data_incorrect_register_count() -> None:
 
     entity = ModbusContext(
         slave_id=1,
-        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        desc=ModbusEntityDescription(
             key="test",
             register_address=1,
             register_count=2,
@@ -890,7 +891,7 @@ async def test_write_data_invalid_coil_value_type() -> None:
 
     entity = ModbusContext(
         slave_id=1,
-        desc=ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        desc=ModbusEntityDescription(
             key="test",
             register_address=1,
             register_count=1,

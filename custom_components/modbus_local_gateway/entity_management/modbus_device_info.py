@@ -6,7 +6,7 @@ import logging
 from os.path import join
 from typing import Any
 
-from homeassistant.const import EntityCategory
+from homeassistant.const import CONF_SCAN_INTERVAL, EntityCategory
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.yaml import load_yaml
 from homeassistant.util.yaml.loader import JSON_TYPE
@@ -54,7 +54,7 @@ from .const import (
     ModbusDataType,
 )
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER: logging.Logger = logging.getLogger(__name__)
 
 DESCRIPTION_TYPE = (
     ModbusNumberEntityDescription
@@ -191,15 +191,19 @@ class ModbusDeviceInfo:
         self, entity: str, data_type: ModbusDataType, _data: dict[str, Any]
     ) -> DESCRIPTION_TYPE | None:
         """Create an entity description based on data type"""
-        control_type = _data.get(CONTROL_TYPE, self.default_control_type[data_type])
+        control_type: ControlType = _data.get(
+            CONTROL_TYPE, self.default_control_type[data_type]
+        )
         if control_type not in self.allowed_control_types.get(data_type, []):
             _LOGGER.warning(
                 "Invalid control_type %s for data_type %s", control_type, data_type
             )
             return None
 
-        uom = self.get_uom(_data, control_type)
-        params = self._initialize_params(entity, _data, data_type, control_type, uom)
+        uom: dict[str, str | None] = self.get_uom(_data, control_type)
+        params: dict[str, Any] = self._initialize_params(
+            entity, _data, data_type, control_type, uom
+        )
 
         if "entity_category" in params:
             self._handle_entity_category(params, entity)
@@ -211,9 +215,16 @@ class ModbusDeviceInfo:
             return self._create_description_instance(desc_cls, params)
         return None
 
-    def _initialize_params(self, entity, _data, data_type, control_type, uom):
+    def _initialize_params(
+        self,
+        entity: str,
+        _data: dict[str, Any],
+        data_type: ModbusDataType,
+        control_type: ControlType,
+        uom: dict[str, str | None],
+    ) -> dict[str, Any]:
         """Initialize parameters for the description"""
-        params = dict(_data)
+        params: dict[str, Any] = _data.copy()
         params.update(
             {
                 "key": entity,
@@ -238,6 +249,7 @@ class ModbusDeviceInfo:
                 "device_class": uom["device_class"],
                 "state_class": uom["state_class"],
                 "max_change": _data.get(MAX_CHANGE),
+                "scan_interval": _data.get(CONF_SCAN_INTERVAL),
             }
         )
         return params

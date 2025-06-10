@@ -1,5 +1,6 @@
 """Sensor tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -45,7 +46,7 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusTextEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            ModbusTextEntityDescription(
                 key="key1",
                 register_address=1,
                 data_type=ModbusDataType.INPUT_REGISTER,
@@ -82,7 +83,7 @@ async def test_update_none() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.INPUT_REGISTER,
@@ -92,7 +93,7 @@ async def test_update_none() -> None:
     entity = ModbusTextEntity(coordinator=coordinator, ctx=ctx, device=device)
 
     coordinator.get_data.return_value = None
-    entity._handle_coordinator_update()  # pylint: disable=protected-access
+    entity._handle_coordinator_update()
 
     coordinator.get_data.assert_called_once_with(ctx)
 
@@ -102,7 +103,7 @@ async def test_update_exception() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.INPUT_REGISTER,
@@ -118,7 +119,7 @@ async def test_update_exception() -> None:
         patch("custom_components.modbus_local_gateway.text._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.text._LOGGER.error") as error,
     ):
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
 
@@ -132,7 +133,7 @@ async def test_update_value() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.INPUT_REGISTER,
@@ -141,14 +142,7 @@ async def test_update_value() -> None:
     device = MagicMock()
     entity = ModbusTextEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
-    type(entity).entity_description = PropertyMock(
-        return_value=ModbusTextEntityDescription(  # pylint: disable=unexpected-keyword-arg
-            key="key",
-            register_address=1,
-            control_type="text",
-            data_type=ModbusDataType.INPUT_REGISTER,
-        )
-    )
+
     coordinator.get_data.return_value = 1
     write = MagicMock()
     entity.async_write_ha_state = write
@@ -158,7 +152,7 @@ async def test_update_value() -> None:
         patch("custom_components.modbus_local_gateway.text._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.text._LOGGER.error") as error,
     ):
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
 
@@ -173,7 +167,7 @@ async def test_update_deviceupdate() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.INPUT_REGISTER,
@@ -185,14 +179,6 @@ async def test_update_deviceupdate() -> None:
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).hass = PropertyMock(return_value=hass)
     type(entity).native_value = PropertyMock(return_value=2)
-    type(entity).entity_description = PropertyMock(
-        return_value=ModbusTextEntityDescription(  # pylint: disable=unexpected-keyword-arg
-            key="text",
-            register_address=1,
-            control_type="text",
-            data_type=ModbusDataType.INPUT_REGISTER,
-        )
-    )
 
     write = MagicMock()
     entity.async_write_ha_state = write
@@ -204,7 +190,7 @@ async def test_update_deviceupdate() -> None:
         patch("custom_components.modbus_local_gateway.text._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.text._LOGGER.error") as error,
     ):
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
 

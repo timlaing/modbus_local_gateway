@@ -1,5 +1,6 @@
 """Switch tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
@@ -45,13 +46,13 @@ async def test_setup_entry(hass) -> None:
 
     pm1 = PropertyMock(
         return_value=[
-            ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            ModbusSwitchEntityDescription(
                 key="coil_rw",
                 register_address=1,
                 data_type=ModbusDataType.COIL,
                 control_type="switch",
             ),
-            ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+            ModbusSwitchEntityDescription(
                 key="reg_rw",
                 register_address=2,
                 data_type=ModbusDataType.HOLDING_REGISTER,
@@ -87,7 +88,7 @@ async def test_update_none() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.INPUT_REGISTER,
@@ -97,7 +98,7 @@ async def test_update_none() -> None:
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
 
     coordinator.get_data.return_value = None
-    entity._handle_coordinator_update()  # pylint: disable=protected-access
+    entity._handle_coordinator_update()
 
     coordinator.get_data.assert_called_once_with(ctx)
 
@@ -107,7 +108,7 @@ async def test_update_exception() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.INPUT_REGISTER,
@@ -125,7 +126,7 @@ async def test_update_exception() -> None:
         patch("custom_components.modbus_local_gateway.switch._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.switch._LOGGER.error") as error,
     ):
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
 
@@ -139,25 +140,18 @@ async def test_update_value() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
             register_address=1,
             key="key",
             data_type=ModbusDataType.HOLDING_REGISTER,
+            on=1,
+            off=2,
         ),
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
-    type(entity).entity_description = PropertyMock(
-        return_value=ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
-            key="key",
-            register_address=1,
-            control_type="switch",
-            on=1,
-            off=2,
-            data_type=ModbusDataType.HOLDING_REGISTER,
-        )
-    )
+
     coordinator.get_data.return_value = 1
     write = MagicMock()
     entity.async_write_ha_state = write
@@ -169,7 +163,7 @@ async def test_update_value() -> None:
         patch("custom_components.modbus_local_gateway.switch._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.switch._LOGGER.error") as error,
     ):
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
 
@@ -184,9 +178,12 @@ async def test_update_deviceupdate() -> None:
     coordinator = MagicMock()
     ctx = ModbusContext(
         1,
-        ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
+            key="switch",
             register_address=1,
-            key="key",
+            control_type="switch",
+            on=1,
+            off=2,
             data_type=ModbusDataType.HOLDING_REGISTER,
         ),
     )
@@ -196,16 +193,6 @@ async def test_update_deviceupdate() -> None:
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).hass = PropertyMock(return_value=hass)
     type(entity).native_value = PropertyMock(return_value=2)  # type: ignore
-    type(entity).entity_description = PropertyMock(
-        return_value=ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
-            key="switch",
-            register_address=1,
-            control_type="switch",
-            on=1,
-            off=2,
-            data_type=ModbusDataType.HOLDING_REGISTER,
-        )
-    )
 
     write = MagicMock()
     entity.async_write_ha_state = write
@@ -219,7 +206,7 @@ async def test_update_deviceupdate() -> None:
         patch("custom_components.modbus_local_gateway.switch._LOGGER.debug") as debug,
         patch("custom_components.modbus_local_gateway.switch._LOGGER.error") as error,
     ):
-        entity._handle_coordinator_update()  # pylint: disable=protected-access
+        entity._handle_coordinator_update()
 
         coordinator.get_data.assert_called_once_with(ctx)
 
@@ -235,7 +222,7 @@ async def test_async_turn_on_coil() -> None:
     coordinator.client = AsyncMock()
     ctx = ModbusContext(
         1,
-        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
             key="key",
             name="name",
             register_address=1,
@@ -248,8 +235,6 @@ async def test_async_turn_on_coil() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
-
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_on()
         mock_write_data.assert_called_once_with(entity.coordinator_context, True)
@@ -261,7 +246,7 @@ async def test_async_turn_on_holding_register() -> None:
     coordinator.client = AsyncMock()
     ctx = ModbusContext(
         1,
-        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
             key="key",
             name="name",
             register_address=1,
@@ -274,8 +259,6 @@ async def test_async_turn_on_holding_register() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
-
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_on()
         mock_write_data.assert_called_once_with(entity.coordinator_context, 1)
@@ -287,7 +270,7 @@ async def test_async_turn_on_invalid_data_type() -> None:
     coordinator.client = AsyncMock()
     ctx = ModbusContext(
         1,
-        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
             key="key",
             name="name",
             register_address=1,
@@ -300,8 +283,6 @@ async def test_async_turn_on_invalid_data_type() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
-
     with pytest.raises(ValueError, match=INVALID_DATA_TYPE):
         await entity.async_turn_on()
 
@@ -312,7 +293,7 @@ async def test_async_turn_off_coil() -> None:
     coordinator.client = AsyncMock()
     ctx = ModbusContext(
         1,
-        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
             key="key",
             name="name",
             register_address=1,
@@ -325,8 +306,6 @@ async def test_async_turn_off_coil() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
-
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_off()
         mock_write_data.assert_called_once_with(entity.coordinator_context, False)
@@ -338,7 +317,7 @@ async def test_async_turn_off_holding_register() -> None:
     coordinator.client = AsyncMock()
     ctx = ModbusContext(
         1,
-        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
             key="key",
             name="name",
             register_address=1,
@@ -351,8 +330,6 @@ async def test_async_turn_off_holding_register() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
-
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_off()
         mock_write_data.assert_called_once_with(entity.coordinator_context, 0)
@@ -364,7 +341,7 @@ async def test_async_turn_off_invalid_data_type() -> None:
     coordinator.client = AsyncMock()
     ctx = ModbusContext(
         1,
-        ModbusSwitchEntityDescription(  # pylint: disable=unexpected-keyword-arg
+        ModbusSwitchEntityDescription(
             key="key",
             name="name",
             register_address=1,
@@ -377,7 +354,5 @@ async def test_async_turn_off_invalid_data_type() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).entity_description = PropertyMock(return_value=ctx.desc)
-
     with pytest.raises(ValueError, match=INVALID_DATA_TYPE):
         await entity.async_turn_off()

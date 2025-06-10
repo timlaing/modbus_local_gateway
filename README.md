@@ -106,6 +106,7 @@ For all entity definitions:
 - `address` (required): Modbus address (integer).
 - `name` (optional): Friendly name (default: the entity definition's key).
 - `size` (optional): Register count (default: 1; use 2 for raw 32-bit `float`, or string length / 2 for `string`; not needed for `sum_scale`).
+- `scan_interval` (optional): Override the default update interval for this entity. Used to increase or decrease the frequency of polling.
 
 - **Home Assistant Properties** (see HA documentation for more information):
   - `unit_of_measurement`: E.g., `Volts`, `h`.

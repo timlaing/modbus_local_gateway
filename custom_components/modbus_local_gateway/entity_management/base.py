@@ -60,6 +60,7 @@ class ModbusRequiredKeysMixin:
     """Mixin for required keys."""
 
     register_address: int
+    data_type: ModbusDataType
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -69,7 +70,6 @@ class ModbusEntityDescription(
     """Describes Modbus sensor entity."""
 
     register_count: int | None = 1
-    is_signed: bool | None = False
     conv_swap: str | None = None
     conv_sum_scale: list[float] | None = None
     conv_multiplier: float | None = None
@@ -78,13 +78,14 @@ class ModbusEntityDescription(
     conv_bits: int | None = None
     conv_map: dict[int, str] | None = None
     conv_flags: dict[int, str] | None = None
+    is_signed: bool | None = False
     is_string: bool | None = False
     is_float: bool | None = False
     precision: int | None = None
     never_resets: bool = False
     control_type: str | None = ControlType.SENSOR
-    data_type: ModbusDataType
     max_change: float | None = None
+    scan_interval: int | None = None
 
     def validate(self) -> bool:
         """Validate the entity description"""
@@ -97,6 +98,18 @@ class ModbusEntityDescription(
         if not self._validate_register_count():
             return False
         if not self._validate_max_change():
+            return False
+        if not self._validate_scan_interval():
+            return False
+        return True
+
+    def _validate_scan_interval(self) -> bool:
+        """Validate scan_interval is positive if set."""
+        if self.scan_interval is not None and self.scan_interval <= 0:
+            _LOGGER.warning(
+                "Unable to create entity for %s: scan_interval must be > 0",
+                self.key,
+            )
             return False
         return True
 
@@ -142,7 +155,7 @@ class ModbusEntityDescription(
         if self.is_float and (
             self.conv_shift_bits
             or self.conv_bits
-            or self.signed
+            or self.is_signed
             or (self.conv_multiplier is not None and int(self.conv_multiplier) != 1)
         ):
             _LOGGER.warning(

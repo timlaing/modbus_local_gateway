@@ -16,6 +16,9 @@ from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
 )
 
+# pylint: disable=unexpected-keyword-arg
+# pylint: disable=protected-access
+
 
 @pytest.fixture
 def mock_config_entry() -> MockConfigEntry:
@@ -44,7 +47,7 @@ def mock_client() -> AsyncMock:
 @pytest.fixture
 def valid_entity_description() -> ModbusEntityDescription:
     """Fixture for a valid ModbusEntityDescription."""
-    return ModbusEntityDescription(  # pylint: disable=unexpected-keyword-arg
+    return ModbusEntityDescription(
         key="key",
         register_address=1,
         register_count=2,

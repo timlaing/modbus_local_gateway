@@ -1,5 +1,6 @@
 """Sensor tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import patch
 
 from pytest_homeassistant_custom_component.common import (
