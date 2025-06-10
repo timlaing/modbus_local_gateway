@@ -1,5 +1,6 @@
 """Device info Tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import patch
 
 import pytest
@@ -18,9 +19,6 @@ from custom_components.modbus_local_gateway.entity_management.device_loader impo
 from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
     ModbusDeviceInfo,
 )
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 def test_entity_load() -> None:

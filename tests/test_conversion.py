@@ -1,5 +1,6 @@
 """Conversion Tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 import pytest
 from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
@@ -15,9 +16,6 @@ from custom_components.modbus_local_gateway.entity_management.base import (
 )
 from custom_components.modbus_local_gateway.entity_management.const import SwapType
 from custom_components.modbus_local_gateway.tcp_client import AsyncModbusTcpClient
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 async def test_int16() -> None:

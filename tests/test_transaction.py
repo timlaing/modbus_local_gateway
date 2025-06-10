@@ -1,5 +1,6 @@
 """Test the MyTransactionManager class."""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import MagicMock, patch
 
 import pytest

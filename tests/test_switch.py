@@ -1,5 +1,6 @@
 """Switch tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
@@ -21,9 +22,6 @@ from custom_components.modbus_local_gateway.switch import (
     ModbusSwitchEntity,
     async_setup_entry,
 )
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 async def test_setup_entry(hass) -> None:

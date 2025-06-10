@@ -1,14 +1,12 @@
 """Unit tests for the `ModbusEntityDescription` class in the `entity_management.base` module.
 These tests cover various scenarios to ensure the validation logic works as expected."""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import patch
 
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusEntityDescription,
 )
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 def test_validate_both_float_and_string(

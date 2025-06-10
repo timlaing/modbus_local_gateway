@@ -1,5 +1,6 @@
 """Coordinator tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 import asyncio
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -16,9 +17,6 @@ from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusDataType,
     ModbusSensorEntityDescription,
 )
-
-# pylint: disable=protected-access
-# pylint: disable=unexpected-keyword-arg
 
 
 async def test_update_single() -> None:

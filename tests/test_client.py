@@ -1,5 +1,6 @@
 """Tcp Client tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 import pytest
@@ -23,9 +24,6 @@ from custom_components.modbus_local_gateway.entity_management.base import (
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
 )
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 async def test_read_registers_single() -> None:

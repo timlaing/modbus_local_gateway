@@ -1,5 +1,6 @@
 """Sensor tests"""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import patch
 
 from pytest_homeassistant_custom_component.common import (
@@ -9,9 +10,6 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.modbus_local_gateway import async_setup_entry
 from custom_components.modbus_local_gateway.const import DOMAIN
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 async def test_setup_entry(hass: HomeAssistant) -> None:

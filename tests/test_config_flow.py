@@ -1,5 +1,6 @@
 """Tests for the Modbus Local Gateway config flow."""
 
+# pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -17,9 +18,6 @@ from custom_components.modbus_local_gateway.const import (
     DOMAIN,
     OPTIONS_REFRESH,
 )
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 @pytest.mark.asyncio
