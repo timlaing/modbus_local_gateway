@@ -154,9 +154,6 @@ async def test_update_value() -> None:
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
 
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     coordinator.get_data.return_value = 1
     write = MagicMock()
     entity.async_write_ha_state = write
@@ -199,9 +196,6 @@ async def test_update_deviceupdate() -> None:
     type(entity).hass = PropertyMock(return_value=hass)
     type(entity).native_value = PropertyMock(return_value=2)  # type: ignore
 
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     write = MagicMock()
     entity.async_write_ha_state = write
 
@@ -243,9 +237,6 @@ async def test_async_turn_on_coil() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_on()
         mock_write_data.assert_called_once_with(entity.coordinator_context, True)
@@ -270,9 +261,6 @@ async def test_async_turn_on_holding_register() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_on()
         mock_write_data.assert_called_once_with(entity.coordinator_context, 1)
@@ -297,9 +285,6 @@ async def test_async_turn_on_invalid_data_type() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     with pytest.raises(ValueError, match=INVALID_DATA_TYPE):
         await entity.async_turn_on()
 
@@ -323,9 +308,6 @@ async def test_async_turn_off_coil() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_off()
         mock_write_data.assert_called_once_with(entity.coordinator_context, False)
@@ -350,9 +332,6 @@ async def test_async_turn_off_holding_register() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_off()
         mock_write_data.assert_called_once_with(entity.coordinator_context, 0)
@@ -377,8 +356,5 @@ async def test_async_turn_off_invalid_data_type() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=ctx.desc
-    )
     with pytest.raises(ValueError, match=INVALID_DATA_TYPE):
         await entity.async_turn_off()

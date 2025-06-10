@@ -387,9 +387,12 @@ def test_modbus_coordinator_max_read_size_property_and_setter() -> None:
     assert coordinator.max_read_size == 5
 
 
-async def test_async_update_if_not_in_progress_locked() -> None:
+async def test_async_update_if_not_in_progress_locked(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     """Test _async_update_if_not_in_progress does nothing if lock is held."""
-    coordinator = MagicMock()
+    coordinator = AsyncMock()
+    coordinator.async_update_entity = AsyncMock()
     ctx = ModbusContext(
         1,
         ModbusSensorEntityDescription(
@@ -401,13 +404,13 @@ async def test_async_update_if_not_in_progress_locked() -> None:
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
     # Patch lock to simulate locked state
-    entity._update_lock = MagicMock()
-    entity._update_lock.locked.return_value = True
+    entity._update_lock = asyncio.Lock()
+    await entity._update_lock.acquire()  # Simulate lock being held
     entity.name = "test_entity"
-    # Should not call _async_update_write_state
-    with patch.object(entity, "_async_update_write_state") as mock_update:
+    with caplog.at_level("DEBUG"):
         await entity._async_update_if_not_in_progress()
-        mock_update.assert_not_called()
+        coordinator.async_update_entity.assert_not_called()
+        assert "Update for entity test_entity is already in progress" in caplog.text
 
 
 async def test_async_update_if_not_in_progress_unlocked() -> None:

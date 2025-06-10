@@ -190,9 +190,6 @@ async def test_update_reset() -> None:
     entity.async_write_ha_state = MagicMock()
 
     coordinator.get_data.return_value = 1
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
 
     with (
         patch(
@@ -243,9 +240,6 @@ async def test_update_never_reset() -> None:
     entity.async_write_ha_state = MagicMock()
 
     coordinator.get_data.return_value = 1
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
@@ -289,9 +283,6 @@ async def test_update_deviceupdate_hw_version() -> None:
     entity.async_write_ha_state = MagicMock()
 
     coordinator.get_data.return_value = 1
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
@@ -343,9 +334,6 @@ async def test_update_deviceupdate_sw_version() -> None:
     entity.async_write_ha_state = MagicMock()
 
     coordinator.get_data.return_value = 1
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
@@ -396,9 +384,6 @@ async def test_handle_coordinator_update_ignore_same_value() -> None:
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 10
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
     ):
@@ -434,9 +419,6 @@ async def test_handle_coordinator_update_ignore_large_change() -> None:
     entity._first_update_received = True
     coordinator.get_data.return_value = 20
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
@@ -476,9 +458,6 @@ async def test_handle_coordinator_update_allow_large_change_on_initial() -> None
     entity._first_update_received = False
     coordinator.get_data.return_value = 20
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning",
@@ -507,9 +486,6 @@ async def test_handle_coordinator_update_update_value() -> None:
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 15
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch.object(
@@ -545,9 +521,6 @@ async def test_handle_coordinator_update_update_smaller_value() -> None:
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 15
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch.object(
@@ -583,9 +556,6 @@ async def test_handle_coordinator_update_smaller_than_precision() -> None:
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 100.0015
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
     ):
@@ -656,9 +626,6 @@ async def test_native_value_rounds_float_with_precision() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
 
     entity._attr_native_value = 12.3456
     result = entity.native_value
@@ -682,9 +649,6 @@ async def test_native_value_returns_non_float() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
 
     entity._attr_native_value = 42
     result = entity.native_value
@@ -708,9 +672,6 @@ async def test_native_value_no_precision() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
 
     entity._attr_native_value = 12.3456
     result = entity.native_value
@@ -734,9 +695,6 @@ async def test_native_value_none_result() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
 
     entity._attr_native_value = None
     result = entity.native_value
@@ -760,9 +718,6 @@ async def test_native_value_non_modbus_description() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     entity.async_write_ha_state = MagicMock()
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
 
     entity._attr_native_value = 12.3456
     result = entity.native_value

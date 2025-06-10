@@ -311,9 +311,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             modbus_response: ModbusPDU | None = await self.read_data(
                 func=func,
                 address=entity.desc.register_address,
+                # Treat empty list as “no scaling” to avoid zero-length reads
                 count=entity.desc.register_count
                 * (
-                    len(entity.desc.conv_sum_scale)
+                    max(1, len(entity.desc.conv_sum_scale))
                     if entity.desc.conv_sum_scale is not None
                     else 1
                 ),

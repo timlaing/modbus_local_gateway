@@ -144,16 +144,7 @@ async def test_update_value() -> None:
     device = MagicMock()
     entity = ModbusTextEntity(coordinator=coordinator, ctx=ctx, device=device)
     type(entity).name = PropertyMock(return_value="Test")
-    desc = ModbusTextEntityDescription(
-        key="key",
-        register_address=1,
-        control_type="text",
-        data_type=ModbusDataType.INPUT_REGISTER,
-    )
 
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     coordinator.get_data.return_value = 1
     write = MagicMock()
     entity.async_write_ha_state = write
@@ -190,16 +181,7 @@ async def test_update_deviceupdate() -> None:
     type(entity).name = PropertyMock(return_value="Test")
     type(entity).hass = PropertyMock(return_value=hass)
     type(entity).native_value = PropertyMock(return_value=2)
-    desc = ModbusTextEntityDescription(
-        key="text",
-        register_address=1,
-        control_type="text",
-        data_type=ModbusDataType.INPUT_REGISTER,
-    )
 
-    patch.object(
-        entity, "entity_description", new_callable=PropertyMock, return_value=desc
-    )
     write = MagicMock()
     entity.async_write_ha_state = write
 

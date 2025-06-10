@@ -48,8 +48,9 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     async def _read_data(self) -> None:
         """Update the entity state."""
-        async with self._update_lock:
-            await self.coordinator.async_update_entity(self.coordinator_context)
+        async with asyncio.Timeout(0):
+            async with self._update_lock:
+                await self.coordinator.async_update_entity(self.coordinator_context)
 
     async def _async_update_write_state(self) -> None:
         """Update the entity state and write it to the state machine."""
@@ -73,10 +74,10 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     async def _async_update_if_not_in_progress(self, _=None) -> None:
         """Update the entity state if not already in progress."""
-        if self._update_lock.locked():
+        try:
+            await self._async_update_write_state()
+        except asyncio.TimeoutError:
             _LOGGER.debug("Update for entity %s is already in progress", self.name)
-            return
-        await self._async_update_write_state()
 
     @callback
     def _async_schedule_future_update(self, delay: float) -> None:
@@ -221,7 +222,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         return data
 
     async def async_update_entity(self, ctx: ModbusContext) -> None:
-        """Retrieve data for a specific entity"""
+        """Update cached data for a specific entity."""
         data: dict[str, Any] = await self._update_device(entities=[ctx])
         if data:
             if self.data is None:
