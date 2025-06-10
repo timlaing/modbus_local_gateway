@@ -23,16 +23,6 @@ from custom_components.modbus_local_gateway.entity_management.modbus_device_info
 # pylint: disable=protected-access
 
 
-def _make_desc(scan_interval) -> ModbusSensorEntityDescription:
-    """Create a ModbusSensorEntityDescription for testing."""
-    return ModbusSensorEntityDescription(
-        register_address=1,
-        key="test_key",
-        data_type=ModbusDataType.INPUT_REGISTER,
-        scan_interval=scan_interval,
-    )
-
-
 def test_entity_load() -> None:
     """Test device loading"""
     yaml_txt = """device:
