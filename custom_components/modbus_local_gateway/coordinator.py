@@ -48,9 +48,11 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     async def _read_data(self) -> None:
         """Update the entity state."""
-        async with asyncio.Timeout(0):
-            async with self._update_lock:
-                await self.coordinator.async_update_entity(self.coordinator_context)
+        await asyncio.wait_for(self._update_lock.acquire(), 0.1)
+        try:
+            await self.coordinator.async_update_entity(self.coordinator_context)
+        finally:
+            self._update_lock.release()
 
     async def _async_update_write_state(self) -> None:
         """Update the entity state and write it to the state machine."""

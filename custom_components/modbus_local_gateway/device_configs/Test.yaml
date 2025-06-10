@@ -11,7 +11,7 @@ read_write_boolean:
   coil2:
     name: coil2
     address: 0x0001
-    scan_interval: 1
+    scan_interval: 45
 
   coil3:
     name: coil3
@@ -33,9 +33,25 @@ read_only_boolean:
     name: di1
     address: 0x0003
     device_class: power
-    scan_interval: 5
+    scan_interval: 60
 
 read_write_word:
+  nibe_degree_minutes_h_11_t:
+    name: Degree minutes t
+    control: number
+    number:
+      min: -3000.0
+      max: 3000.0
+    address: 11
+    signed: true
+    size: 2
+    swap: word
+    multiplier: 0.1
+    unit_of_measurement: "DM"
+    state_class: measurement
+    precision: 1
+    scan_interval: 2
+
   on_off:
     name: Remote On/Off
     address: 0
