@@ -14,4 +14,4 @@ pytest-cov
 pytest-homeassistant-custom-component
 pytest-picked
 ruff
-yarl==1.20.0
+yarl==1.20.1
