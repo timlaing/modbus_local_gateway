@@ -17,7 +17,11 @@
 	"portsAttributes": {
 		"8123": {
 			"label": "Home Assistant",
-			"onAutoForward": "notify"
+			"onAutoForward": "openBrowserOnce"
+		},
+		"5020": {
+			"label": "Modbus Test Server",
+			"onAutoForward": "ignore"
 		}
 	},
 	"customizations": {
@@ -38,7 +42,8 @@
 				"sonarsource.sonarlint-vscode",
 				"charliermarsh.ruff",
 				"ms-azuretools.vscode-docker",
-				"coderabbit.coderabbit-vscode"
+				"coderabbit.coderabbit-vscode",
+				"GitHub.copilot"
 			],
 			"settings": {
 				"editor.formatOnPaste": true,
