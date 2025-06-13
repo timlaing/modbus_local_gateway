@@ -28,7 +28,7 @@ async def test_setup_entry(hass) -> None:
             "host": "127.0.0.1",
             "port": "1234",
             "slave_id": 1,
-            "filename": "test.yaml",
+            "filename": "Test.yaml",
         },
     )
     callback = MagicMock()
@@ -54,8 +54,14 @@ async def test_setup_entry(hass) -> None:
 
     with (
         patch(
-            "custom_components.modbus_local_gateway.entity_management.modbus_device_info.load_yaml",
+            "custom_components.modbus_local_gateway.entity_management.modbus_device_info"
+            ".load_yaml",
             return_value={"device": MagicMock()},
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.entity_management.device_loader"
+            ".get_config_files",
+            return_value={"test.yaml": MagicMock()},
         ),
         patch.object(ModbusDeviceInfo, "entity_descriptions", pm1),
         patch.object(ModbusDeviceInfo, "manufacturer", pm2),

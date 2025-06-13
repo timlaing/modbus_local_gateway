@@ -76,8 +76,16 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         """Initialise Modbus Local Gateway flow."""
-        self.client: AsyncModbusTcpClientGateway
+        self.client: AsyncModbusTcpClientGateway | None = None
         self.data = {}
+
+    def is_matching(self, other_flow: ConfigFlowHandler) -> bool:
+        """Check if the other flow matches this one."""
+        return (
+            self.client is not None
+            and other_flow.client is not None
+            and self.client == other_flow.client
+        )
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -132,7 +140,8 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             item[0]: f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}"
             for item in sorted(
                 devices.items(),
-                key=lambda item: f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}",
+                key=lambda item: f"{item[1].manufacturer or 'Unknown'}"
+                f" {item[1].model or 'Unknown'}",
             )
         }
 
@@ -145,7 +154,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_create(self) -> ConfigFlowResult:
         """Create the entry if we can"""
         device_info: ModbusDeviceInfo = await self.hass.async_add_executor_job(
-            create_device_info, self.data[CONF_FILENAME]
+            create_device_info, self.hass, self.data[CONF_FILENAME]
         )
 
         # This title is shown in the main devices list under the Modbus Local Gateway integration

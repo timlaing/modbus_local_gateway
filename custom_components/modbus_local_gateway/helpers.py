@@ -41,7 +41,7 @@ async def async_setup_entities(
     coordinator: ModbusCoordinator = hass.data[DOMAIN][get_gateway_key(config_entry)]
 
     device_info: ModbusDeviceInfo = await hass.async_add_executor_job(
-        create_device_info, config[CONF_FILENAME]
+        create_device_info, hass, config[CONF_FILENAME]
     )
 
     coordinator.max_read_size = device_info.max_read_size
