@@ -76,7 +76,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         """Initialise Modbus Local Gateway flow."""
-        self.client: AsyncModbusTcpClientGateway
+        self.client: AsyncModbusTcpClientGateway | None = None
         self.data = {}
 
     def is_matching(self, other_flow: ConfigFlowHandler) -> bool:

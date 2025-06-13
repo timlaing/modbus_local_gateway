@@ -63,10 +63,10 @@ Adjust the **update frequency** (default: 30 seconds) via "Configure" at the dev
 
 ## Creating YAML Device Configurations
 
-To add support for a new device, create a YAML file in `{CONFIG_DIR}/modbus_local_gateway`. Each file specifies the Modbus registers/coils for a single device, mapping them to corresponding Home Assistant entities.
+To add support for a new device, create a YAML file in `/config/modbus_local_gateway/`. Each file specifies the Modbus registers/coils for a single device, mapping them to corresponding Home Assistant entities.
 
-Any files in `{CONFIG_DIR}/modbus_local_gateway` will override those as part of this repo (`custom_components/modbus_local_gateway/device_configs/`).
-Once you are happy with you configuration, please consider sharing with others by creating a pull request with you config file.
+Any files in `/config/modbus_local_gateway/` will override those as part of this repo (`custom_components/modbus_local_gateway/device_configs/`).
+Once you are happy with your configuration, please consider sharing with others by creating a pull request with your config file.
 
 ### Minimal Example
 ```yaml

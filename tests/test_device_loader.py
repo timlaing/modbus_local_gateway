@@ -116,13 +116,15 @@ def test_get_config_files_extra_dir_not_a_dir(
 
 def test_get_create_device_info_not_found(hass: HomeAssistant) -> None:
     """Test create_device_info raises FileNotFoundError when file is not found."""
-    with patch(
-        "custom_components.modbus_local_gateway.entity_management.device_loader"
-        ".get_config_files",
-        return_value={},
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.entity_management.device_loader"
+            ".get_config_files",
+            return_value={},
+        ),
+        pytest.raises(FileNotFoundError),
     ):
-        with pytest.raises(FileNotFoundError):
-            create_device_info(hass, "non_existent.yaml")
+        create_device_info(hass, "non_existent.yaml")
 
 
 def test_get_create_device_info_found(hass: HomeAssistant, tmp_path: Path) -> None:

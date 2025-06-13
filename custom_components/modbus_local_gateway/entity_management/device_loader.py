@@ -3,7 +3,6 @@
 import glob
 import logging
 import os.path
-from posixpath import basename
 
 from homeassistant.core import HomeAssistant
 
@@ -43,7 +42,7 @@ async def load_devices(hass: HomeAssistant) -> dict[str, ModbusDeviceInfo]:
     for filename, path in filenames.items():
         try:
             devices[filename] = await hass.async_add_executor_job(
-                create_device_info, hass, path
+                create_device_info, hass, path, filenames
             )
         except Exception as err:  # pylint: disable=broad-exception-caught
             _LOGGER.error("Error loading device from YAML file: %s - %s", filename, err)
@@ -51,12 +50,16 @@ async def load_devices(hass: HomeAssistant) -> dict[str, ModbusDeviceInfo]:
     return devices
 
 
-def create_device_info(hass: HomeAssistant, filename: str) -> ModbusDeviceInfo:
+def create_device_info(
+    hass: HomeAssistant, filename: str, available_files: dict[str, str] | None = None
+) -> ModbusDeviceInfo:
     """Create the ModbusDeviceInfo object"""
-    available_files: dict[str, str] = get_config_files(hass)
-    name: str = basename(filename).lower()
-    if name not in available_files:
+    _available_files: dict[str, str] | None = available_files
+    if _available_files is None:
+        _available_files = get_config_files(hass)
+    name: str = os.path.basename(filename).lower()
+    if name not in _available_files:
         _LOGGER.error("File %s not found in available files: %s", name, available_files)
         raise FileNotFoundError(f"File {name} not found in available files.")
 
-    return ModbusDeviceInfo(fname=available_files[name])
+    return ModbusDeviceInfo(fname=_available_files[name])
