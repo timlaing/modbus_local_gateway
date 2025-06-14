@@ -9,7 +9,7 @@ from pymodbus.transaction import TransactionManager
 
 
 class MyTransactionManager(TransactionManager):
-    """Custom Transaction Manager to supress exception logging"""
+    """Custom Transaction Manager to suppress exception logging"""
 
     def data_received(self, data: bytes) -> None:
         """Catch any protocol exceptions so they don't pollute the HA logs"""
