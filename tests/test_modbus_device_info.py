@@ -242,7 +242,7 @@ def test_entity_create_all_fields() -> None:
         assert entity.conv_map == {1: "One"}
         assert entity.state_class == "total"
         assert entity.device_class == "A"
-        assert entity.native_unit_of_measurement == "%"
+        assert entity.unit_of_measurement == "%"
         assert entity.conv_flags == {1: "One"}
         assert entity.data_type == ModbusDataType.HOLDING_REGISTER
 
