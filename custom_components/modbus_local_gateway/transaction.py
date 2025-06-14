@@ -1,6 +1,7 @@
 """TCP Client for Modbus Local Gateway"""
 
 import contextlib
+from asyncio import InvalidStateError
 
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.pdu.pdu import ModbusPDU
@@ -12,7 +13,7 @@ class MyTransactionManager(TransactionManager):
 
     def data_received(self, data: bytes) -> None:
         """Catch any protocol exceptions so they don't pollute the HA logs"""
-        with contextlib.suppress(ModbusIOException):
+        with contextlib.suppress(ModbusIOException, InvalidStateError):
             super().data_received(data)
 
     def pdu_send(self, pdu: ModbusPDU, addr: tuple | None = None) -> None:

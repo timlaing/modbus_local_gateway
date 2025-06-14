@@ -24,6 +24,7 @@ from custom_components.modbus_local_gateway.switch import (
 )
 
 
+@pytest.mark.asyncio
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
     entry = MockConfigEntry(
@@ -83,6 +84,7 @@ async def test_setup_entry(hass) -> None:
         pm1.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_none() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -103,6 +105,7 @@ async def test_update_none() -> None:
     coordinator.get_data.assert_called_once_with(ctx)
 
 
+@pytest.mark.asyncio
 async def test_update_exception() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -135,6 +138,7 @@ async def test_update_exception() -> None:
         error.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_value() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -173,6 +177,7 @@ async def test_update_value() -> None:
         write.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_deviceupdate() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -216,6 +221,7 @@ async def test_update_deviceupdate() -> None:
         write.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_async_turn_on_coil() -> None:
     """Test turning on a switch with COIL data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
@@ -240,6 +246,7 @@ async def test_async_turn_on_coil() -> None:
         mock_write_data.assert_called_once_with(entity.coordinator_context, True)
 
 
+@pytest.mark.asyncio
 async def test_async_turn_on_holding_register() -> None:
     """Test turning on a switch with HOLDING_REGISTER data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
@@ -264,6 +271,7 @@ async def test_async_turn_on_holding_register() -> None:
         mock_write_data.assert_called_once_with(entity.coordinator_context, 1)
 
 
+@pytest.mark.asyncio
 async def test_async_turn_on_invalid_data_type() -> None:
     """Test turning on a switch with an invalid data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
@@ -287,6 +295,7 @@ async def test_async_turn_on_invalid_data_type() -> None:
         await entity.async_turn_on()
 
 
+@pytest.mark.asyncio
 async def test_async_turn_off_coil() -> None:
     """Test turning off a switch with COIL data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
@@ -311,6 +320,7 @@ async def test_async_turn_off_coil() -> None:
         mock_write_data.assert_called_once_with(entity.coordinator_context, False)
 
 
+@pytest.mark.asyncio
 async def test_async_turn_off_holding_register() -> None:
     """Test turning off a switch with HOLDING_REGISTER data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
@@ -335,6 +345,7 @@ async def test_async_turn_off_holding_register() -> None:
         mock_write_data.assert_called_once_with(entity.coordinator_context, 0)
 
 
+@pytest.mark.asyncio
 async def test_async_turn_off_invalid_data_type() -> None:
     """Test turning off a switch with an invalid data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)

@@ -146,6 +146,7 @@ def test_get_create_device_info_found(hass: HomeAssistant, tmp_path: Path) -> No
         assert device_info is not None
 
 
+@pytest.mark.asyncio
 async def test_load_devices(hass: HomeAssistant, tmp_path: Path) -> None:
     """Test load_devices loads all devices from config files."""
     config_dir: Path = tmp_path / "device_configs"
@@ -169,6 +170,7 @@ async def test_load_devices(hass: HomeAssistant, tmp_path: Path) -> None:
         assert "dev2.yaml" in devices
 
 
+@pytest.mark.asyncio
 async def test_load_devices_with_error(hass: HomeAssistant, tmp_path: Path) -> None:
     """Test load_devices handles errors when loading device info."""
     config_dir: Path = tmp_path / "device_configs"

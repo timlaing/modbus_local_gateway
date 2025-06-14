@@ -375,6 +375,7 @@ def test_validate_scan_interval(
             assert log_message in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_devices_yaml(hass) -> None:
     """Validate yaml files with new structure"""
     with patch(
