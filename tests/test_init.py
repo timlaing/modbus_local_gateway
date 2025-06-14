@@ -3,6 +3,7 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import patch
 
+import pytest
 from pytest_homeassistant_custom_component.common import (
     HomeAssistant,
     MockConfigEntry,
@@ -12,6 +13,7 @@ from custom_components.modbus_local_gateway import async_setup_entry
 from custom_components.modbus_local_gateway.const import DOMAIN
 
 
+@pytest.mark.asyncio
 async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test the HA setup function"""
     mock_config_entry = MockConfigEntry(

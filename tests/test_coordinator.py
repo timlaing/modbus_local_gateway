@@ -19,6 +19,7 @@ from custom_components.modbus_local_gateway.entity_management.base import (
 )
 
 
+@pytest.mark.asyncio
 async def test_update_single() -> None:
     """Test the update functionality"""
 
@@ -63,6 +64,7 @@ async def test_update_single() -> None:
             )
 
 
+@pytest.mark.asyncio
 async def test_update_multiple() -> None:
     """Test the update functionality"""
 
@@ -113,6 +115,7 @@ async def test_update_multiple() -> None:
             assert convert.call_count == 2
 
 
+@pytest.mark.asyncio
 async def test_update_exception() -> None:
     """Test the update functionality"""
 
@@ -180,6 +183,7 @@ async def test_update_exception() -> None:
         assert convert.call_count == 2
 
 
+@pytest.mark.asyncio
 async def test_write_data_success() -> None:
     """Test write_data calls client.write_data and requests refresh on success."""
 
@@ -205,6 +209,7 @@ async def test_write_data_success() -> None:
     entity._handle_coordinator_update.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_write_data_raises() -> None:
     """Test write_data logs and raises UpdateFailed on exception."""
 
@@ -385,6 +390,7 @@ def test_modbus_coordinator_max_read_size_property_and_setter() -> None:
     assert coordinator.max_read_size == 5
 
 
+@pytest.mark.asyncio
 async def test_async_update_if_not_in_progress_locked(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
@@ -411,6 +417,7 @@ async def test_async_update_if_not_in_progress_locked(
         assert "Update for entity test_entity is already in progress" in caplog.text
 
 
+@pytest.mark.asyncio
 async def test_async_update_if_not_in_progress_unlocked() -> None:
     """Test _async_update_if_not_in_progress calls update if not locked."""
     coordinator = MagicMock()
@@ -495,6 +502,7 @@ def test_async_cancel_update_polling() -> None:
     assert cancelled is True
 
 
+@pytest.mark.asyncio
 async def test_async_run_sets_available_and_schedules() -> None:
     """Test async_run schedules update and sets available."""
     coordinator = MagicMock()
@@ -535,6 +543,7 @@ async def test_async_run_sets_available_and_schedules() -> None:
         entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_async_added_to_hass_calls_super_and_run() -> None:
     """Test async_added_to_hass calls super and async_run."""
     coordinator = MagicMock()
@@ -559,6 +568,7 @@ async def test_async_added_to_hass_calls_super_and_run() -> None:
         entity.async_run.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_async_will_remove_from_hass_calls_super_and_cancels() -> None:
     """Test async_will_remove_from_hass calls super and cancels."""
     coordinator = MagicMock()
@@ -585,6 +595,7 @@ async def test_async_will_remove_from_hass_calls_super_and_cancels() -> None:
         mock_super.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_async_update_entity() -> None:
     """Test async_update_entity calls _update_device."""
     hass = MagicMock()

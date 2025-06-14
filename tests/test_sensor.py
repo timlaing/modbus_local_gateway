@@ -23,6 +23,7 @@ from custom_components.modbus_local_gateway.sensor import (
 )
 
 
+@pytest.mark.asyncio
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
     entry = MockConfigEntry(
@@ -78,6 +79,7 @@ async def test_setup_entry(hass) -> None:
         pm1.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_none() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -100,6 +102,7 @@ async def test_update_none() -> None:
     entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_exception() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -135,6 +138,7 @@ async def test_update_exception() -> None:
         entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_value() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -171,6 +175,7 @@ async def test_update_value() -> None:
         entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_reset() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -220,6 +225,7 @@ async def test_update_reset() -> None:
         mocked_last_reset.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_update_never_reset() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -264,6 +270,7 @@ async def test_update_never_reset() -> None:
         mocked_last_reset.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_update_deviceupdate_hw_version() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -315,6 +322,7 @@ async def test_update_deviceupdate_hw_version() -> None:
         mocked_last_reset.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_update_deviceupdate_sw_version() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -366,6 +374,7 @@ async def test_update_deviceupdate_sw_version() -> None:
         mocked_last_reset.assert_not_called()
 
 
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_ignore_same_value() -> None:
     """Test _handle_coordinator_update ignores the same value."""
     coordinator = MagicMock()
@@ -399,6 +408,7 @@ async def test_handle_coordinator_update_ignore_same_value() -> None:
         entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_ignore_large_change() -> None:
     """Test _handle_coordinator_update ignores large changes."""
     coordinator = MagicMock()
@@ -437,6 +447,7 @@ async def test_handle_coordinator_update_ignore_large_change() -> None:
         entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_allow_large_change_on_initial() -> None:
     """Test _handle_coordinator_update allows large changes on initial update."""
     coordinator = MagicMock()
@@ -468,6 +479,7 @@ async def test_handle_coordinator_update_allow_large_change_on_initial() -> None
         entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_update_value() -> None:
     """Test _handle_coordinator_update updates the value."""
     coordinator = MagicMock()
@@ -502,6 +514,7 @@ async def test_handle_coordinator_update_update_value() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_update_smaller_value() -> None:
     """Test _handle_coordinator_update updates the value if smaller."""
     coordinator = MagicMock()
@@ -537,6 +550,7 @@ async def test_handle_coordinator_update_update_smaller_value() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_smaller_than_precision() -> None:
     """Test _handle_coordinator_update updates the value if smaller."""
     coordinator = MagicMock()
@@ -569,6 +583,7 @@ async def test_handle_coordinator_update_smaller_than_precision() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_never_resets() -> None:
     """Test _handle_coordinator_update ignores decreasing values for never resets."""
     coordinator = MagicMock()
@@ -607,6 +622,7 @@ async def test_handle_coordinator_update_never_resets() -> None:
         entity.async_write_ha_state.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_native_value_rounds_float_with_precision() -> None:
     """Test native_value rounds float with precision."""
 
@@ -630,6 +646,7 @@ async def test_native_value_rounds_float_with_precision() -> None:
     assert result == pytest.approx(12.35)
 
 
+@pytest.mark.asyncio
 async def test_native_value_returns_non_float() -> None:
     """Test native_value returns non-float values unchanged."""
 
@@ -653,6 +670,7 @@ async def test_native_value_returns_non_float() -> None:
     assert result == 42
 
 
+@pytest.mark.asyncio
 async def test_native_value_no_precision() -> None:
     """Test native_value returns float unchanged if no precision."""
 
@@ -676,6 +694,7 @@ async def test_native_value_no_precision() -> None:
     assert result == pytest.approx(12.3456)
 
 
+@pytest.mark.asyncio
 async def test_native_value_none_result() -> None:
     """Test native_value returns None if result is None."""
 
@@ -699,6 +718,7 @@ async def test_native_value_none_result() -> None:
     assert result is None
 
 
+@pytest.mark.asyncio
 async def test_native_value_non_modbus_description() -> None:
     """Test native_value when entity_description is not ModbusSensorEntityDescription."""
 
