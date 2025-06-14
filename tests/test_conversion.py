@@ -18,6 +18,7 @@ from custom_components.modbus_local_gateway.entity_management.const import SwapT
 from custom_components.modbus_local_gateway.tcp_client import AsyncModbusTcpClient
 
 
+@pytest.mark.asyncio
 async def test_int16() -> None:
     """Test int16 conversion"""
     client = AsyncModbusTcpClient
@@ -37,6 +38,7 @@ async def test_int16() -> None:
     assert 1 == value
 
 
+@pytest.mark.asyncio
 async def test_from_int16() -> None:
     """Test from int16 conversion"""
     client = AsyncModbusTcpClient
@@ -56,6 +58,7 @@ async def test_from_int16() -> None:
     assert registers == value
 
 
+@pytest.mark.asyncio
 async def test_int16_bitshift() -> None:
     """Test int16 conversion"""
     client = AsyncModbusTcpClient
@@ -78,6 +81,7 @@ async def test_int16_bitshift() -> None:
     assert 240 == value
 
 
+@pytest.mark.asyncio
 async def test_int16_multiplier() -> None:
     """Test int16 conversion"""
     client = AsyncModbusTcpClient
@@ -98,6 +102,7 @@ async def test_int16_multiplier() -> None:
     assert value == pytest.approx(0.8, 0.01)
 
 
+@pytest.mark.asyncio
 async def test_from_int16_multiplier() -> None:
     """Test from int16 conversion"""
     client = AsyncModbusTcpClient
@@ -118,6 +123,7 @@ async def test_from_int16_multiplier() -> None:
     assert registers == value
 
 
+@pytest.mark.asyncio
 async def test_int32() -> None:
     """Test in32 conversion"""
     client = AsyncModbusTcpClient
@@ -140,6 +146,7 @@ async def test_int32() -> None:
     assert 65537 == value
 
 
+@pytest.mark.asyncio
 async def test_from_int32() -> None:
     """Test from int32 conversion"""
     client = AsyncModbusTcpClient
@@ -160,6 +167,7 @@ async def test_from_int32() -> None:
     assert registers == value
 
 
+@pytest.mark.asyncio
 async def test_float() -> None:
     """Test float conversion"""
     client = AsyncModbusTcpClient
@@ -183,6 +191,7 @@ async def test_float() -> None:
     assert value == pytest.approx(1.0, 0.1)
 
 
+@pytest.mark.asyncio
 async def test_from_float() -> None:
     """Test from float conversion"""
     client = AsyncModbusTcpClient
@@ -204,6 +213,7 @@ async def test_from_float() -> None:
     assert registers == value
 
 
+@pytest.mark.asyncio
 async def test_string() -> None:
     """Test string conversion"""
     client = AsyncModbusTcpClient
@@ -227,6 +237,7 @@ async def test_string() -> None:
     assert "HelloWorld" == value
 
 
+@pytest.mark.asyncio
 async def test_from_string() -> None:
     """Test from string conversion"""
     client = AsyncModbusTcpClient
@@ -250,6 +261,7 @@ async def test_from_string() -> None:
     assert registers == value
 
 
+@pytest.mark.asyncio
 async def test_enum() -> None:
     """Test enum conversion"""
     client = AsyncModbusTcpClient
@@ -270,6 +282,7 @@ async def test_enum() -> None:
     assert "Good" == value
 
 
+@pytest.mark.asyncio
 async def test_enum_missing() -> None:
     """Test enum conversion"""
     client = AsyncModbusTcpClient
@@ -290,6 +303,7 @@ async def test_enum_missing() -> None:
     assert value is None
 
 
+@pytest.mark.asyncio
 async def test_enum_bitshift() -> None:
     """Test enum conversion"""
     client = AsyncModbusTcpClient
@@ -313,6 +327,7 @@ async def test_enum_bitshift() -> None:
     assert "Good" == value
 
 
+@pytest.mark.asyncio
 async def test_enum_bits() -> None:
     """Test enum conversion"""
     client = AsyncModbusTcpClient
@@ -336,6 +351,7 @@ async def test_enum_bits() -> None:
     assert "Good" == value
 
 
+@pytest.mark.asyncio
 async def test_flags_low() -> None:
     """Test flag conversion"""
     client = AsyncModbusTcpClient
@@ -359,6 +375,7 @@ async def test_flags_low() -> None:
     assert "Good" == value
 
 
+@pytest.mark.asyncio
 async def test_flags_high() -> None:
     """Test flag conversion"""
     client = AsyncModbusTcpClient
@@ -383,6 +400,7 @@ async def test_flags_high() -> None:
     assert "Good" == value
 
 
+@pytest.mark.asyncio
 async def test_flags_missing() -> None:
     """Test flag conversion"""
     client = AsyncModbusTcpClient
@@ -403,6 +421,7 @@ async def test_flags_missing() -> None:
     assert value is None
 
 
+@pytest.mark.asyncio
 async def test_flags_multiple() -> None:
     """Test flag conversion"""
     client = AsyncModbusTcpClient
@@ -423,6 +442,7 @@ async def test_flags_multiple() -> None:
     assert value == "One | Good"
 
 
+@pytest.mark.asyncio
 async def test_convert_from_response_coils() -> None:
     """Test convert from response"""
     client = AsyncModbusTcpClient
@@ -443,6 +463,7 @@ async def test_convert_from_response_coils() -> None:
     assert value is True
 
 
+@pytest.mark.asyncio
 async def test_convert_from_response_discrete_inputs() -> None:
     """Test convert from response"""
     client = AsyncModbusTcpClient
@@ -463,6 +484,7 @@ async def test_convert_from_response_discrete_inputs() -> None:
     assert value is False
 
 
+@pytest.mark.asyncio
 async def test_convert_from_response_errors() -> None:
     """Test convert from response"""
     client = AsyncModbusTcpClient
@@ -511,6 +533,7 @@ async def test_convert_from_response_errors() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_float_multiplier() -> None:
     """Test float with multiplier conversion"""
     client = AsyncModbusTcpClient

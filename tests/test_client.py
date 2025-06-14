@@ -26,6 +26,7 @@ from custom_components.modbus_local_gateway.tcp_client import (
 )
 
 
+@pytest.mark.asyncio
 async def test_read_registers_single() -> None:
     """Test the register read function"""
 
@@ -46,6 +47,7 @@ async def test_read_registers_single() -> None:
         assert resp == response
 
 
+@pytest.mark.asyncio
 async def test_read_registers_single_invalid_response_length() -> None:
     """Test the register read function"""
 
@@ -67,6 +69,7 @@ async def test_read_registers_single_invalid_response_length() -> None:
         assert resp is None
 
 
+@pytest.mark.asyncio
 async def test_read_registers_single_invalid_response_type() -> None:
     """Test the register read function"""
 
@@ -90,6 +93,7 @@ async def test_read_registers_single_invalid_response_type() -> None:
         assert resp is None
 
 
+@pytest.mark.asyncio
 async def test_read_registers_multiple() -> None:
     """Test the register read function"""
 
@@ -130,6 +134,7 @@ async def test_read_registers_multiple() -> None:
         assert resp.registers == [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
+@pytest.mark.asyncio
 async def test_write_no_registers() -> None:
     """Test successful write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -148,6 +153,7 @@ async def test_write_no_registers() -> None:
         mock_logger.debug.assert_called_with("No values to write, skipping.")
 
 
+@pytest.mark.asyncio
 async def test_write_single_register_success() -> None:
     """Test successful write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -170,6 +176,7 @@ async def test_write_single_register_success() -> None:
         mock_logger.debug.assert_called_with("Writing successful")
 
 
+@pytest.mark.asyncio
 async def test_write_single_register_failure() -> None:
     """Test failed write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -197,6 +204,7 @@ async def test_write_single_register_failure() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_write_multiple_registers_success() -> None:
     """Test successful write of a multiple registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -221,6 +229,7 @@ async def test_write_multiple_registers_success() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_write_multiple_registers_failure() -> None:
     """Test failed write of a multiple registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -250,6 +259,7 @@ async def test_write_multiple_registers_failure() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_write_multiple_registers_success_individual() -> None:
     """Test failed write of a multiple registers, successfully individually."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -277,6 +287,7 @@ async def test_write_multiple_registers_success_individual() -> None:
         )
 
 
+@pytest.mark.asyncio
 async def test_get_client() -> None:
     """test the class helper method"""
 
@@ -299,6 +310,7 @@ async def test_get_client() -> None:
         assert client1 == client2
 
 
+@pytest.mark.asyncio
 async def test_update_slave_not_connected() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
@@ -347,6 +359,7 @@ async def test_update_slave_not_connected() -> None:
         assert len(lock.mock_calls) == 2
 
 
+@pytest.mark.asyncio
 async def test_update_slave_connected_no_entities() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
@@ -386,6 +399,7 @@ async def test_update_slave_connected_no_entities() -> None:
         assert len(lock.mock_calls) == 2
 
 
+@pytest.mark.asyncio
 async def test_update_slave_connected_sucess_slave_single() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
@@ -442,6 +456,7 @@ async def test_update_slave_connected_sucess_slave_single() -> None:
         assert len(lock.mock_calls) == 2
 
 
+@pytest.mark.asyncio
 async def test_update_slave_connected_sucess_slave_multiple() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
@@ -518,6 +533,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
         assert len(lock.mock_calls) == 2
 
 
+@pytest.mark.asyncio
 async def test_update_slave_connected_failed_slave_single() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
@@ -568,6 +584,7 @@ async def test_update_slave_connected_failed_slave_single() -> None:
         assert len(lock.mock_calls) == 2
 
 
+@pytest.mark.asyncio
 async def test_update_slave_connected_failed_slave_multiple() -> None:
     """Test the update slave function"""
     lock = AsyncMock()
@@ -643,6 +660,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
         assert len(lock.mock_calls) == 2
 
 
+@pytest.mark.asyncio
 async def test_update_slave_connected_success_all_types() -> None:
     """Test update slave with all four Modbus data types"""
     lock = AsyncMock()
@@ -723,6 +741,7 @@ async def test_update_slave_connected_success_all_types() -> None:
         assert len(lock.mock_calls) == 2
 
 
+@pytest.mark.asyncio
 async def test_write_data_holding_registers_success() -> None:
     """Test successful write to holding registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -763,6 +782,7 @@ async def test_write_data_holding_registers_success() -> None:
         assert result is None
 
 
+@pytest.mark.asyncio
 async def test_write_data_coils_success() -> None:
     """Test successful write to coils."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -802,6 +822,7 @@ async def test_write_data_coils_success() -> None:
         assert result is not None
 
 
+@pytest.mark.asyncio
 async def test_write_data_failed_connection() -> None:
     """Test failed connection."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -833,6 +854,7 @@ async def test_write_data_failed_connection() -> None:
         assert result is None
 
 
+@pytest.mark.asyncio
 async def test_write_data_unsupported_data_type() -> None:
     """Test unsupported data type."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -857,6 +879,7 @@ async def test_write_data_unsupported_data_type() -> None:
         await client.write_data(entity, value=123)
 
 
+@pytest.mark.asyncio
 async def test_write_data_incorrect_register_count() -> None:
     """Test incorrect register count."""
     client = AsyncModbusTcpClientGateway(host="localhost")
@@ -884,6 +907,7 @@ async def test_write_data_incorrect_register_count() -> None:
         await client.write_data(entity, value=789)
 
 
+@pytest.mark.asyncio
 async def test_write_data_invalid_coil_value_type() -> None:
     """Test invalid coil value type."""
     client = AsyncModbusTcpClientGateway(host="localhost")

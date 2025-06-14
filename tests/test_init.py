@@ -13,6 +13,7 @@ from custom_components.modbus_local_gateway import async_setup_entry, async_unlo
 from custom_components.modbus_local_gateway.const import DOMAIN
 
 
+@pytest.mark.asyncio
 async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test the HA setup function"""
     mock_config_entry = MockConfigEntry(

@@ -3,6 +3,7 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import DOMAIN
@@ -20,6 +21,7 @@ from custom_components.modbus_local_gateway.number import (
 )
 
 
+@pytest.mark.asyncio
 async def test_setup_entry(hass) -> None:
     """Test the HA setup function"""
 
@@ -77,6 +79,7 @@ async def test_setup_entry(hass) -> None:
         pm2.assert_called()
 
 
+@pytest.mark.asyncio
 async def test_update_none() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -99,6 +102,7 @@ async def test_update_none() -> None:
     coordinator.get_data.assert_called_once_with(ctx)
 
 
+@pytest.mark.asyncio
 async def test_update_exception() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -133,6 +137,7 @@ async def test_update_exception() -> None:
         error.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_value() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
@@ -171,6 +176,7 @@ async def test_update_value() -> None:
         write.assert_called_once()
 
 
+@pytest.mark.asyncio
 async def test_update_deviceupdate() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
