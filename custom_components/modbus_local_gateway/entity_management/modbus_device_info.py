@@ -182,7 +182,7 @@ class ModbusDeviceInfo:
             state_class = None
 
         return {
-            "unit_of_measurement": unit,
+            "native_unit_of_measurement": unit,
             "device_class": device_class,
             "state_class": state_class,
         }
@@ -245,7 +245,7 @@ class ModbusDeviceInfo:
                 "is_string": _data.get(IS_STRING, False),
                 "is_signed": _data.get(IS_SIGNED, False),
                 "never_resets": _data.get(NEVER_RESETS, False),
-                "unit_of_measurement": uom["unit_of_measurement"],
+                "native_unit_of_measurement": uom["native_unit_of_measurement"],
                 "device_class": uom["device_class"],
                 "state_class": uom["state_class"],
                 "max_change": _data.get(MAX_CHANGE),
