@@ -1,0 +1,266 @@
+device:
+  manufacturer: Uponor
+  model: Smatrix Base PRO Controller X-147
+  # max_register_read: Not specified in Uponor documentation, omit.
+
+read_only_word: # Input registers (Function Code 0x04)
+  # Outdoor Temperature
+  outdoor_temperature:
+    name: Outdoor Temperature
+    address: 30000 # Physical address for Controller outdoor temperature
+    data_type: int16 # Signed 16 bit integer
+    size: 1
+    multiplier: 0.1 # Temperature data is value * 10
+    precision: 1
+    unit_of_measurement: °F # All temperature data is in Fahrenheit
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  # Room Temperature Data (Instances/Channels 1-12)
+  room_temperature_channel_1:
+    name: room_temperature_channel_1
+    address: 30001 # Physical address for Room temperature data, channel 1
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_2:
+    name: room_temperature_channel_2
+    address: 30002 # Physical address for Room temperature data, channel 2
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_3:
+    name: room_temperature_channel_3
+    address: 30003 # Physical address for Room temperature data, channel 3
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_4:
+    name: room_temperature_channel_4
+    address: 30004 # Physical address for Room temperature data, channel 4
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_5:
+    name: room_temperature_channel_5
+    address: 30005 # Physical address for Room temperature data, channel 5
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_6:
+    name: room_temperature_channel_6
+    address: 30006 # Physical address for Room temperature data, channel 6
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_7:
+    name: room_temperature_channel_7
+    address: 30007 # Physical address for Room temperature data, channel 7
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_8:
+    name: room_temperature_channel_8
+    address: 30008 # Physical address for Room temperature data, channel 8
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_9:
+    name: room_temperature_channel_9
+    address: 30009 # Physical address for Room temperature data, channel 9
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_10:
+    name: room_temperature_channel_10
+    address: 30010 # Physical address for Room temperature data, channel 10
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_11:
+    name: room_temperature_channel_11
+    address: 30011 # Physical address for Room temperature data, channel 11
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+  room_temperature_channel_12:
+    name: room_temperature_channel_12
+    address: 30012 # Physical address for Room temperature data, channel 12
+    data_type: int16
+    size: 1
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: °F
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  # Humidity Data (Instances/Channels 1-12)
+  humidity_channel_1:
+    name: humidity_channel_1
+    address: 30013 # Physical address for Humidity data, channel 1
+    data_type: uint16 # Unsigned 16 bit integer
+    size: 1
+    unit_of_measurement: "%" # 0-100 % relative humidity
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_2:
+    name: humidity_channel_2
+    address: 30014 # Physical address for Humidity data, channel 2
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_3:
+    name: humidity_channel_3
+    address: 30015 # Physical address for Humidity data, channel 3
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_4:
+    name: humidity_channel_4
+    address: 30016 # Physical address for Humidity data, channel 4
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_5:
+    name: humidity_channel_5
+    address: 30017 # Physical address for Humidity data, channel 5
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_6:
+    name: humidity_channel_6
+    address: 30018 # Physical address for Humidity data, channel 6
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_7:
+    name: humidity_channel_7
+    address: 30019 # Physical address for Humidity data, channel 7
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_8:
+    name: humidity_channel_8
+    address: 30020 # Physical address for Humidity data, channel 8
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_9:
+    name: humidity_channel_9
+    address: 30021 # Physical address for Humidity data, channel 9
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_10:
+    name: humidity_channel_10
+    address: 30022 # Physical address for Humidity data, channel 10
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_11:
+    name: humidity_channel_11
+    address: 30023 # Physicºal address for Humidity data, channel 11
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+  humidity_channel_12:
+    name: humidity_channel_12
+    address: 30024 # Physical address for Humidity data, channel 12
+    data_type: uint16
+    size: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+
+read_write_word: # Holding registers - No relevant attributes requested
+read_write_boolean: # Coils - No relevant attributes requested
+read_only_boolean: # Discrete inputs - No relevant attributes requested
