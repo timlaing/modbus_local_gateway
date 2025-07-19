@@ -1,0 +1,45 @@
+device:
+  manufacturer: "ebyte"
+  model: "ME31-AXAX404"
+
+read_write_boolean:
+  coil1:
+    name: coil1
+    address: 0x0000
+    control: switch
+  coil2:
+    name: coil2
+    address: 0x0001
+    control: switch
+  coil3:
+    name: coil3
+    address: 0x0002
+    control: switch
+  coil4:
+    name: coil4
+    address: 0x0003
+    control: switch
+  ebyte_ip1:
+    name: ebyte_ip1
+    address: 0x0000
+    control: binary_sensor
+    "on": True
+    "off": False
+  ebyte_ip2:
+    name: ebyte_ip2
+    address: 0x0001
+    control: binary_sensor
+    "on": True
+    "off": False
+  ebyte_ip3:
+    name: ebyte_ip3
+    address: 0x0002
+    control: binary_sensor
+    "on": True
+    "off": False
+  ebyte_ip4:
+    name: ebyte_ip4
+    address: 0x0003
+    control: binary_sensor
+    "on": True
+    "off": False
