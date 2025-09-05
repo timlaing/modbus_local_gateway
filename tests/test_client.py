@@ -41,7 +41,7 @@ async def test_read_registers_single() -> None:
     with patch.object(AsyncModbusTcpClientGateway, "__init__", __init__):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
         resp = await client.read_data(
-            func=func, address=1, count=1, slave=1, max_read_size=3
+            func=func, address=1, count=1, device_id=1, max_read_size=3
         )
         func.assert_called_once()
         assert resp == response
@@ -63,7 +63,7 @@ async def test_read_registers_single_invalid_response_length() -> None:
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
         client.read_input_registers = func
         resp = await client.read_data(
-            func=func, address=1, count=1, slave=1, max_read_size=3
+            func=func, address=1, count=1, device_id=1, max_read_size=3
         )
         func.assert_called_once()
         assert resp is None
@@ -86,7 +86,7 @@ async def test_read_registers_single_invalid_response_type() -> None:
             func=client.read_input_registers,
             address=1,
             count=1,
-            slave=1,
+            device_id=1,
             max_read_size=3,
         )
         func.assert_called_once()
@@ -125,7 +125,7 @@ async def test_read_registers_multiple() -> None:
             func=func,
             address=1,
             count=9,
-            slave=1,
+            device_id=1,
             max_read_size=3,
         )
 
@@ -147,7 +147,7 @@ async def test_write_no_registers() -> None:
         await client._custom_write_registers(
             address=1,
             values=[],
-            slave=1,
+            device_id=1,
         )
         client.write_register.assert_not_called()
         mock_logger.debug.assert_called_with("No values to write, skipping.")
@@ -166,12 +166,12 @@ async def test_write_single_register_success() -> None:
         await client._custom_write_registers(
             address=1,
             values=[123],
-            slave=1,
+            device_id=1,
         )
         client.write_register.assert_called_once_with(
             address=1,
             value=123,
-            slave=1,
+            device_id=1,
         )
         mock_logger.debug.assert_called_with("Writing successful")
 
@@ -189,12 +189,12 @@ async def test_write_single_register_failure() -> None:
         await client._custom_write_registers(
             address=1,
             values=[123],
-            slave=1,
+            device_id=1,
         )
         client.write_register.assert_called_once_with(
             address=1,
             value=123,
-            slave=1,
+            device_id=1,
         )
         mock_logger.error.assert_called_with(
             "Failed to write value %d to address %d: %s",
@@ -217,12 +217,12 @@ async def test_write_multiple_registers_success() -> None:
         await client._custom_write_registers(
             address=1,
             values=[123, 456],
-            slave=1,
+            device_id=1,
         )
         client.write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
-            slave=1,
+            device_id=1,
         )
         mock_logger.debug.assert_called_with(
             "Writing multiple values using write_registers successful"
@@ -244,12 +244,12 @@ async def test_write_multiple_registers_failure() -> None:
         await client._custom_write_registers(
             address=1,
             values=[123, 456],
-            slave=1,
+            device_id=1,
         )
         client.write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
-            slave=1,
+            device_id=1,
         )
         mock_logger.error.assert_called_with(
             "Failed to write value %d to address %d: %s",
@@ -274,12 +274,12 @@ async def test_write_multiple_registers_success_individual() -> None:
         await client._custom_write_registers(
             address=1,
             values=[123, 456],
-            slave=1,
+            device_id=1,
         )
         client.write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
-            slave=1,
+            device_id=1,
         )
         mock_logger.error.assert_not_called()
         mock_logger.debug.assert_called_with(
@@ -311,8 +311,8 @@ async def test_get_client() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_slave_not_connected() -> None:
-    """Test the update slave function"""
+async def test_update_device_not_connected() -> None:
+    """Test the update device function"""
     lock = AsyncMock()
 
     def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
@@ -337,10 +337,10 @@ async def test_update_slave_not_connected() -> None:
         connected = PropertyMock(return_value=False)
         type(gateway).connected = connected  # type: ignore
 
-        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusEntityDescription(
                         register_address=1,
                         key="key",
@@ -360,8 +360,8 @@ async def test_update_slave_not_connected() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_slave_connected_no_entities() -> None:
-    """Test the update slave function"""
+async def test_update_device_connected_no_entities() -> None:
+    """Test the update device function"""
     lock = AsyncMock()
 
     def __init__(self, **kwargs) -> None:  # pylint: disable=unused-argument
@@ -386,7 +386,7 @@ async def test_update_slave_connected_no_entities() -> None:
         connected = PropertyMock(return_value=True)
         type(gateway).connected = connected  # type: ignore
 
-        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[],
             max_read_size=3,
         )
@@ -400,8 +400,8 @@ async def test_update_slave_connected_no_entities() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_slave_connected_sucess_slave_single() -> None:
-    """Test the update slave function"""
+async def test_update_device_connected_sucess_device_single() -> None:
+    """Test the update device function"""
     lock = AsyncMock()
 
     with (
@@ -431,10 +431,10 @@ async def test_update_slave_connected_sucess_slave_single() -> None:
 
         read_reg.return_value = response
 
-        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key",
                         register_address=1,
@@ -457,8 +457,8 @@ async def test_update_slave_connected_sucess_slave_single() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_slave_connected_sucess_slave_multiple() -> None:
-    """Test the update slave function"""
+async def test_update_device_connected_sucess_device_multiple() -> None:
+    """Test the update device function"""
     lock = AsyncMock()
 
     with (
@@ -488,10 +488,10 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
 
         read_reg.return_value = response
 
-        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key1",
                         register_address=1,
@@ -500,7 +500,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
                     ),
                 ),
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key2",
                         register_address=1,
@@ -509,7 +509,7 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
                     ),
                 ),
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key3",
                         register_address=1,
@@ -534,8 +534,8 @@ async def test_update_slave_connected_sucess_slave_multiple() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_slave_connected_failed_slave_single() -> None:
-    """Test the update slave function"""
+async def test_update_device_connected_failed_device_single() -> None:
+    """Test the update device function"""
     lock = AsyncMock()
 
     with (
@@ -560,10 +560,10 @@ async def test_update_slave_connected_failed_slave_single() -> None:
 
         read_reg.side_effect = ModbusException(string="test")
 
-        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key",
                         register_address=1,
@@ -585,8 +585,8 @@ async def test_update_slave_connected_failed_slave_single() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_slave_connected_failed_slave_multiple() -> None:
-    """Test the update slave function"""
+async def test_update_device_connected_failed_device_multiple() -> None:
+    """Test the update device function"""
     lock = AsyncMock()
 
     with (
@@ -616,10 +616,10 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
 
         read_reg.side_effect = [response, ModbusException(string="test"), response]
 
-        resp: dict[str, ModbusPDU] = await gateway.update_slave(
+        resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key1",
                         register_address=1,
@@ -628,7 +628,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
                     ),
                 ),
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key2",
                         register_address=1,
@@ -637,7 +637,7 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
                     ),
                 ),
                 ModbusContext(
-                    slave_id=1,
+                    device_id=1,
                     desc=ModbusSensorEntityDescription(
                         key="key3",
                         register_address=1,
@@ -661,8 +661,8 @@ async def test_update_slave_connected_failed_slave_multiple() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_slave_connected_success_all_types() -> None:
-    """Test update slave with all four Modbus data types"""
+async def test_update_device_connected_success_all_types() -> None:
+    """Test update device with all four Modbus data types"""
     lock = AsyncMock()
 
     with (
@@ -693,7 +693,7 @@ async def test_update_slave_connected_success_all_types() -> None:
 
         entities = [
             ModbusContext(
-                slave_id=1,
+                device_id=1,
                 desc=ModbusSensorEntityDescription(
                     key="rw_word",
                     register_address=1,
@@ -701,7 +701,7 @@ async def test_update_slave_connected_success_all_types() -> None:
                 ),
             ),
             ModbusContext(
-                slave_id=1,
+                device_id=1,
                 desc=ModbusSensorEntityDescription(
                     key="ro_word",
                     register_address=2,
@@ -709,7 +709,7 @@ async def test_update_slave_connected_success_all_types() -> None:
                 ),
             ),
             ModbusContext(
-                slave_id=1,
+                device_id=1,
                 desc=ModbusSwitchEntityDescription(
                     key="rw_bool",
                     register_address=3,
@@ -718,7 +718,7 @@ async def test_update_slave_connected_success_all_types() -> None:
                 ),
             ),
             ModbusContext(
-                slave_id=1,
+                device_id=1,
                 desc=ModbusBinarySensorEntityDescription(
                     key="ro_bool",
                     register_address=4,
@@ -728,7 +728,7 @@ async def test_update_slave_connected_success_all_types() -> None:
             ),
         ]
 
-        resp = await gateway.update_slave(entities=entities, max_read_size=3)
+        resp = await gateway.update_device(entities=entities, max_read_size=3)
 
         assert len(resp) == 4
         assert resp["rw_word"] == responses[0]
@@ -750,7 +750,7 @@ async def test_write_data_holding_registers_success() -> None:
     client.write_registers.return_value.isError = lambda: False
 
     entity = ModbusContext(
-        slave_id=1,
+        device_id=1,
         desc=ModbusEntityDescription(
             key="test",
             register_address=1,
@@ -774,7 +774,7 @@ async def test_write_data_holding_registers_success() -> None:
         client.write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
-            slave=1,
+            device_id=1,
         )
         mock_logger.debug.assert_called_with(
             "Writing multiple values using write_registers successful"
@@ -791,7 +791,7 @@ async def test_write_data_coils_success() -> None:
     client.write_coil.return_value.isError = lambda: False
 
     entity = ModbusContext(
-        slave_id=1,
+        device_id=1,
         desc=ModbusEntityDescription(
             key="test",
             register_address=1,
@@ -812,7 +812,7 @@ async def test_write_data_coils_success() -> None:
         client.write_coil.assert_called_once_with(
             address=1,
             value=True,
-            slave=1,
+            device_id=1,
         )
         mock_logger.debug.assert_called_with(
             "Value before conversion: %s (type: %s)",
@@ -829,7 +829,7 @@ async def test_write_data_failed_connection() -> None:
     client.connect = AsyncMock()
 
     entity = ModbusContext(
-        slave_id=1,
+        device_id=1,
         desc=ModbusEntityDescription(
             key="test",
             register_address=1,
@@ -861,7 +861,7 @@ async def test_write_data_unsupported_data_type() -> None:
     client.connect = AsyncMock()
 
     entity = ModbusContext(
-        slave_id=1,
+        device_id=1,
         desc=ModbusEntityDescription(
             key="test",
             register_address=1,
@@ -886,7 +886,7 @@ async def test_write_data_incorrect_register_count() -> None:
     client.connect = AsyncMock()
 
     entity = ModbusContext(
-        slave_id=1,
+        device_id=1,
         desc=ModbusEntityDescription(
             key="test",
             register_address=1,
@@ -914,7 +914,7 @@ async def test_write_data_invalid_coil_value_type() -> None:
     client.connect = AsyncMock()
 
     entity = ModbusContext(
-        slave_id=1,
+        device_id=1,
         desc=ModbusEntityDescription(
             key="test",
             register_address=1,

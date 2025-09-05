@@ -11,7 +11,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 
 from .const import (
-    CONF_SLAVE_ID,
+    CONF_DEVICE_ID,
     DOMAIN,
     OPTIONS_DEFAULT_REFRESH,
     OPTIONS_REFRESH,
@@ -30,7 +30,7 @@ async def async_setup_entry(
     """Load the saved entities."""
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
-    gateway_key: str = get_gateway_key(entry=entry, with_slave=True)
+    gateway_key: str = get_gateway_key(entry=entry, with_device=True)
 
     device_registry: dr.DeviceRegistry = dr.async_get(hass)
 
@@ -46,10 +46,10 @@ async def async_setup_entry(
         identifiers={
             (
                 DOMAIN,
-                f"ModbusGateway-{get_gateway_key(entry=entry, with_slave=False)}",
+                f"ModbusGateway-{get_gateway_key(entry=entry, with_device=False)}",
             )
         },
-        name=f"Modbus Gateway ({get_gateway_key(entry=entry, with_slave=False)})",
+        name=f"Modbus Gateway ({get_gateway_key(entry=entry, with_device=False)})",
         configuration_url=f"http://{entry.data[CONF_HOST]}/",
         connections=connections,
     )
@@ -72,7 +72,7 @@ async def async_setup_entry(
             )
         else:
             raise ConfigEntryNotReady(
-                f"Unable to connect to {gateway_key}, slave: {entry.data[CONF_SLAVE_ID]}"
+                f"Unable to connect to {gateway_key}, device: {entry.data[CONF_DEVICE_ID]}"
             )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -82,6 +82,6 @@ async def async_setup_entry(
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    gateway_key: str = get_gateway_key(entry=entry, with_slave=True)
+    gateway_key: str = get_gateway_key(entry=entry, with_device=True)
     del hass.data[DOMAIN][gateway_key]
     return True

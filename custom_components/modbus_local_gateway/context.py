@@ -14,5 +14,5 @@ _LOGGER = logging.getLogger(__name__)
 class ModbusContext:
     """Context object for use with the coordinator"""
 
-    slave_id: int
+    device_id: int
     desc: ModbusEntityDescription
