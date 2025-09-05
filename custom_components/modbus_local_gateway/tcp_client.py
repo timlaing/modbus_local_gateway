@@ -18,7 +18,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
-    """Custom Modbus TCP client with request batching based on slave and locking."""
+    """Custom Modbus TCP client with request batching based on device and locking."""
 
     _CLIENT: dict[str, "AsyncModbusTcpClientGateway"] = {}
 
@@ -51,7 +51,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         )
 
     async def read_data(
-        self, func: Callable, address: int, count: int, slave: int, max_read_size: int
+        self,
+        func: Callable,
+        address: int,
+        count: int,
+        device_id: int,
+        max_read_size: int,
     ) -> ModbusPDU | None:
         """Read registers or coils in batches based on max_read_size."""
         is_register_func: bool = func in [
@@ -73,11 +78,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             temp_response: ModbusPDU = await func(
                 address=current_address,
                 count=read_count,
-                slave=slave,
+                device_id=device_id,
             )
 
             if not hasattr(temp_response, "registers" if is_register_func else "bits"):
-                _LOGGER.error("Invalid response received from slave %d", slave)
+                _LOGGER.error("Invalid response received from Device ID %d", device_id)
                 return None
 
             if (
@@ -86,8 +91,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 and len(temp_response.registers) != read_count
             ):
                 _LOGGER.error(
-                    "Invalid response received from slave %d, address: %d (count does not match)",
-                    slave,
+                    "Invalid response received from Device ID %d, address: %d (count does not match)",
+                    device_id,
                     current_address,
                 )
                 return None
@@ -116,7 +121,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         return response
 
     async def _custom_write_registers(
-        self, address: int, values: List[int], slave: int
+        self, address: int, values: List[int], device_id: int
     ) -> None:
         """Write values to Modbus registers. Try write_registers first, and
         fall back to individual write_register calls if it fails."""
@@ -125,22 +130,24 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             return
 
         if len(values) == 1:
-            await self._write_single_register(address, values[0], slave)
+            await self._write_single_register(address, values[0], device_id)
         else:
-            await self._write_multiple_registers(address, values, slave)
+            await self._write_multiple_registers(address, values, device_id)
 
     async def _write_single_register(
-        self, address: int, value: int, slave: int
+        self, address: int, value: int, device_id: int
     ) -> None:
         """Write a single value to a Modbus register."""
         _LOGGER.debug(
-            "Writing single value %d to register at address %d, slave %d",
+            "Writing single value %d to register at address %d, device_id %d",
             value,
             address,
-            slave,
+            device_id,
         )
         result: ModbusPDU = await self.write_register(
-            address=address, value=value, slave=slave
+            address=address,
+            value=value,
+            device_id=device_id,
         )
         if result.isError():
             _LOGGER.error(
@@ -153,18 +160,20 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             _LOGGER.debug("Writing successful")
 
     async def _write_multiple_registers(
-        self, address: int, values: List[int], slave: int
+        self, address: int, values: List[int], device_id: int
     ) -> None:
         """Write multiple values to Modbus registers."""
         _LOGGER.debug(
             "Attempting to write multiple values %s starting at address %d, "
-            "slave %d using write_registers",
+            "device_id %d using write_registers",
             values,
             address,
-            slave,
+            device_id,
         )
         result: ModbusPDU = await self.write_registers(
-            address=address, values=values, slave=slave
+            address=address,
+            values=values,
+            device_id=device_id,
         )
         if result.isError():
             _LOGGER.warning(
@@ -172,24 +181,24 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 "Falling back to old method (individual write_register calls).",
                 result,
             )
-            await self._write_registers_individually(address, values, slave)
+            await self._write_registers_individually(address, values, device_id)
         else:
             _LOGGER.debug("Writing multiple values using write_registers successful")
 
     async def _write_registers_individually(
-        self, address: int, values: List[int], slave: int
+        self, address: int, values: List[int], device_id: int
     ) -> None:
         """Fallback method to write multiple values to Modbus registers individually."""
         for i, value in enumerate(values):
             current_address = address + i
             _LOGGER.debug(
-                "Writing value %d to register at address %d, slave %d",
+                "Writing value %d to register at address %d, device_id %d",
                 value,
                 current_address,
-                slave,
+                device_id,
             )
             result: ModbusPDU = await self.write_register(
-                address=current_address, value=value, slave=slave
+                address=current_address, value=value, device_id=device_id
             )
             if result.isError():
                 _LOGGER.error(
@@ -212,8 +221,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     return None
 
             _LOGGER.debug(
-                "Starting write operation - Slave: %d, %s (%s): %d, Count: %d",
-                entity.slave_id,
+                "Starting write operation - Device ID: %d, %s (%s): %d, Count: %d",
+                entity.device_id,
                 entity.desc.data_type,
                 entity.desc.key,
                 entity.desc.register_address,
@@ -240,7 +249,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 pdu = await self._custom_write_registers(
                     address=entity.desc.register_address,
                     values=registers,
-                    slave=entity.slave_id,
+                    device_id=entity.device_id,
                 )
             elif entity.desc.data_type == ModbusDataType.COIL:
                 if not isinstance(value, bool):
@@ -250,7 +259,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 pdu = await self.write_coil(
                     address=entity.desc.register_address,
                     value=value,
-                    slave=entity.slave_id,
+                    device_id=entity.device_id,
                 )
             else:
                 raise ValueError(f"Unsupported data type: {entity.desc.data_type}")
@@ -265,10 +274,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
             return pdu
 
-    async def update_slave(
+    async def update_device(
         self, entities: list[ModbusContext], max_read_size: int
     ) -> dict[str, ModbusPDU]:
-        """Fetches all values for a single slave"""
+        """Fetches all values for a single device id"""
         data: dict[str, ModbusPDU] = {}
         async with self.lock:
             if not self.connected:
@@ -293,8 +302,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     ) -> None:
         """Process a single entity and update the data dictionary"""
         _LOGGER.debug(
-            "Reading slave: %d, register/coil (%s): %d, count: %d",
-            entity.slave_id,
+            "Reading Device ID: %d, register/coil (%s): %d, count: %d",
+            entity.device_id,
             entity.desc.key,
             entity.desc.register_address,
             entity.desc.register_count,
@@ -318,7 +327,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     if entity.desc.conv_sum_scale is not None
                     else 1
                 ),
-                slave=entity.slave_id,
+                device_id=entity.device_id,
                 max_read_size=max_read_size,
             )
 
@@ -332,12 +341,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 _LOGGER.warning(
                     "Device not available %s [%d]",
                     self,
-                    entity.slave_id,
+                    entity.device_id,
                 )
                 return
             _LOGGER.debug(
-                "Unable to retrieve value for slave %d, register/coil (%s): %d, count: %d",
-                entity.slave_id,
+                "Unable to retrieve value for Device ID %d, register/coil (%s): %d, count: %d",
+                entity.device_id,
                 entity.desc.key,
                 entity.desc.register_address,
                 entity.desc.register_count,

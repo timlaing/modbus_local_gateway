@@ -22,9 +22,9 @@ async def modbus_operations():
                 logger.info("Successfully connected to device")
 
                 # Read operation (unchanged)
-                logger.debug("Reading 1 register from address 2, slave 20")
+                logger.debug("Reading 1 register from address 2, device 20")
                 result = await client.read_holding_registers(
-                    address=2, count=1, slave=20
+                    address=2, count=1, device=20
                 )
 
                 if result.isError():
@@ -37,9 +37,9 @@ async def modbus_operations():
 
                 # Write operation using write_register (function code 6)
                 logger.debug(
-                    "Writing value 2 to register at address 2, slave 20 using write_register"
+                    "Writing value 2 to register at address 2, device 20 using write_register"
                 )
-                result = await client.write_register(address=2, value=2, slave=20)
+                result = await client.write_register(address=2, value=2, device=20)
 
                 if result.isError():
                     logger.error(
@@ -50,9 +50,9 @@ async def modbus_operations():
 
                 # Write operation using write_registers (function code 16)
                 logger.debug(
-                    "Writing value 5 to 1 register at address 2, slave 20 using write_registers"
+                    "Writing value 5 to 1 register at address 2, device 20 using write_registers"
                 )
-                result = await client.write_registers(address=2, values=[5], slave=20)
+                result = await client.write_registers(address=2, values=[5], device=20)
 
                 if result.isError():
                     logger.error(

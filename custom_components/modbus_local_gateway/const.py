@@ -13,9 +13,9 @@ PLATFORMS: list[Platform] = [
     Platform.TEXT,
 ]
 
-CONF_SLAVE_ID = "slave_id"
+CONF_DEVICE_ID = "slave_id"
 CONF_DEVICE_INFO = "device_info"
-CONF_DEFAULT_SLAVE_ID = 1
+CONF_DEFAULT_DEVICE_ID = 1
 CONF_DEFAULT_PORT = 502
 CONF_PREFIX = "prefix"
 OPTIONS_REFRESH = "refresh"

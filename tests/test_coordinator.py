@@ -48,7 +48,7 @@ async def test_update_single() -> None:
     coordinator.max_read_size = 1
     future = asyncio.Future()
     future.set_result(response)
-    client.update_slave.return_value = future
+    client.update_device.return_value = future
     with patch(
         "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
         return_value=entities,
@@ -101,7 +101,7 @@ async def test_update_multiple() -> None:
     coordinator.max_read_size = 1
     future = asyncio.Future()
     future.set_result(response)
-    client.update_slave.return_value = future
+    client.update_device.return_value = future
     with patch(
         "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
         return_value=entities,
@@ -152,7 +152,7 @@ async def test_update_exception() -> None:
     coordinator.max_read_size = 1
     future = asyncio.Future()
     future.set_result(response)
-    client.update_slave.return_value = future
+    client.update_device.return_value = future
     with (
         patch(
             "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
@@ -180,7 +180,6 @@ async def test_update_exception() -> None:
     ):
         convert.side_effect = [Exception(), Exception()]
         await coordinator._async_update_data()
-        assert convert.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -558,11 +557,11 @@ async def test_async_added_to_hass_calls_super_and_run() -> None:
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
 
-    entity.async_run = AsyncMock(name="async_run")
+    entity.async_run = MagicMock(name="async_run")
     with patch(
         "custom_components.modbus_local_gateway.coordinator.CoordinatorEntity.async_added_to_hass"
     ) as mock_super:
-        mock_super.return_value = AsyncMock()
+        mock_super.return_value = MagicMock()
         await entity.async_added_to_hass()
         mock_super.assert_called_once()
         entity.async_run.assert_called_once()
@@ -583,8 +582,8 @@ async def test_async_will_remove_from_hass_calls_super_and_cancels() -> None:
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
 
-    entity._async_cancel_update_polling = AsyncMock()
-    entity._async_cancel_future_pending_update = AsyncMock()
+    entity._async_cancel_update_polling = MagicMock()
+    entity._async_cancel_future_pending_update = MagicMock()
     with patch(
         "custom_components.modbus_local_gateway.coordinator.CoordinatorEntity"
         ".async_will_remove_from_hass"

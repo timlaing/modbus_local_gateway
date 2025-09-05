@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_PREFIX, CONF_SLAVE_ID, DOMAIN
+from .const import CONF_DEVICE_ID, CONF_PREFIX, DOMAIN
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .entity_management.const import ControlType
 from .entity_management.device_loader import create_device_info
@@ -20,10 +20,10 @@ from .entity_management.modbus_device_info import ModbusDeviceInfo
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-def get_gateway_key(entry: ConfigEntry, with_slave: bool = True) -> str:
+def get_gateway_key(entry: ConfigEntry, with_device: bool = True) -> str:
     """Get the gateway key for the coordinator"""
-    if with_slave:
-        return f"{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}:{entry.data[CONF_SLAVE_ID]}"
+    if with_device:
+        return f"{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}:{entry.data[CONF_DEVICE_ID]}"
 
     return f"{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}"
 
@@ -48,7 +48,7 @@ async def async_setup_entities(
 
     identifiers: set[tuple[str, str]] = {
         (DOMAIN, f"{coordinator.gateway}"),
-        (DOMAIN, f"{coordinator.gateway}-{config[CONF_SLAVE_ID]}"),
+        (DOMAIN, f"{coordinator.gateway}-{config[CONF_DEVICE_ID]}"),
     }
 
     device = DeviceInfo(
@@ -75,7 +75,7 @@ async def async_setup_entities(
         [
             entity_class(
                 coordinator=coordinator,
-                ctx=ModbusContext(slave_id=config[CONF_SLAVE_ID], desc=desc),
+                ctx=ModbusContext(device_id=config[CONF_DEVICE_ID], desc=desc),
                 device=device,
             )
             for desc in device_info.entity_descriptions
