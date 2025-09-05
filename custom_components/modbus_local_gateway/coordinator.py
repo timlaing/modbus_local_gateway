@@ -39,7 +39,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         super().__init__(coordinator, context=ctx)
         if not isinstance(ctx.desc, ModbusEntityDescription):
             raise TypeError()
-        self._attr_unique_id: str | None = f"{ctx.slave_id}-{ctx.desc.key}"
+        self._attr_unique_id: str | None = f"{ctx.device_id}-{ctx.desc.key}"
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
         self._update_lock = asyncio.Lock()
@@ -185,7 +185,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     async def async_update(self) -> dict[str, Any]:
         """Fetch updated data for all registered entities"""
         entities: list[ModbusContext] = sorted(
-            self.async_contexts(), key=lambda x: x.slave_id
+            self.async_contexts(), key=lambda x: x.device_id
         )
         entities = [ctx for ctx in entities if ctx.desc.scan_interval is None]
         data: dict[str, Any] = await self._update_device(entities=entities)
@@ -196,7 +196,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         """Update data for a list of entities"""
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
-        resp: dict[str, ModbusPDU] = await self.client.update_slave(
+        resp: dict[str, ModbusPDU] = await self.client.update_device(
             entities, max_read_size=self._max_read_size
         )
         data: dict[str, Any] = {}
@@ -217,7 +217,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                     _LOGGER.debug(
                         "Data not available for key: %s (%d)",
                         entity.desc.key,
-                        entity.slave_id,
+                        entity.device_id,
                         exc_info=True,
                     )
 

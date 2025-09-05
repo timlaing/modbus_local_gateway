@@ -13,8 +13,8 @@ from custom_components.modbus_local_gateway.config_flow import (
     OptionsFlowHandler,
 )
 from custom_components.modbus_local_gateway.const import (
+    CONF_DEVICE_ID,
     CONF_PREFIX,
-    CONF_SLAVE_ID,
     DOMAIN,
     OPTIONS_REFRESH,
 )
@@ -35,7 +35,7 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
             user_input={
                 CONF_HOST: "127.0.0.1",
                 CONF_PORT: 502,
-                CONF_SLAVE_ID: 1,
+                CONF_DEVICE_ID: 1,
                 CONF_PREFIX: "test",
             }
         )
@@ -49,7 +49,7 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
             user_input={
                 CONF_HOST: "127.0.0.1",
                 CONF_PORT: 502,
-                CONF_SLAVE_ID: 1,
+                CONF_DEVICE_ID: 1,
                 CONF_PREFIX: "test",
             }
         )

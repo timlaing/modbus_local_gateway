@@ -51,7 +51,7 @@ Add devices via the Home Assistant UI:
 #### Step 1: Connection Details
 - **Host**: Gateway IP/hostname (e.g., `192.168.1.100`).
 - **Port**: TCP port (default: `502`).
-- **Slave ID**: Modbus slave ID (e.g., `1`).
+- **Device ID**: Modbus device ID (e.g., `1`).
 - **Prefix**: Optional device and entity name prefix (e.g., `Device 3`).
 
 #### Step 2: Device Selection
@@ -268,7 +268,7 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
     logs:
       custom_components.modbus_local_gateway: debug
   ```
-- **Connection Issues**: Verify gateway IP, port, and slave ID.
+- **Connection Issues**: Verify gateway IP, port, and device ID.
 
 ## Supported Devices
 

@@ -10,7 +10,7 @@ from custom_components.modbus_local_gateway.binary_sensor import (
     ModbusBinarySensorEntity,
     async_setup_entry,
 )
-from custom_components.modbus_local_gateway.const import DOMAIN
+from custom_components.modbus_local_gateway.const import CONF_DEVICE_ID, DOMAIN
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusBinarySensorEntityDescription,
@@ -29,7 +29,7 @@ async def test_setup_entry(hass) -> None:
         data={
             "host": "127.0.0.1",
             "port": "1234",
-            "slave_id": 1,
+            CONF_DEVICE_ID: 1,
             "filename": "Test.yaml",
         },
     )

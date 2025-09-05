@@ -6,12 +6,12 @@ import logging
 
 from pymodbus import __version__ as pymodbus_version
 from pymodbus.datastore import (
+    ModbusDeviceContext,
     ModbusSequentialDataBlock,
     ModbusServerContext,
-    ModbusSlaveContext,
 )
-from pymodbus.device import ModbusDeviceIdentification
 from pymodbus.framer import FramerType
+from pymodbus.pdu.device import ModbusDeviceIdentification
 from pymodbus.server import (
     StartAsyncTcpServer,
 )
@@ -40,24 +40,24 @@ class CallbackDataBlock(ModbusSequentialDataBlock):
         return result
 
 
-def _server_context(slave_id=1) -> ModbusServerContext:
-    """Create a Modbus server context with a single slave."""
+def _server_context(device_id=1) -> ModbusServerContext:
+    """Create a Modbus server context with a single device."""
     _logger.info("### Create datastore")
-    context: dict[int, ModbusSlaveContext] = {}
-    context[slave_id] = ModbusSlaveContext(
+    context: dict[int, ModbusDeviceContext] = {}
+    context[device_id] = ModbusDeviceContext(
         di=CallbackDataBlock(0x00, [0] * 65536),  # Discrete Inputs
         co=CallbackDataBlock(0x00, [0] * 65536),  # Coils
         hr=CallbackDataBlock(0x00, [0] * 65536),  # Holding Registers
         ir=CallbackDataBlock(0x00, [0] * 65536),  # Input Registers
     )
 
-    context[slave_id].setValues(0x04, 72, [17723, 32768])
-    context[slave_id].setValues(0x03, 64512, [17658, 0])
-    context[slave_id].setValues(0x03, 28, [16512, 0])
-    context[slave_id].setValues(0x03, 32768, [201])
-    context[slave_id].setValues(0x03, 2180, [0x0020, 0xF147])
+    context[device_id].setValues(0x04, 72, [17723, 32768])
+    context[device_id].setValues(0x03, 64512, [17658, 0])
+    context[device_id].setValues(0x03, 28, [16512, 0])
+    context[device_id].setValues(0x03, 32768, [201])
+    context[device_id].setValues(0x03, 2180, [0x0020, 0xF147])
 
-    return ModbusServerContext(slaves=context, single=False)
+    return ModbusServerContext(devices=context, single=False)
 
 
 def _server_identity() -> ModbusDeviceIdentification:
@@ -78,13 +78,13 @@ def _server_identity() -> ModbusDeviceIdentification:
 async def run_async_server(
     host: str = "localhost",
     port: int = 502,
-    slave_id: int = 1,
+    device_id: int = 1,
 ) -> None:
     """Run the Modbus TCP server asynchronously."""
     _logger.info("Starting server, listening on %s:%d", host, port)
     address: tuple[str, int] = (host, port)
     await StartAsyncTcpServer(
-        context=_server_context(slave_id=slave_id),  # Data storage
+        context=_server_context(device_id=device_id),  # Data storage
         identity=_server_identity(),  # server identify
         address=address,  # listen address
         # custom_functions=[],  # allow custom handling
@@ -116,14 +116,14 @@ if __name__ == "__main__":
         help="Port to bind the server to.",
     )
     parser.add_argument(
-        "--slave-id",
+        "--device-id",
         type=int,
         default=1,
-        help="Slave ID to use.",
+        help="Device ID to use.",
     )
     args: argparse.Namespace = parser.parse_args()
 
     # Run the server
     asyncio.run(
-        run_async_server(host=args.host, port=args.port, slave_id=args.slave_id)
+        run_async_server(host=args.host, port=args.port, device_id=args.device_id)
     )

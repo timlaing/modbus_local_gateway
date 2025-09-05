@@ -18,10 +18,10 @@ from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 
 from .const import (
+    CONF_DEFAULT_DEVICE_ID,
     CONF_DEFAULT_PORT,
-    CONF_DEFAULT_SLAVE_ID,
+    CONF_DEVICE_ID,
     CONF_PREFIX,
-    CONF_SLAVE_ID,
     DOMAIN,
     OPTIONS_DEFAULT_REFRESH,
     OPTIONS_REFRESH,
@@ -94,7 +94,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         host_opts: dict[str, str] = {"default": ""}
         port_opts: dict[str, int] = {"default": CONF_DEFAULT_PORT}
-        slave_opts: dict[str, int] = {"default": CONF_DEFAULT_SLAVE_ID}
+        device_opts: dict[str, int] = {"default": CONF_DEFAULT_DEVICE_ID}
         prefix_opts: dict[str, str] = {"default": ""}
 
         if user_input is not None:
@@ -110,7 +110,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             errors["base"] = "Gateway connection"
             host_opts["default"] = user_input[CONF_HOST]
             port_opts["default"] = int(user_input[CONF_PORT])
-            slave_opts["default"] = int(user_input[CONF_SLAVE_ID])
+            device_opts["default"] = int(user_input[CONF_DEVICE_ID])
             prefix_opts["default"] = user_input[CONF_PREFIX]
 
         return self.async_show_form(
@@ -119,7 +119,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 {
                     vol.Required(CONF_HOST, None, **host_opts): str,
                     vol.Required(CONF_PORT, None, **port_opts): int,
-                    vol.Required(CONF_SLAVE_ID, None, **slave_opts): int,
+                    vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
                     vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
                 }
             ),

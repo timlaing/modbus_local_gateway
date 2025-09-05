@@ -10,7 +10,7 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.modbus_local_gateway import async_setup_entry, async_unload_entry
-from custom_components.modbus_local_gateway.const import DOMAIN
+from custom_components.modbus_local_gateway.const import CONF_DEVICE_ID, DOMAIN
 
 
 @pytest.mark.asyncio
@@ -21,7 +21,7 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
         data={
             "host": "localhost",
             "port": 123,
-            "slave_id": 1,
+            CONF_DEVICE_ID: 1,
             "prefix": "test",
             "filename": "test.yaml",
             "name": "simple config",
@@ -45,7 +45,7 @@ async def test_async_unload_entry(hass: HomeAssistant) -> None:
         data={
             "host": "localhost",
             "port": 123,
-            "slave_id": 1,
+            CONF_DEVICE_ID: 1,
             "prefix": "test",
             "filename": "test.yaml",
             "name": "simple config",

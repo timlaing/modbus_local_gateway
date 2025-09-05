@@ -18,7 +18,7 @@
                 "data": {
                     "host": "Host",
                     "port": "Port",
-                    "slave_id": "Slave ID",
+                    "device_id": "Device ID",
                     "prefix": "Prefix (optional)"
                 },
                 "description": "Configure the connection parameters"
