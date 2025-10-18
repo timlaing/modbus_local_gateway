@@ -7,7 +7,7 @@ isort
 levenshtein
 pre-commit
 pylint
-pymodbus[repl]
+pymodbus
 pytest
 pytest-asyncio
 pytest-cov

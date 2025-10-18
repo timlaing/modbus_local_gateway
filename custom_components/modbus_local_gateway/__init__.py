@@ -63,6 +63,7 @@ async def async_setup_entry(
         if client is not None:
             hass.data[DOMAIN][gateway_key] = ModbusCoordinator(
                 hass=hass,
+                config_entry=entry,
                 gateway_device=device,
                 client=client,
                 gateway=gateway_key,
