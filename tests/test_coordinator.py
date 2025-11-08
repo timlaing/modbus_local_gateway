@@ -6,6 +6,7 @@ from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.config_entries import ConfigEntry
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.coordinator import (
@@ -20,7 +21,7 @@ from custom_components.modbus_local_gateway.entity_management.base import (
 
 
 @pytest.mark.asyncio
-async def test_update_single() -> None:
+async def test_update_single(mock_config_entry: ConfigEntry) -> None:
     """Test the update functionality"""
 
     hass = MagicMock()
@@ -28,6 +29,7 @@ async def test_update_single() -> None:
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway,
         client=client,
         gateway="Test",
@@ -65,7 +67,7 @@ async def test_update_single() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_multiple() -> None:
+async def test_update_multiple(mock_config_entry: ConfigEntry) -> None:
     """Test the update functionality"""
 
     hass = MagicMock()
@@ -73,6 +75,7 @@ async def test_update_multiple() -> None:
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway,
         client=client,
         gateway="Test",
@@ -116,7 +119,7 @@ async def test_update_multiple() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_exception() -> None:
+async def test_update_exception(mock_config_entry: ConfigEntry) -> None:
     """Test the update functionality"""
 
     hass = MagicMock()
@@ -124,6 +127,7 @@ async def test_update_exception() -> None:
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway,
         client=client,
         gateway="Test",
@@ -250,7 +254,7 @@ def test_entity_description_property() -> None:
     assert entity.entity_description is ctx.desc
 
 
-def test_get_data_returns_value() -> None:
+def test_get_data_returns_value(mock_config_entry: ConfigEntry) -> None:
     """Test get_data returns the correct value when present in data."""
 
     hass = MagicMock()
@@ -258,6 +262,7 @@ def test_get_data_returns_value() -> None:
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway,
         client=client,
         gateway="Test",
@@ -273,7 +278,9 @@ def test_get_data_returns_value() -> None:
     assert coordinator.get_data(ctx) == 42
 
 
-def test_get_data_returns_none_when_data_is_none() -> None:
+def test_get_data_returns_none_when_data_is_none(
+    mock_config_entry: ConfigEntry,
+) -> None:
     """Test get_data returns None if self.data is None."""
 
     hass = MagicMock()
@@ -281,6 +288,7 @@ def test_get_data_returns_none_when_data_is_none() -> None:
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway,
         client=client,
         gateway="Test",
@@ -296,7 +304,9 @@ def test_get_data_returns_none_when_data_is_none() -> None:
     assert coordinator.get_data(ctx) is None
 
 
-def test_get_data_returns_none_when_key_not_in_data() -> None:
+def test_get_data_returns_none_when_key_not_in_data(
+    mock_config_entry: ConfigEntry,
+) -> None:
     """Test get_data returns None if key is not in self.data."""
 
     hass = MagicMock()
@@ -304,6 +314,7 @@ def test_get_data_returns_none_when_key_not_in_data() -> None:
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway,
         client=client,
         gateway="Test",
@@ -351,7 +362,9 @@ def test_modbus_coordinator_entity_init_raises_typeerror_on_invalid_desc() -> No
         ModbusCoordinatorEntity(coordinator, ctx, device)
 
 
-def test_modbus_coordinator_init_sets_attributes() -> None:
+def test_modbus_coordinator_init_sets_attributes(
+    mock_config_entry: ConfigEntry,
+) -> None:
     """Test ModbusCoordinator __init__ sets attributes correctly."""
     hass = MagicMock()
     gateway_device = MagicMock()
@@ -359,6 +372,7 @@ def test_modbus_coordinator_init_sets_attributes() -> None:
     gateway = "GW"
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway_device,
         client=client,
         gateway=gateway,
@@ -373,13 +387,16 @@ def test_modbus_coordinator_init_sets_attributes() -> None:
     assert coordinator.max_read_size == 1
 
 
-def test_modbus_coordinator_max_read_size_property_and_setter() -> None:
+def test_modbus_coordinator_max_read_size_property_and_setter(
+    mock_config_entry: ConfigEntry,
+) -> None:
     """Test ModbusCoordinator max_read_size property and setter."""
     hass = MagicMock()
     gateway_device = MagicMock()
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway_device,
         client=client,
         gateway="GW",
@@ -595,13 +612,14 @@ async def test_async_will_remove_from_hass_calls_super_and_cancels() -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_update_entity() -> None:
+async def test_async_update_entity(mock_config_entry: ConfigEntry) -> None:
     """Test async_update_entity calls _update_device."""
     hass = MagicMock()
     gateway = MagicMock()
     client = MagicMock()
     coordinator = ModbusCoordinator(
         hass=hass,
+        config_entry=mock_config_entry,
         gateway_device=gateway,
         client=client,
         gateway="Test",

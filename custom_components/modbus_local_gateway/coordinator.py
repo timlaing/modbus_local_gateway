@@ -7,6 +7,7 @@ import logging
 from datetime import timedelta
 from typing import Any, Callable
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -142,6 +143,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
+        config_entry: ConfigEntry,
         gateway_device: dr.DeviceEntry,
         client: AsyncModbusTcpClientGateway,
         gateway: str,
@@ -155,6 +157,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
 
         super().__init__(
             hass,
+            config_entry=config_entry,
             logger=_LOGGER,
             name=f"Modbus Coordinator - {self._gateway}",
             update_interval=timedelta(seconds=update_interval),
