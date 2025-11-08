@@ -2,11 +2,10 @@ name: Validate with hassfest
 
 on:
   workflow_dispatch:
-
   push:
   pull_request:
-  schedule:
-    - cron:  "0 0 * * *"
+  repository_dispatch:
+    types: [ha-dev-test]
 jobs:
   validate:
     runs-on: ubuntu-latest
