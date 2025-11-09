@@ -76,10 +76,10 @@ jobs:
 
             # --- Step 6: wait for tests to finish --------------------------
             - name: Wait for workflow run
-              uses: peter-evans/wait-on-check-action@v2
+              uses: lewagon/wait-on-check-action@v1.4.1
               with:
                   ref: ${{ steps.branch.outputs.branch }}
-                  check-name: "*"
+                  check-regexp: ".*"
                   repo-token: ${{ secrets.GITHUB_TOKEN }}
                   wait-interval: 60
                   allowed-conclusions: success, failure, cancelled
