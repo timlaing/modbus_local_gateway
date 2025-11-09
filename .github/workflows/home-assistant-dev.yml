@@ -2,7 +2,7 @@ name: Test against Home Assistant dev
 
 on:
     schedule:
-        - cron: "0 */2 * * *" # 1️⃣ run every 2 hours
+        - cron: "0 0 * * *" # 1️⃣ run every at midnight
     workflow_dispatch:
 
 permissions:
