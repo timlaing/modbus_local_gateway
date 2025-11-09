@@ -56,7 +56,7 @@ jobs:
               run: |
                   BRANCH="ha-dev-${{ steps.hass.outputs.latest }}"
                   git checkout -b "$BRANCH"
-                  sed -i 's|homeassistant==.*|git+https://github.com/home-assistant/core.git@dev|' requirements.txt
+                  sed -i 's|homeassistant==.*|git+https://github.com/home-assistant/core.git@dev|' requirements-dev.txt
                   git config user.name "github-actions"
                   git config user.email "actions@github.com"
                   git add requirements.txt
