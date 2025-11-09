@@ -76,7 +76,7 @@ jobs:
 
             # --- Step 6: wait for tests to finish --------------------------
             - name: Wait for workflow run
-              uses: lewagon/wait-on-check-action@v1.3.1
+              uses: peter-evans/wait-on-check-action@v2
               with:
                   ref: ${{ steps.branch.outputs.branch }}
                   check-name: "*"
