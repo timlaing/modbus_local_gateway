@@ -1,113 +1,199 @@
 name: Test against Home Assistant dev
 
 on:
-    schedule:
-        - cron: "0 0 * * *" # 1️⃣ run every at midnight
-    workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *" # 1️⃣ run every at midnight
+  workflow_dispatch:
 
 permissions:
-    contents: write
-    pull-requests: write
-    actions: write
+  contents: write
+  pull-requests: write
+  actions: write
 
 jobs:
-    sync-and-test:
-        runs-on: ubuntu-latest
+  sync-and-test:
+    runs-on: ubuntu-latest
 
-        steps:
-            # --- Step 1: find latest HA dev commit ------------------------
-            - name: Get latest Home Assistant dev commit
-              id: hass
-              run: |
-                  LATEST=$(git ls-remote https://github.com/home-assistant/core.git refs/heads/dev | cut -f1)
-                  echo "latest=$LATEST" >> $GITHUB_OUTPUT
-                  echo "Latest Home Assistant dev commit: $LATEST"
+    steps:
+      # --- Step 1a: find latest HA dev commit ------------------------
+      - name: Get latest Home Assistant dev commit
+        id: hass
+        run: |
+          LATEST=$(git ls-remote https://github.com/home-assistant/core.git refs/heads/dev | cut -f1)
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Latest Home Assistant dev commit: $LATEST"
 
-            # --- Step 2: checkout your repo --------------------------------
-            - name: Checkout repo
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
+      # --- Step 1b: Restore last known commit from cache --------------
+      - name: Restore last commit record
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .hass_last_commit
+          key: hass-dev-commit
 
-            # --- Step 3: close any old update branches ---------------------
-            - name: Close old branches
-              uses: actions/github-script@v7
-              with:
-                  script: |
-                      const { data: prs } = await github.rest.pulls.list({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        state: "open",
-                        head: `${context.repo.owner}:ha-dev-`
-                      });
-                      for (const pr of prs) {
-                        await github.rest.pulls.update({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          pull_number: pr.number,
-                          state: "closed"
-                        });
-                        core.info(`Closed old PR #${pr.number}`);
-                      }
+      - name: Compare to last run
+        id: compare
+        run: |
+          LAST=$(cat .hass_last_commit 2>/dev/null || echo none)
+          echo "Previous commit: $LAST"
+          echo "Latest commit: ${{ steps.hass.outputs.latest }}"
 
-            # --- Step 4: create new branch with updated requirements -------
-            - name: Create new branch for this dev commit
-              id: branch
-              run: |
-                  BRANCH="ha-dev-${{ steps.hass.outputs.latest }}"
-                  git checkout -b "$BRANCH"
-                  sed -i 's|homeassistant==.*|git+https://github.com/home-assistant/core.git@dev|' requirements-dev.txt
-                  git config user.name "github-actions"
-                  git config user.email "actions@github.com"
-                  git add requirements-dev.txt
-                  git commit -m "Test against Home Assistant dev @ ${{ steps.hass.outputs.latest }}"
-                  git push origin "$BRANCH"
-                  echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          if [ "$LAST" = "${{ steps.hass.outputs.latest }}" ]; then
+            echo "No change in Home Assistant dev branch — skipping run."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "${{ steps.hass.outputs.latest }}" > .hass_last_commit
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
 
-            # --- Step 5: run existing workflows/tests ----------------------
-            - name: Run existing workflows on the new branch
-              id: trigger
-              uses: peter-evans/repository-dispatch@v3
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  event-type: ha-dev-test
-                  client-payload: |
-                      {"branch": "${{ steps.branch.outputs.branch }}"}
+      - name: Save new commit record
+        if: steps.compare.outputs.changed == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .hass_last_commit
+          key: hass-dev-commit
 
-            # --- Step 6: wait for tests to finish --------------------------
-            - name: Wait for workflow run
-              uses: lewagon/wait-on-check-action@v1.4.1
-              with:
-                  ref: ${{ steps.branch.outputs.branch }}
-                  check-regexp: ".*"
-                  repo-token: ${{ secrets.GITHUB_TOKEN }}
-                  wait-interval: 60
-                  allowed-conclusions: success, failure, cancelled
+      # --- Step 1c: Stop if no change ---------------------------------
+      - name: Stop if no upstream change
+        if: steps.compare.outputs.changed == 'false'
+        run: |
+          echo "✅ Upstream unchanged. Exiting."
+          exit 0
 
-            # --- Step 7: check result and act accordingly ------------------
-            - name: Determine test result
-              id: result
-              run: |
-                  if [ "${{ steps.wait-on-check.outputs.conclusion }}" = "success" ]; then
-                    echo "result=pass" >> $GITHUB_OUTPUT
-                  else
-                    echo "result=fail" >> $GITHUB_OUTPUT
-                  fi
+      # --- Step 2: checkout your repo --------------------------------
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Handle pass → delete branch
-              if: steps.result.outputs.result == 'pass'
-              run: |
-                  echo "✅ Tests passed, cleaning up..."
-                  git push origin --delete "${{ steps.branch.outputs.branch }}"
+      # --- Step 3: close any old update branches ---------------------
+      - name: Close old PRs and delete old branches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
-            - name: Handle fail → open/update PR
-              if: steps.result.outputs.result == 'fail'
-              uses: peter-evans/create-pull-request@v7
-              with:
-                  base: next
-                  branch: ${{ steps.branch.outputs.branch }}
-                  title: "⚠️ Home Assistant dev build broke compatibility"
-                  body: |
-                      Automated test run detected issues with Home Assistant dev build
-                      Upstream commit: `${{ steps.hass.outputs.latest }}`
-                      Please review test results.
+            // --- 1️⃣ Find old PRs matching our "ha-dev-" naming pattern
+            const { data: prs } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+
+            const haDevPRs = prs.filter(pr => pr.head.ref.startsWith("ha-dev-"));
+
+            for (const pr of haDevPRs) {
+              core.info(`Closing PR #${pr.number} (${pr.head.ref})`);
+              await github.rest.pulls.update({
+                owner,
+                repo,
+                pull_number: pr.number,
+                state: "closed",
+              });
+
+              // --- 2️⃣ Attempt to delete the remote branch
+              try {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `heads/${pr.head.ref}`,
+                });
+                core.info(`Deleted branch ${pr.head.ref}`);
+              } catch (error) {
+                if (error.status === 422) {
+                  core.warning(`Branch ${pr.head.ref} already deleted`);
+                } else {
+                  core.error(`Failed to delete branch ${pr.head.ref}: ${error.message}`);
+                }
+              }
+            }
+
+            // --- 3️⃣ Also delete any leftover ha-dev-* branches with no PRs
+            const { data: branches } = await github.rest.repos.listBranches({
+              owner,
+              repo,
+              per_page: 100,
+            });
+
+            for (const branch of branches) {
+              if (branch.name.startsWith("ha-dev-")) {
+                const hasPR = haDevPRs.some(pr => pr.head.ref === branch.name);
+                if (!hasPR) {
+                  core.info(`Deleting orphaned branch ${branch.name}`);
+                  try {
+                    await github.rest.git.deleteRef({
+                      owner,
+                      repo,
+                      ref: `heads/${branch.name}`,
+                    });
+                  } catch (error) {
+                    core.warning(`Could not delete ${branch.name}: ${error.message}`);
+                  }
+                }
+              }
+            }
+
+      # --- Step 4: create new branch with updated requirements -------
+      - name: Create new branch for this dev commit
+        id: branch
+        run: |
+          BRANCH="ha-dev-${{ steps.hass.outputs.latest }}"
+          git checkout -b "$BRANCH"
+          sed -i 's|homeassistant==.*|git+https://github.com/home-assistant/core.git@dev|' requirements-dev.txt
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add requirements-dev.txt
+          git commit -m "Test against Home Assistant dev @ ${{ steps.hass.outputs.latest }}"
+          git push origin "$BRANCH"
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      # --- Step 5: run existing workflows/tests ----------------------
+      - name: Run existing workflows on the new branch
+        id: trigger
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: ha-dev-test
+          client-payload: |
+            {"branch": "${{ steps.branch.outputs.branch }}"}
+
+      # --- Step 6: wait for tests to finish --------------------------
+      - name: Wait for workflow run
+        id: wait-on-check
+        uses: lewagon/wait-on-check-action@v1.4.1
+        with:
+          ref: ${{ steps.branch.outputs.branch }}
+          check-regexp: "^(link|validate|tests .*)$"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success, failure, cancelled
+
+      # --- Step 7: check result and act accordingly ------------------
+      - name: Determine test result
+        id: result
+        run: |
+          if [ "${{ steps.wait-on-check.outputs.conclusion }}" = "success" ]; then
+            echo "result=pass" >> $GITHUB_OUTPUT
+          else
+            echo "result=fail" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Handle pass → delete branch
+        if: steps.result.outputs.result == 'pass'
+        run: |
+          echo "✅ Tests passed, cleaning up..."
+          git push origin --delete "${{ steps.branch.outputs.branch }}"
+
+      - name: Handle fail → open/update PR
+        if: steps.result.outputs.result == 'fail'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          base: $BRANCH
+          branch: ${{ steps.branch.outputs.branch }}
+          title: "⚠️ Home Assistant dev build broke compatibility"
+          body: |
+            Automated test run detected issues with Home Assistant dev build
+            Upstream commit: `${{ steps.hass.outputs.latest }}`
+            Please review test results.
