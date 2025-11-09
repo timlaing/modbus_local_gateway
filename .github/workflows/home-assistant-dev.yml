@@ -59,7 +59,7 @@ jobs:
                   sed -i 's|homeassistant==.*|git+https://github.com/home-assistant/core.git@dev|' requirements-dev.txt
                   git config user.name "github-actions"
                   git config user.email "actions@github.com"
-                  git add requirements.txt
+                  git add requirements-dev.txt
                   git commit -m "Test against Home Assistant dev @ ${{ steps.hass.outputs.latest }}"
                   git push origin "$BRANCH"
                   echo "branch=$BRANCH" >> $GITHUB_OUTPUT
