@@ -166,6 +166,7 @@ jobs:
         with:
           ref: ${{ steps.branch.outputs.branch }}
           check-regexp: "^(link|validate|tests .*)$"
+          running-workflow-name: sync-and-test
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
           allowed-conclusions: success, failure, cancelled
