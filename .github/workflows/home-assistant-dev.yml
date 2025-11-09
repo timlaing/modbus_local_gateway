@@ -165,7 +165,7 @@ jobs:
         uses: lewagon/wait-on-check-action@v1.4.1
         with:
           ref: ${{ steps.branch.outputs.branch }}
-          check-regexp: "^(lint|validate|tests .*)$"
+          check-name: validate
           running-workflow-name: sync-and-test
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
