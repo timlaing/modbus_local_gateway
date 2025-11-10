@@ -68,7 +68,7 @@ jobs:
 
       # --- Step 3: close any old update branches ---------------------
       - name: Close old PRs and delete old branches
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const owner = context.repo.owner;
