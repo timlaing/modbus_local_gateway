@@ -1,6 +1,6 @@
 device:
   manufacturer: Growatt
-  model: MOD 6000TL-X
+  model: MOD 10KTL3-XH
   max_register_read: 5
 
 read_write_word:

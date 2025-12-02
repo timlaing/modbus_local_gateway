@@ -1,0 +1,95 @@
+device:
+  manufacturer: Waveshare
+  model: Modbus RTU Relay (D)
+  max_register_read: 16
+
+read_write_word:
+  sw_version:
+    address: 0x8000
+    name: Software Version
+    size: 1
+    precision: 3
+    multiplier: 0.01
+    entity_category: diagnostic
+
+read_write_boolean:
+  relay_1:
+    address: 0x0000
+    name: Relay 1
+    control: switch
+
+  relay_2:
+    address: 0x0001
+    name: Relay 2
+    control: switch
+
+  relay_3:
+    address: 0x0002
+    name: Relay 3
+    control: switch
+
+  relay_4:
+    address: 0x0003
+    name: Relay 4
+    control: switch
+
+  relay_5:
+    address: 0x0004
+    name: Relay 5
+    control: switch
+
+  relay_6:
+    address: 0x0005
+    name: Relay 6
+    control: switch
+
+  relay_7:
+    address: 0x0006
+    name: Relay 7
+    control: switch
+
+  relay_8:
+    address: 0x0007
+    name: Relay 8
+    control: switch
+
+read_only_boolean:
+  relay_1_status:
+    name: Relay 1 Status
+    address: 0x0000
+    scan_interval: 1
+
+  relay_2_status:
+    name: Relay 2 Status
+    address: 0x0001
+    scan_interval: 1
+
+  relay_3_status:
+    name: Relay 3 Status
+    address: 0x0002
+    scan_interval: 1
+
+  relay_4_status:
+    name: Relay 4 Status
+    address: 0x0003
+    scan_interval: 1
+
+  relay_5_status:
+    name: Relay 5 Status
+    address: 0x0004
+    scan_interval: 1
+
+  relay_6_status:
+    name: Relay 6 Status
+    address: 0x0005
+    scan_interval: 1
+
+  relay_7_status:
+    name: Relay 7 Status
+    address: 0x0006
+    scan_interval: 1
+
+  relay_8_status:
+    name: Relay 8 Status
+    address: 0x0007
+    scan_interval: 1
