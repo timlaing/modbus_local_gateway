@@ -25,6 +25,26 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
             "prefix": "test",
             "filename": "test.yaml",
             "name": "simple config",
+            "connection_type": "socket",
+        },
+    )
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+        return_value=True,
+    ):
+        await async_setup_entry(hass, mock_config_entry)
+
+    mock_config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "host": "localhost",
+            "port": 123,
+            CONF_DEVICE_ID: 2,
+            "prefix": "test",
+            "filename": "test.yaml",
+            "name": "simple config",
+            "connection_type": "rtu",
         },
     )
     mock_config_entry.add_to_hass(hass)

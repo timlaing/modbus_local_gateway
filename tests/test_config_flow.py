@@ -136,6 +136,11 @@ async def test_async_abort(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     result: ConfigFlowResult = flow.async_abort(reason="test")
     assert "type" in result
     assert result["type"] == "abort"
+    flow.client = None
+    result: ConfigFlowResult = flow.async_abort(reason="test")
+    assert "type" in result
+    assert result["type"] == "abort"
+
     mock_client.close.assert_called_once()
 
 
@@ -151,6 +156,12 @@ async def test_async_show_progress_done(
     result: ConfigFlowResult = flow.async_show_progress_done(next_step_id="test")
     assert "type" in result
     assert result["type"] == "progress_done"
+
+    flow.client = None
+    result: ConfigFlowResult = flow.async_show_progress_done(next_step_id="test")
+    assert "type" in result
+    assert result["type"] == "progress_done"
+
     mock_client.close.assert_called_once()
 
 
