@@ -145,7 +145,7 @@ if __name__ == "__main__":
         help="Device ID to use.",
     )
     args: argparse.Namespace = parser.parse_args()
-    print(args)
+    _logger.debug("Parsed arguments: %s", args)
 
     # Run the server
     asyncio.run(

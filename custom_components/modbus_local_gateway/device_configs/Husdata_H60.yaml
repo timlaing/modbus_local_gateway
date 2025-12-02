@@ -59,7 +59,7 @@ read_only_word:
 
   Indoor:
     address: 6
-    name: Indoor Temperatue
+    name: Indoor Temperature
     unit_of_measurement: °C
     multiplier: 0.1
     precision: 2

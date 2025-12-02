@@ -49,8 +49,8 @@ read_write_word:
       4: French
       5: Chinese
       6: Polish
-      7: Portugues
-      8: Hungary
+      7: Portuguese
+      8: Hungarian
   com_address:
     name: Communicate address
     address: 30
