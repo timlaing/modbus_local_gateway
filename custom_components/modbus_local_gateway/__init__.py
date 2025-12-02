@@ -11,6 +11,8 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 
 from .const import (
+    CONF_CONNECTION_TYPE,
+    CONF_DEFAULT_CONNECTION_TYPE,
     CONF_DEVICE_ID,
     DOMAIN,
     OPTIONS_DEFAULT_REFRESH,
@@ -40,24 +42,30 @@ async def async_setup_entry(
     )
 
     _LOGGER.debug("mac address for host is: %s", mac)
+    device: dr.DeviceEntry | None = None
 
-    device: dr.DeviceEntry = device_registry.async_get_or_create(
-        config_entry_id=entry.entry_id,
-        identifiers={
-            (
-                DOMAIN,
-                f"ModbusGateway-{get_gateway_key(entry=entry, with_device=False)}",
-            )
-        },
-        name=f"Modbus Gateway ({get_gateway_key(entry=entry, with_device=False)})",
-        configuration_url=f"http://{entry.data[CONF_HOST]}/",
-        connections=connections,
-    )
+    if entry.data.get(CONF_CONNECTION_TYPE) == "socket":
+        device = device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            identifiers={
+                (
+                    DOMAIN,
+                    f"ModbusGateway-{get_gateway_key(entry=entry, with_device=False)}",
+                )
+            },
+            name=f"Modbus Gateway ({get_gateway_key(entry=entry, with_device=False)})",
+            configuration_url=f"http://{entry.data[CONF_HOST]}/",
+            connections=connections,
+        )
 
     if gateway_key not in hass.data[DOMAIN]:
         client: AsyncModbusTcpClientGateway = (
             AsyncModbusTcpClientGateway.async_get_client_connection(
-                host=entry.data[CONF_HOST], port=entry.data[CONF_PORT]
+                host=entry.data[CONF_HOST],
+                port=entry.data[CONF_PORT],
+                connection_type=entry.data.get(
+                    CONF_CONNECTION_TYPE, CONF_DEFAULT_CONNECTION_TYPE
+                ),
             )
         )
         if client is not None:

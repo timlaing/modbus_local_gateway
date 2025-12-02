@@ -7,6 +7,7 @@
           "host": "[%key:common::config_flow::data::host%]",
           "port": "[%key:common::config_flow::data::port%]",
           "device_id": "Device ID",
+          "connection_type": "Connection Type",
           "prefix": "Prefix (optional)"
         }
       },

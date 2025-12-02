@@ -22,10 +22,16 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 def get_gateway_key(entry: ConfigEntry, with_device: bool = True) -> str:
     """Get the gateway key for the coordinator"""
+    prefix: str = ""
+    if CONF_PREFIX in entry.data and entry.data[CONF_PREFIX]:
+        prefix = f"{entry.data.get(CONF_PREFIX)}-"
     if with_device:
-        return f"{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}:{entry.data[CONF_DEVICE_ID]}"
+        return (
+            f"{prefix}{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}:"
+            f"{entry.data[CONF_DEVICE_ID]}"
+        )
 
-    return f"{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}"
+    return f"{prefix}{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}"
 
 
 async def async_setup_entities(
@@ -66,8 +72,9 @@ async def async_setup_entities(
         ),
         manufacturer=device_info.manufacturer,
         model=device_info.model,
-        via_device=list(coordinator.gateway_device.identifiers)[0],
     )
+    if coordinator.gateway_device:
+        device["via_device"] = list(coordinator.gateway_device.identifiers)[0]
 
     _LOGGER.debug(device)
 

@@ -19,6 +19,8 @@ from homeassistant.helpers.update_coordinator import (
 )
 from pymodbus.pdu.pdu import ModbusPDU
 
+from custom_components.modbus_local_gateway.const import CONF_PREFIX
+
 from .context import ModbusContext
 from .conversion import Conversion
 from .entity_management.base import ModbusEntityDescription
@@ -40,7 +42,16 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         super().__init__(coordinator, context=ctx)
         if not isinstance(ctx.desc, ModbusEntityDescription):
             raise TypeError()
-        self._attr_unique_id: str | None = f"{ctx.device_id}-{ctx.desc.key}"
+
+        prefix: str | None = None
+        if coordinator.config_entry and CONF_PREFIX in coordinator.config_entry.data:
+            prefix = coordinator.config_entry.data.get(CONF_PREFIX)
+
+        self._attr_unique_id: str | None = (
+            f"{prefix}-{ctx.device_id}-{ctx.desc.key}"
+            if prefix
+            else f"{ctx.device_id}-{ctx.desc.key}"
+        )
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
         self._update_lock = asyncio.Lock()
@@ -144,7 +155,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         config_entry: ConfigEntry,
-        gateway_device: dr.DeviceEntry,
+        gateway_device: dr.DeviceEntry | None,
         client: AsyncModbusTcpClientGateway,
         gateway: str,
         update_interval: int = 30,
@@ -153,7 +164,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self.client: AsyncModbusTcpClientGateway = client
         self._gateway: str = gateway
         self._max_read_size: int = 1
-        self._gateway_device: dr.DeviceEntry = gateway_device
+        self._gateway_device: dr.DeviceEntry | None = gateway_device
 
         super().__init__(
             hass,
@@ -166,7 +177,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         )
 
     @property
-    def gateway_device(self) -> dr.DeviceEntry:
+    def gateway_device(self) -> dr.DeviceEntry | None:
         """Returns the gateway name"""
         return self._gateway_device
 
