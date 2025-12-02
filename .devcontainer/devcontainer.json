@@ -28,7 +28,6 @@
 		"vscode": {
 			"extensions": [
 				"ms-python.vscode-pylance",
-				"visualstudioexptteam.vscodeintellicode",
 				"redhat.vscode-yaml",
 				"esbenp.prettier-vscode",
 				"GitHub.vscode-pull-request-github",

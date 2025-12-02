@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import json
 import logging
 
 from pymodbus import __version__ as pymodbus_version
@@ -40,7 +41,18 @@ class CallbackDataBlock(ModbusSequentialDataBlock):
         return result
 
 
-def _server_context(device_id=1) -> ModbusServerContext:
+ADDRESS_TYPE_MAP: dict[str, int] = {
+    "coils": 0x1,  # Coils
+    "discrete_inputs": 0x2,  # Discrete Inputs
+    "holding_registers": 0x3,  # Holding Registers
+    "input_registers": 0x4,  # Input Registers
+}
+
+
+def _server_context(
+    data_file,
+    device_id: int = 1,
+) -> ModbusServerContext:
     """Create a Modbus server context with a single device."""
     _logger.info("### Create datastore")
     context: dict[int, ModbusDeviceContext] = {}
@@ -51,11 +63,13 @@ def _server_context(device_id=1) -> ModbusServerContext:
         ir=CallbackDataBlock(0x00, [0] * 65536),  # Input Registers
     )
 
-    context[device_id].setValues(0x04, 72, [17723, 32768])
-    context[device_id].setValues(0x03, 64512, [17658, 0])
-    context[device_id].setValues(0x03, 28, [16512, 0])
-    context[device_id].setValues(0x03, 32768, [201])
-    context[device_id].setValues(0x03, 2180, [0x0020, 0xF147])
+    # Load initial data from file
+    _logger.info("### Load initial data from file %s", data_file.name)
+    data: dict = json.load(data_file)
+    for block_type, block_data in data.items():
+        for address_str, value in block_data.items():
+            address: int = int(address_str, 16)
+            context[device_id].setValues(ADDRESS_TYPE_MAP[block_type], address, [value])
 
     return ModbusServerContext(devices=context, single=False)
 
@@ -76,6 +90,7 @@ def _server_identity() -> ModbusDeviceIdentification:
 
 
 async def run_async_server(
+    data_file,
     host: str = "localhost",
     port: int = 502,
     device_id: int = 1,
@@ -84,7 +99,10 @@ async def run_async_server(
     _logger.info("Starting server, listening on %s:%d", host, port)
     address: tuple[str, int] = (host, port)
     await StartAsyncTcpServer(
-        context=_server_context(device_id=device_id),  # Data storage
+        context=_server_context(
+            device_id=device_id,
+            data_file=data_file,
+        ),  # Data storage
         identity=_server_identity(),  # server identify
         address=address,  # listen address
         # custom_functions=[],  # allow custom handling
@@ -104,6 +122,11 @@ if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Run a Modbus TCP server.")
     parser.add_argument(
+        "datafile",
+        type=argparse.FileType("r", encoding="utf-8"),
+        help="Data file to use.",
+    )
+    parser.add_argument(
         "--host",
         type=str,
         default="localhost",
@@ -122,8 +145,14 @@ if __name__ == "__main__":
         help="Device ID to use.",
     )
     args: argparse.Namespace = parser.parse_args()
+    print(args)
 
     # Run the server
     asyncio.run(
-        run_async_server(host=args.host, port=args.port, device_id=args.device_id)
+        run_async_server(
+            host=args.host,
+            port=args.port,
+            device_id=args.device_id,
+            data_file=args.datafile,
+        )
     )

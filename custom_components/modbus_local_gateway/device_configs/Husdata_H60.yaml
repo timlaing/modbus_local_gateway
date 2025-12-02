@@ -1,0 +1,84 @@
+device:
+  manufacturer: Husdata
+  model: H60
+
+read_only_word:
+  UnderfloorForward:
+    address: 0
+    name: Water feed out to underfloor
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    state_class: measurement
+    size: 1
+
+  HeatCarrierReturn:
+    address: 1
+    name: HP Internal heat carrier return
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    state_class: measurement
+    size: 1
+
+  HeatCarrierForward:
+    address: 2
+    name: HP internal heat supply forward
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    state_class: measurement
+    size: 1
+
+  BrineIn:
+    address: 3
+    name: From ground loops
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    state_class: measurement
+    size: 1
+
+  BrineOut:
+    address: 4
+    name: To ground loops
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    state_class: measurement
+    size: 1
+
+  Outdoor:
+    address: 5
+    name: Outdoor Temperature
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    state_class: measurement
+    size: 1
+
+  Indoor:
+    address: 6
+    name: Indoor Temperatue
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    size: 1
+
+  HotWaterActual:
+    address: 9
+    name: DHW Actual Temperature
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    size: 1
+
+  HotWaterTarget:
+    address: 27
+    name: DHW Target Temperature
+    unit_of_measurement: °C
+    multiplier: 0.1
+    precision: 2
+    size: 1
+
+read_only_boolean:

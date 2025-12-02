@@ -40,6 +40,17 @@
             "request": "launch",
             "module": "modbus_test_server",
             "justMyCode": true,
+            "args": [
+                "modbus_test_server/devices/${input:test-device-json}"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "test-device-json",
+            "type": "promptString",
+            "description": "Enter the test device JSON filename",
+            "default": "Husdata_H60.json"
         }
     ]
 }
