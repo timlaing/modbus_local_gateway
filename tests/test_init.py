@@ -38,7 +38,7 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_async_unload_entry(hass: HomeAssistant) -> None:
     """Test the unload entry function."""
-    hass.data = {"modbus_local_gateway": {"localhost:123:1": "coordinator"}}  # type: ignore[assignment]
+    hass.data = {"modbus_local_gateway": {"test-localhost:123:1": "coordinator"}}  # type: ignore[assignment]
 
     mock_config_entry = MockConfigEntry(
         domain=DOMAIN,
