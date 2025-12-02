@@ -15,8 +15,8 @@ PLATFORMS: list[Platform] = [
 ]
 
 CONF_CONNECTION_TYPES: dict[str, str] = {
-    FramerType.SOCKET: "Via Gateway Device",
-    FramerType.RTU: "Direct Connection",
+    FramerType.SOCKET.value: "Via Gateway Device",
+    FramerType.RTU.value: "Direct Connection",
 }
 
 CONF_DEVICE_ID = "slave_id"

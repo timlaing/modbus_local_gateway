@@ -360,11 +360,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         cls, host: str, port: int, connection_type: str
     ) -> "AsyncModbusTcpClientGateway":
         """Gets a modbus client object"""
-        key: str = f"{host}:{port}"
+        key: str = f"{host}:{port}:{connection_type}"
 
-        framer_type: FramerType = FramerType.SOCKET
-        if connection_type == "rtu":
-            framer_type = FramerType.RTU
+        framer_type: FramerType = FramerType(connection_type)
 
         if key not in cls._CLIENT:
             _LOGGER.debug("Connecting to gateway %s", key)
