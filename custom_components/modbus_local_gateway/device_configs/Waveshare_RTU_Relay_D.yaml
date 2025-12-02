@@ -57,39 +57,39 @@ read_only_boolean:
   relay_1_status:
     name: Relay 1 Status
     address: 0x0000
-    # scan_interval: 1
+    scan_interval: 1
 
   relay_2_status:
     name: Relay 2 Status
     address: 0x0001
-    # scan_interval: 1
+    scan_interval: 1
 
   relay_3_status:
     name: Relay 3 Status
     address: 0x0002
-    # scan_interval: 1
+    scan_interval: 1
 
   relay_4_status:
     name: Relay 4 Status
     address: 0x0003
-    # scan_interval: 1
+    scan_interval: 1
 
   relay_5_status:
     name: Relay 5 Status
     address: 0x0004
-    # scan_interval: 1
+    scan_interval: 1
 
   relay_6_status:
     name: Relay 6 Status
     address: 0x0005
-    # scan_interval: 1
+    scan_interval: 1
 
   relay_7_status:
     name: Relay 7 Status
     address: 0x0006
-    # scan_interval: 1
+    scan_interval: 1
 
   relay_8_status:
     name: Relay 8 Status
     address: 0x0007
-    # scan_interval: 1
+    scan_interval: 1
