@@ -19,8 +19,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from pymodbus.pdu.pdu import ModbusPDU
 
-from custom_components.modbus_local_gateway.const import CONF_PREFIX
-
+from .const import CONF_PREFIX
 from .context import ModbusContext
 from .conversion import Conversion
 from .entity_management.base import ModbusEntityDescription

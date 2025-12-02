@@ -43,8 +43,11 @@ async def async_setup_entry(
 
     _LOGGER.debug("mac address for host is: %s", mac)
     device: dr.DeviceEntry | None = None
+    connection_type: str = entry.data.get(
+        CONF_CONNECTION_TYPE, CONF_DEFAULT_CONNECTION_TYPE
+    )
 
-    if entry.data.get(CONF_CONNECTION_TYPE) == "socket":
+    if connection_type == CONF_DEFAULT_CONNECTION_TYPE:
         device = device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={
@@ -63,9 +66,7 @@ async def async_setup_entry(
             AsyncModbusTcpClientGateway.async_get_client_connection(
                 host=entry.data[CONF_HOST],
                 port=entry.data[CONF_PORT],
-                connection_type=entry.data.get(
-                    CONF_CONNECTION_TYPE, CONF_DEFAULT_CONNECTION_TYPE
-                ),
+                connection_type=connection_type,
             )
         )
         if client is not None:
