@@ -1,0 +1,237 @@
+device:
+  manufacturer: Growatt
+  model: SPH3600TL BL_UP
+  max_register_read: 5
+
+read_write_word:
+  hw_version:
+    name: Firmware version
+    address: 9
+    size: 3
+    string: true
+  sw_version:
+    name: Control firmware version
+    address: 12
+    size: 3
+    string: true
+  serial_no:
+    name: Serial Number
+    address: 23
+    size: 5
+    string: true
+  on_off:
+    name: Remote On/Off
+    address: 0
+    control: switch
+    icon: mdi:power
+    switch:
+      "off": 0
+      "on": 1
+  language:
+    name: LCD language
+    address: 15
+    control: select
+    options:
+      0: Italian
+      1: English
+      2: German
+      3: Spanish
+      4: French
+      5: Chinese
+      6: Polish
+      7: Portuguese
+      8: Hungarian
+  baud_rate:
+    name: Baud Rate
+    address: 22
+    control: select
+    options:
+      0: 9600 bps
+      1: 38400 bps
+  ups_on_off:
+    name: UPS On/Off
+    address: 1060
+    control: switch
+    icon: mdi:power
+    switch:
+      "off": 0
+      "on": 1
+  priority_mode:
+    name: Priority Mode
+    address: 1044
+    control: select
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  ups_output_voltage:
+    name: UPS Output Voltage
+    address: 1062
+    control: select
+    options:
+      0: 239V
+      1: 208V
+      2: 240V
+  discharge_power_rate:
+    name: Discharge Power Rate (Grid First)
+    address: 1070
+    control: number
+    icon: mdi:flash
+    precision: 0
+    number:
+      min: 10
+      max: 100
+    unit_of_measurement: "%"
+  discharge_stop_soc:
+    name: Discharge Stop SoC (Grid First)
+    address: 1071
+    control: number
+    icon: mdi:flash
+    precision: 0
+    number:
+      min: 10
+      max: 100
+    unit_of_measurement: "%"
+  charge_stop_soc:
+    name: Charge Stop SoC (Battery First)
+    address: 1090
+    control: number
+    icon: mdi:flash
+    precision: 0
+    number:
+      min: 10
+      max: 100
+    unit_of_measurement: "%"
+  ac_charge:
+    name: AC Charge
+    address: 1092
+    control: switch
+    icon: mdi:power
+    switch:
+      "off": 0
+      "on": 1
+
+read_only_word:
+  machine_status:
+    name: Inverter Status
+    address: 0
+    map:
+      0: Waiting
+      1: Normal
+      3: Fault
+  Fac:
+    name: Grid frequency
+    address: 37
+    unit_of_measurement: Hz
+    precision: 3
+    multiplier: 0.01
+  Vac1:
+    name: Grid voltage
+    address: 38
+    unit_of_measurement: Volts
+    precision: 2
+    multiplier: 0.1
+  Iac1:
+    name: Grid output current
+    address: 39
+    unit_of_measurement: Amps
+    precision: 2
+    multiplier: 0.1
+  Pac1:
+    name: Grid output watt VA
+    address: 40
+    unit_of_measurement: VoltAmps
+    precision: 2
+    size: 2
+    multiplier: 0.1
+  Temp1:
+    name: Inverter temperature
+    address: 93
+    unit_of_measurement: Celsius
+    precision: 2
+    multiplier: 0.1
+  Temp2:
+    name: IPM Inverter temperature
+    address: 94
+    unit_of_measurement: Celsius
+    precision: 2
+    multiplier: 0.1
+  Temp3:
+    name: Boost temperature
+    address: 95
+    unit_of_measurement: Celsius
+    precision: 2
+    multiplier: 0.1
+  ac_charge_power:
+    name: Charge Power
+    address: 116
+    unit_of_measurement: Watts
+    multiplier: 0.1
+    precision: 2
+    size: 2
+  work_mode:
+    name: System Work Mode
+    address: 1000
+    map:
+      0: Waiting module
+      1: Self-test
+      3: SysFault module
+      4: Flash module
+      5: PVBATOnline module
+      6: BatOnline module
+      7: PVOffline mode
+      8: BatOffline mode
+    shift_bits: 8
+    bits: 8
+  pdischr:
+    name: Discharge power
+    address: 1009
+    unit_of_measurement: Watts
+    multiplier: 0.1
+    precision: 2
+    size: 2
+  vbat:
+    name: Battery voltage
+    address: 1013
+    unit_of_measurement: Volts
+    multiplier: 0.01
+    precision: 3
+  soc:
+    name: SoC
+    address: 1014
+    unit_of_measurement: "%"
+    precision: 2
+    device_class: battery
+  Pactouser:
+    name: AC power to user
+    address: 1015
+    unit_of_measurement: Watts
+    size: 2
+    precision: 2
+    multiplier: 0.1
+  PLocalLoad:
+    name: Inverter power to local load
+    address: 1031
+    unit_of_measurement: Watts
+    size: 2
+    precision: 2
+    multiplier: 0.1
+  PLocalLoad_total:
+    name: Inverter power to local load total
+    address: 1037
+    unit_of_measurement: Watts
+    size: 2
+    precision: 2
+    multiplier: 0.1
+  BattTemp:
+    name: Battery temperature
+    address: 1040
+    unit_of_measurement: Celsius
+    precision: 2
+    multiplier: 0.1
+  sps_dsp_status:
+    name: SPS DSP Status
+    address: 1041
+    map:
+      0: Charge
+      1: Discharge

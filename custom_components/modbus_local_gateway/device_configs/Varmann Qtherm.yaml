@@ -1,0 +1,176 @@
+device:
+  manufacturer: Varmann
+  model: Qtherm
+
+read_write_word:
+  slave_address:
+    entity_category: config
+    icon: mdi:serial-port
+    address: 0
+    name: Slave Address
+    control: number
+    number:
+      min: 1
+      max: 240
+  tmp_ntc:
+    address: 1
+    name: Temperature NTC
+    icon: mdi:thermometer
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+  ust_tmp:
+    address: 2
+    name: Required Temperature
+    icon: mdi:thermometer
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    control: number
+    number:
+      min: 0
+      max: 100
+  heat_chill:
+    address: 3
+    name: Heat/Chill Mode
+    control: select
+    options:
+      0: Heating
+      1: Cooling
+      2: Auto
+  timereg:
+    entity_category: config
+    address: 4
+    name: Integration time
+    unit_of_measurement: "s"
+    control: number
+    number:
+      min: 1
+      max: 240
+  kreg:
+    entity_category: config
+    address: 5
+    name: Regulation profile
+    control: number
+    number:
+      min: 1
+      max: 3
+  ust_fan:
+    address: 6
+    name: Required Fan speed
+    unit_of_measurement: "%"
+    control: number
+    icon: mdi:fan
+    number:
+      min: 0
+      max: 100
+  valve_heat:
+    address: 7
+    name: Heating valve
+    control: switch
+    icon: mdi:valve
+    switch:
+      "off": 0
+      "on": 1
+  valve_chill:
+    address: 8
+    name: Cooling valve
+    control: switch
+    icon: mdi:valve
+    switch:
+      "off": 0
+      "on": 1
+  tmp_out:
+    address: 9
+    icon: mdi:thermometer
+    name: Incoming temperature
+    unit_of_measurement: "°C"
+    control: number
+    number:
+      min: 10
+      max: 500
+    multiplier: 0.1
+  time_lan:
+    entity_category: config
+    address: 10
+    icon: mdi:lan-pending
+    name: LAN communication timeout
+    unit_of_measurement: "s"
+    control: number
+    number:
+      min: 2
+      max: 250
+  vadc:
+    address: 11
+    name: ADC value
+    unit_of_measurement: "%"
+  fan_ust:
+    address: 12
+    name: Fan speed
+    unit_of_measurement: "%"
+  o_heat:
+    address: 13
+    name: Heating valve state
+    icon: mdi:valve
+    map:
+      0: Closed
+      1: Open
+  o_chill:
+    address: 14
+    name: Cooling valve state
+    icon: mdi:valve
+    map:
+      0: Closed
+      1: Open
+  alarm:
+    icon: mdi:alert
+    address: 15
+    name: Alarm status
+    map:
+      0: OK
+      1: Fault
+  dip_1:
+    address: 16
+    name: DIP Switch 1
+    map:
+      0: Manual
+      1: Auto
+  dip_2:
+    address: 17
+    name: DIP Switch 2
+    map:
+      0: Manual
+      1: Auto
+  i_mode:
+    address: 18
+    name: Operating mode
+    control: binary_sensor
+  i_manual:
+    address: 19
+    icon: mdi:fan
+    name: Manual control
+    flags:
+      1: "Fan High"
+      2: "Fan Medium"
+      3: "Fan Low"
+    bits: 3
+  freq_sin:
+    address: 20
+    name: Motor drive frequency
+    unit_of_measurement: "Hz"
+  amp_sin:
+    address: 21
+    name: Motor drive amplitude
+    unit_of_measurement: "V"
+  ishunt:
+    address: 22
+    name: Motor current
+    unit_of_measurement: "A"
+  inorm:
+    address: 23
+    name: Motor nominal current
+    unit_of_measurement: "A"
+    control: number
+    number:
+      min: 1
+      max: 65535
