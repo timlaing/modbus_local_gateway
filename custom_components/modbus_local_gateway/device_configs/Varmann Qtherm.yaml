@@ -171,3 +171,6 @@ read_write_word:
     name: Motor nominal current
     unit_of_measurement: "A"
     control: number
+    number:
+      min: 1
+      max: 65535
