@@ -322,7 +322,11 @@ class ModbusDeviceInfo:
             else:
                 params["precision"] = 4
 
-        if params.get("precision") is not None:
+        if (
+            params.get("precision") is not None
+            and params.get("conv_map") is None
+            and params.get("conv_flags") is None
+        ):
             params["suggested_display_precision"] = params["precision"]
 
         return ModbusSensorEntityDescription

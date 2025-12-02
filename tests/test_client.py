@@ -300,11 +300,15 @@ async def test_get_client() -> None:
         __init__,
     ):
         client1: AsyncModbusTcpClientGateway = (
-            AsyncModbusTcpClientGateway.async_get_client_connection(host="A", port=1234)
+            AsyncModbusTcpClientGateway.async_get_client_connection(
+                host="A", port=1234, connection_type="socket"
+            )
         )
 
         client2: AsyncModbusTcpClientGateway = (
-            AsyncModbusTcpClientGateway.async_get_client_connection(host="A", port=1234)
+            AsyncModbusTcpClientGateway.async_get_client_connection(
+                host="A", port=1234, connection_type="socket"
+            )
         )
 
         assert client1 == client2

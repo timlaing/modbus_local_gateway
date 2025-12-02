@@ -18,6 +18,9 @@ from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 
 from .const import (
+    CONF_CONNECTION_TYPE,
+    CONF_CONNECTION_TYPES,
+    CONF_DEFAULT_CONNECTION_TYPE,
     CONF_DEFAULT_DEVICE_ID,
     CONF_DEFAULT_PORT,
     CONF_DEVICE_ID,
@@ -95,11 +98,16 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         host_opts: dict[str, str] = {"default": ""}
         port_opts: dict[str, int] = {"default": CONF_DEFAULT_PORT}
         device_opts: dict[str, int] = {"default": CONF_DEFAULT_DEVICE_ID}
+        connection_type_opts: dict[str, str] = {"default": CONF_DEFAULT_CONNECTION_TYPE}
         prefix_opts: dict[str, str] = {"default": ""}
 
         if user_input is not None:
             self.client = AsyncModbusTcpClientGateway.async_get_client_connection(
-                host=user_input[CONF_HOST], port=user_input[CONF_PORT]
+                host=user_input[CONF_HOST],
+                port=user_input[CONF_PORT],
+                connection_type=user_input.get(
+                    CONF_CONNECTION_TYPE, CONF_DEFAULT_CONNECTION_TYPE
+                ),
             )
             await self.client.connect()
             if self.client.connected:
@@ -111,6 +119,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             host_opts["default"] = user_input[CONF_HOST]
             port_opts["default"] = int(user_input[CONF_PORT])
             device_opts["default"] = int(user_input[CONF_DEVICE_ID])
+            connection_type_opts["default"] = user_input[CONF_CONNECTION_TYPE]
             prefix_opts["default"] = user_input[CONF_PREFIX]
 
         return self.async_show_form(
@@ -120,6 +129,9 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     vol.Required(CONF_HOST, None, **host_opts): str,
                     vol.Required(CONF_PORT, None, **port_opts): int,
                     vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
+                    vol.Required(
+                        CONF_CONNECTION_TYPE, None, **connection_type_opts
+                    ): vol.In(CONF_CONNECTION_TYPES),
                     vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
                 }
             ),
@@ -175,14 +187,16 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         self, *, reason: str, description_placeholders: Mapping[str, str] | None = None
     ) -> ConfigFlowResult:
         """Aborting the setup"""
-        self.client.close()
+        if self.client:
+            self.client.close()
         return super().async_abort(
             reason=reason, description_placeholders=description_placeholders
         )
 
     def async_show_progress_done(self, *, next_step_id: str) -> ConfigFlowResult:
         """Setup complete"""
-        self.client.close()
+        if self.client:
+            self.client.close()
         return super().async_show_progress_done(next_step_id=next_step_id)
 
     @staticmethod

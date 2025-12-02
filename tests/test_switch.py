@@ -226,6 +226,7 @@ async def test_async_turn_on_coil() -> None:
     """Test turning on a switch with COIL data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
+    coordinator.config_entry = AsyncMock()
     ctx = ModbusContext(
         1,
         ModbusSwitchEntityDescription(
@@ -251,6 +252,8 @@ async def test_async_turn_on_holding_register() -> None:
     """Test turning on a switch with HOLDING_REGISTER data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
+    coordinator.config_entry = AsyncMock()
+
     ctx = ModbusContext(
         1,
         ModbusSwitchEntityDescription(
@@ -276,6 +279,8 @@ async def test_async_turn_on_invalid_data_type() -> None:
     """Test turning on a switch with an invalid data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
+    coordinator.config_entry = AsyncMock()
+
     ctx = ModbusContext(
         1,
         ModbusSwitchEntityDescription(
@@ -300,6 +305,8 @@ async def test_async_turn_off_coil() -> None:
     """Test turning off a switch with COIL data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
+    coordinator.config_entry = AsyncMock()
+
     ctx = ModbusContext(
         1,
         ModbusSwitchEntityDescription(
@@ -325,6 +332,8 @@ async def test_async_turn_off_holding_register() -> None:
     """Test turning off a switch with HOLDING_REGISTER data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
+    coordinator.config_entry = AsyncMock()
+
     ctx = ModbusContext(
         1,
         ModbusSwitchEntityDescription(
@@ -350,6 +359,8 @@ async def test_async_turn_off_invalid_data_type() -> None:
     """Test turning off a switch with an invalid data type."""
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
+    coordinator.config_entry = AsyncMock()
+
     ctx = ModbusContext(
         1,
         ModbusSwitchEntityDescription(

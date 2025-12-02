@@ -19,6 +19,7 @@
                     "host": "Host",
                     "port": "Port",
                     "device_id": "Device ID",
+                    "connection_type": "Connection Type",
                     "prefix": "Prefix (optional)"
                 },
                 "description": "Configure the connection parameters"

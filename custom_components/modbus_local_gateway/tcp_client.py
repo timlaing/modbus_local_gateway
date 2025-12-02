@@ -91,7 +91,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 and len(temp_response.registers) != read_count
             ):
                 _LOGGER.error(
-                    "Invalid response received from Device ID %d, address: %d (count does not match)",
+                    (
+                        "Invalid response received from Device ID %d, "
+                        "address: %d (count does not match)"
+                    ),
                     device_id,
                     current_address,
                 )
@@ -354,16 +357,19 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     @classmethod
     def async_get_client_connection(
-        cls, host: str, port: int
+        cls, host: str, port: int, connection_type: str
     ) -> "AsyncModbusTcpClientGateway":
         """Gets a modbus client object"""
-        key: str = f"{host}:{port}"
+        key: str = f"{host}:{port}:{connection_type}"
+
+        framer_type: FramerType = FramerType(connection_type)
+
         if key not in cls._CLIENT:
             _LOGGER.debug("Connecting to gateway %s", key)
             cls._CLIENT[key] = AsyncModbusTcpClientGateway(
                 host=host,
                 port=port,
-                framer=FramerType.SOCKET,
+                framer=framer_type,
                 timeout=1.5,
                 retries=5,
             )

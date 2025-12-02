@@ -13,6 +13,7 @@ from custom_components.modbus_local_gateway.config_flow import (
     OptionsFlowHandler,
 )
 from custom_components.modbus_local_gateway.const import (
+    CONF_CONNECTION_TYPE,
     CONF_DEVICE_ID,
     CONF_PREFIX,
     DOMAIN,
@@ -37,6 +38,7 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
                 CONF_PORT: 502,
                 CONF_DEVICE_ID: 1,
                 CONF_PREFIX: "test",
+                CONF_CONNECTION_TYPE: "socket",
             }
         )
         assert "type" in result
@@ -51,6 +53,7 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
                 CONF_PORT: 502,
                 CONF_DEVICE_ID: 1,
                 CONF_PREFIX: "test",
+                CONF_CONNECTION_TYPE: "socket",
             }
         )
         assert "type" in result
@@ -133,6 +136,11 @@ async def test_async_abort(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     result: ConfigFlowResult = flow.async_abort(reason="test")
     assert "type" in result
     assert result["type"] == "abort"
+    flow.client = None
+    result: ConfigFlowResult = flow.async_abort(reason="test")
+    assert "type" in result
+    assert result["type"] == "abort"
+
     mock_client.close.assert_called_once()
 
 
@@ -148,6 +156,12 @@ async def test_async_show_progress_done(
     result: ConfigFlowResult = flow.async_show_progress_done(next_step_id="test")
     assert "type" in result
     assert result["type"] == "progress_done"
+
+    flow.client = None
+    result: ConfigFlowResult = flow.async_show_progress_done(next_step_id="test")
+    assert "type" in result
+    assert result["type"] == "progress_done"
+
     mock_client.close.assert_called_once()
 
 
@@ -160,7 +174,7 @@ async def test_options_flow_handler(
     flow = OptionsFlowHandler()
     flow.hass = hass
     flow.handler = mock_config_entry.entry_id
-    hass.data = {DOMAIN: {"localhost:123:1": MagicMock()}}  # type: ignore
+    hass.data = {DOMAIN: {"test-localhost:123:1": MagicMock()}}  # type: ignore
 
     result: ConfigFlowResult = await flow.async_step_init(
         user_input={OPTIONS_REFRESH: 10}
