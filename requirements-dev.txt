@@ -2,7 +2,7 @@
 -r requirements.txt
 coverage>=7.6.12
 fuzzywuzzy
-homeassistant==2025.11.3
+homeassistant==2025.12.1
 isort
 levenshtein
 pre-commit
