@@ -189,7 +189,7 @@ jobs:
 
       - name: Handle fail → open/update PR
         if: steps.result.outputs.result == 'fail'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           base: $BRANCH
           branch: ${{ steps.branch.outputs.branch }}
