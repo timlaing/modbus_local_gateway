@@ -2,7 +2,7 @@
 -r requirements.txt
 coverage>=7.6.12
 fuzzywuzzy>=0.18.0
-homeassistant==2025.12.2
+homeassistant==2025.12.3
 isort>=7.0.0
 levenshtein>=0.27.3
 pre-commit>=4.5.0
