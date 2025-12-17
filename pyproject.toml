@@ -33,7 +33,7 @@ line-length = 88
 indent-width = 4
 
 # Assume Python 3.14
-target-version = "py310"
+target-version = "py314"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -62,7 +62,7 @@ env_list = ["lint", "3.14"]
 [tool.tox.env_run_base]
 description = "Run test under {base_python}"
 commands = [["pytest"]]
-deps = ["-r requirements_test.txt"]
+deps = ["-r requirements-dev.txt"]
 
 [tool.tox.gh-actions]
 python = '''
