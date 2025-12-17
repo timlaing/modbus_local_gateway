@@ -1,4 +1,6 @@
 name: Validate with HACS
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
