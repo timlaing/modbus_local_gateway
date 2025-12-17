@@ -1,4 +1,6 @@
 name: Python tests
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
