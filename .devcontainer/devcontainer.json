@@ -1,6 +1,6 @@
 {
 	"name": "Modbus Local Dev",
-	"image": "mcr.microsoft.com/devcontainers/python:3.13-bookworm",
+	"image": "mcr.microsoft.com/devcontainers/python:3.14-bookworm",
 	"postCreateCommand": "scripts/setup",
 	"mounts": [
 		"source=${env:HOME}${env:USERPROFILE}/.ssh,target=/root/.ssh,type=bind"
