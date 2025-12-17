@@ -173,3 +173,4 @@ coverage.xml
 config/*
 !config/configuration.yaml
 uv.lock
+.python-version
