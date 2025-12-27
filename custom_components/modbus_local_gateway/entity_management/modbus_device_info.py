@@ -228,7 +228,7 @@ class ModbusDeviceInfo:
         params.update(
             {
                 "key": entity,
-                "name": " ".join(["", _data.get(NAME, entity)]),
+                "name": "".join(["", _data.get(NAME, entity)]),
                 "data_type": data_type,
                 "control_type": control_type,
                 "register_address": _data.get(REGISTER_ADDRESS),
