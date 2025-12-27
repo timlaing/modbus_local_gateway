@@ -8,9 +8,12 @@ from datetime import timedelta
 from typing import Any, Callable
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -43,14 +46,38 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             raise TypeError()
 
         prefix: str | None = None
-        if coordinator.config_entry and CONF_PREFIX in coordinator.config_entry.data:
-            prefix = coordinator.config_entry.data.get(CONF_PREFIX)
+        host_id: str | None = None
 
+        if coordinator.config_entry:
+            prefix = coordinator.config_entry.data.get(CONF_PREFIX) or None
+            host: str | None = coordinator.config_entry.data.get(CONF_HOST)
+
+            if host:
+                # IP/Host without separators as requested (e.g. 192.168.1.10 -> 192168110)
+                host_id = (
+                    str(host)
+                    .replace(".", "")
+                    .replace(":", "")
+                    .replace("-", "")
+                    .replace(" ", "")
+                )
+
+        # This is what we WANT as the object_id: <ipnodots>_<yaml_key>
+        if host_id:
+            self._attr_suggested_object_id = f"{host_id}_{ctx.desc.key}"
+
+        # Keep unique_id compatible with previous releases so existing entities can be renamed in-place.
+        # (If you change unique_id, HA creates NEW entities instead of renaming the existing ones.)
         self._attr_unique_id: str | None = (
             f"{prefix}-{ctx.device_id}-{ctx.desc.key}"
             if prefix
             else f"{ctx.device_id}-{ctx.desc.key}"
         )
+
+        # used for migration in async_added_to_hass
+        self._mlg_host_id: str | None = host_id
+        self._mlg_key: str = ctx.desc.key
+
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
         self._update_lock = asyncio.Lock()
@@ -113,6 +140,52 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             self._cancel_timer()
             self._cancel_timer = None
 
+    async def _async_migrate_entity_id_if_needed(self) -> None:
+        """Migrate an existing entity_id to <hostid>_<yaml_key>.
+
+        Home Assistant keeps entity_id in the entity registry and will NOT
+        automatically change it when you change names/suggested ids.
+        This migration renames the entity in-place (same unique_id) once.
+        """
+        suggested = getattr(self, "_attr_suggested_object_id", None)
+        if not suggested or not self._mlg_host_id:
+            return
+        if not self.entity_id:
+            return
+
+        domain = self.entity_id.split(".", 1)[0]
+        desired_entity_id = async_generate_entity_id(
+            f"{domain}.{{}}",
+            suggested,
+            hass=self.hass,
+        )
+
+        # Already migrated (or manually renamed to the desired id)
+        if self.entity_id == desired_entity_id:
+            return
+        if self.entity_id.startswith(f"{domain}.{self._mlg_host_id}_"):
+            return
+
+        ent_reg = er.async_get(self.hass)
+        entry = ent_reg.async_get(self.entity_id)
+        if not entry:
+            return
+
+        # Only touch entities that belong to our config entry
+        if self.coordinator.config_entry and entry.config_entry_id != self.coordinator.config_entry.entry_id:
+            return
+
+        try:
+            ent_reg.async_update_entity(self.entity_id, new_entity_id=desired_entity_id)
+            _LOGGER.info("Renamed entity_id %s -> %s", self.entity_id, desired_entity_id)
+        except ValueError as exc:
+            _LOGGER.warning(
+                "Cannot rename entity_id %s -> %s (%s)",
+                self.entity_id,
+                desired_entity_id,
+                exc,
+            )
+
     @callback
     def async_run(self) -> None:
         """Remote start entity."""
@@ -133,6 +206,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
+        await self._async_migrate_entity_id_if_needed()
         self.async_run()
 
     async def async_will_remove_from_hass(self) -> None:
