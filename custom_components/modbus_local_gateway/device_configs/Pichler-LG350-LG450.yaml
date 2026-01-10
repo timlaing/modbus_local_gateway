@@ -45,6 +45,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: temperature
     icon: mdi:thermometer
     entity_category: config
+    entity_registry_enabled_default: False
     # Official Doc: 003. EWT_Sommer - Setpoint summer temperature Geothermal heat exchanger (-100 - 100 °C)
 
   ewt_winter_select:
@@ -60,6 +61,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: temperature
     icon: mdi:thermometer
     entity_category: config
+    entity_registry_enabled_default: False
     # Official Doc: 004. EWT_Winter - Setpoint winter temperature Geothermal heat exchanger (-100 - 100 °C)
 
   temperaturregelungsart_select:
@@ -199,7 +201,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 032. Raumtemperaturfühler - Room temperature sensor source (1=T8 external, 2=TouchDisplay)
 
   filter_timer_control:
-    name: Filter Timer Control
+    name: Filterintervall zurücksetzen
     address: 33
     control: select
     options:
@@ -260,7 +262,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 040. CO2 Sollwert - Setpoint CO2 control (0 - 2000 ppm)
 
   luftfeuchtigkeit_regelung_select:
-    name: Feuchte-Regelung
+    name: Feuchte Regelung
     address: 44
     control: select
     options:
@@ -272,7 +274,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 044. Feuchte-Regelung (0=Aus, 1=Ein)
 
   luftfeuchtigkeit_sollwert_number:
-    name: Luftfeuchte-Sollwert
+    name: Luftfeuchte Sollwert
     address: 45
     control: number
     number:
@@ -286,7 +288,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 045. Luftfeuchte-Sollwert - Relative humidity setpoint Summer (0 - 100 %)
 
   feuchte_regelung_ls3_max_zeit_number:
-    name: Feuchte-Regelung LS3 maximale Zeit
+    name: Feuchte Regelung LS3 maximale Zeit
     address: 46
     control: number
     number:
@@ -591,97 +593,107 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
   relais_h2_vorheizregister:
     name: Vorheizregister Relais
     address: 16
-    map:
-      0: Aus
-      1: Ein
     icon: mdi:radiator
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     # Official Doc: Relais_H2 - Preheater relay (0=Off, 1=On)
 
   relais_h3_heizanforderung:
     name: Heizanforderung
     address: 17
-    map:
-      0: Aus
-      1: Ein
     icon: mdi:fire
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: heat
     entity_registry_enabled_default: False
     # Official Doc: Relais_H3 - Heat demand (0=Off, 1=On)
 
   relais_h5_kuhlanforderung:
     name: Kühlanforderung
     address: 18
-    map:
-      0: Aus
-      1: Ein
     icon: mdi:snowflake
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     entity_registry_enabled_default: False
     # Official Doc: Relais_H5 - Cool demand (0=Off, 1=On)
 
   relais_h67_ventilatoren:
     name: Ventilatoren
     address: 19
-    map:
-      0: Aus
-      1: Ein
     icon: mdi:fan
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     entity_registry_enabled_default: False
     # Official Doc: Relais_H67_Fans - Fans (0=Off, 1=On)
 
   bypassklappe_status:
     name: Bypassklappe Status
     address: 20
-    map:
-      0: Geschlossen
-      1: Offen
     icon: mdi:valve
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: opening
     # Official Doc: Relais_H8_Bypass - Bypass damper status
 
   relais_h9_luftklappen:
     name: Außenluft- & Fortluftklappen
     address: 21
-    map:
-      0: Geschlossen
-      1: Offen
     icon: mdi:valve
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: opening
     entity_registry_enabled_default: False
     # Official Doc: Relais_H9_ODA/EHA damper - Outdoor & exhaust air dampers (0=Off, 1=On)
 
   relais_h10_heizpumpe:
     name: Pumpe Nachheizregister
     address: 27
-    map:
-      0: Aus
-      1: Ein
     icon: mdi:pump
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     entity_registry_enabled_default: False
     # Official Doc: Relais_H10 - Heating pump (0=Off, 1=On)
 
   relais_h11_kuhlpumpe:
     name: Pumpe Kühl-/Kombiregister
     address: 28
-    map:
-      0: Aus
-      1: Ein
     icon: mdi:pump
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     entity_registry_enabled_default: False
     # Official Doc: Relais_H11 - Cooling or combi coil pump (0=Off, 1=On)
 
   summenstoermeldung:
     name: Summenstörmeldung
     address: 29
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     # Official Doc: Relais_H12A - Error indication
 
   relais_h12b_filtermeldung:
     name: Filtermeldung
     address: 41
-    map:
-      0: Inaktiv
-      1: Aktiv
     icon: mdi:air-filter
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Relais_H12B - Air filter indication
 
@@ -756,9 +768,10 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
   e1_din_extern_aus_bmz:
     name: Extern Aus / BMZ
     address: 37
-    map:
-      0: Inaktiv
-      1: Aktiv
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: none
     icon: mdi:alert-circle
     entity_registry_enabled_default: False
     # Official Doc: E1_Din - External off / fire alarm system (0=inactiv, 1=activ)
@@ -766,9 +779,10 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
   e2_din_extern_luftstufe3:
     name: Extern Lüftungsstufe 3
     address: 38
-    map:
-      0: Inaktiv
-      1: Aktiv
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     icon: mdi:fan
     entity_registry_enabled_default: False
     # Official Doc: E2_Din - External ventilation level 3 (0=inactiv, 1=activ)
@@ -898,187 +912,206 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
   fehler_ewt:
     name: Fehler Erdwärmetauscher
     address: 60
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z01 - Error geothermal heat exchanger
 
   fehler_bedieneinheit:
     name: Fehler Bedieneinheit
     address: 61
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z02 - Error operating panel
 
   fehler_frostschutz_nhr:
     name: Fehler Frostschutz NHR (Din3)
     address: 62
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z03 - Error frost risk post-heater
 
   fehler_fortluftventilator:
     name: Fehler Fortluftventilator
     address: 63
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     # Official Doc: Fehler Z04 - Error exhaust air fan
 
   fehler_zuluftventilator:
     name: Fehler Zuluftventilator
     address: 64
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     # Official Doc: Fehler Z05 - Error supply air fan
 
   fehler_t1_aussenluft:
     name: Fehler Temperatur T1 (Außenluft)
     address: 65
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z06 - Error outdoor air temperature sensor
 
   fehler_t2_fortluft:
     name: Fehler Temperatur T2 (Fortluft)
     address: 66
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z07 - Error exhaust air temperature sensor
 
   fehler_t3_abluft:
     name: Fehler Temperatur T3 (Abluft)
     address: 67
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z08 - Error extract air temperature sensor
 
   fehler_t4_zuluft:
     name: Fehler Temperatur T4 (Zuluft)
     address: 68
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z09 - Error supply air temperature sensor
 
   fehler_t5_vorheizregister:
     name: Fehler Temperatur T5 (Vorheizregister)
     address: 69
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z10 - Error preheater temperature sensor
 
   fehler_t6_zuluft_extern:
     name: Fehler Temperatur T6 (Zuluft extern)
     address: 70
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z11 - Error external supply air temperature sensor
 
   fehler_t7_aussenluft_extern:
     name: Fehler Temperatur T7 (Außenluft extern)
     address: 71
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z12 - Error external outdoor air temperature sensor
 
   fehler_t8_raum_extern:
     name: Fehler Temperatur T8 (Raum extern)
     address: 72
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z13 - Error external room temperature
 
   fehler_ventilatoren_kommunikation:
     name: Fehler Ventilatoren Kommunikation
     address: 73
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z14 - Error fan communication
 
   fehler_niedrige_zuluft_temperatur:
     name: Fehler Niedrige Zulufttemperatur
     address: 74
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z15 - Error low supply air temperature
 
   fehler_filtermeldung:
     name: Fehler Filtermeldung
     address: 75
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     # Official Doc: Fehler Z16 - Filter indication
 
   fehler_niedrige_vhr_temperatur:
     name: Fehler Niedrige Vorheizregister Temperatur
     address: 76
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z17 - Error low preheating temperature
 
   fehler_nhr_frostschutz:
     name: Fehler NHR Frostschutz
     address: 80
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z21 - Error post-heater (frost protection)
 
   fehler_modbus_sensoren:
     name: Fehler Modbus Sensoren
     address: 88
-    map:
-      0: Kein Alarm
-      1: Alarm
     icon: mdi:alert-circle
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: problem
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z22 - Error modbus sensors
 
@@ -1150,7 +1183,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     unit_of_measurement: ""
     state_class: measurement
     icon: mdi:information
-    entity_registry_enabled_default: False
     # Official Doc: FW_Version - Firmware version
 
   lg_modell:
@@ -1170,16 +1202,16 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     unit_of_measurement: ""
     state_class: measurement
     icon: mdi:information
-    entity_registry_enabled_default: False
     # Official Doc: FirmwareVersion TouchDisplay - Firmware version (read-only)
 
   # External Digital Inputs (108)
   e3_din_frostschutz:
     name: Extern Frostschutz
     address: 108
-    map:
-      0: Inaktiv
-      1: Aktiv
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     icon: mdi:snowflake
     entity_registry_enabled_default: False
     # Official Doc: E3_Din - Frost protection (0=inactiv, 1=activ)
@@ -1188,9 +1220,10 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
   raumsoll_zeitprogramm_status:
     name: Zeitprogramm Raumtemperatur Status
     address: 118
-    map:
-      0: Inaktiv
-      1: Aktiv
+    control: binary_sensor
+    on: 1
+    off: 0
+    device_class: running
     icon: mdi:calendar-clock
     entity_registry_enabled_default: False
     # Official Doc: Raumsoll_Abgesenkt_Normal - Time program room temperature (0=inactiv, 1=activ)
