@@ -1,0 +1,1218 @@
+device:
+  manufacturer: Pichler
+  model: Lüftungsgerät LG 350 - LG 450
+  max_register_read: 100
+
+# docs: https://www.pichlerluft.at/unterlagen.html
+# modbus lists: https://www.pichlerluft.at/unterlagen.html?file=files/content/downloads/LOGIN/LG%20350_LG%20450_LG%20740_LG%201000%20SK/LIST_Modbus_ES2020_FW_LG350_LG450_LG740_LG1000_v2.0.0.xlsx
+
+read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
+  # Selects
+
+  betriebsmodus_sommer_winter_select:
+    name: Betriebsmodus Sommer/Winter
+    address: 1
+    control: select
+    options:
+      1: Sommer
+      2: Winter
+    icon: mdi:weather-sunny
+    # Official Doc: 001. Sommer-/Winterbetrieb (1=Sommer, 2=Winter)
+
+  luftungsstufe_select:
+    name: Lüftungsstufe
+    address: 2
+    control: select
+    options:
+      0: Standby
+      1: Stufe 1
+      2: Stufe 2
+      3: Stufe 3
+      4: Grundlüftung
+    icon: mdi:stairs
+    # Official Doc: 002. Luftstufe (0=Stdby, 1=LS1, 2=LS2, 3=LS3, 4=Grundlüftung)
+
+  ewt_sommer_select:
+    name: EWT Sommer Umschaltpunkt
+    address: 3
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    # Official Doc: 003. EWT_Sommer - Setpoint summer temperature Geothermal heat exchanger (-100 - 100 °C)
+
+  ewt_winter_select:
+    name: EWT Winter Umschaltpunkt
+    address: 4
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    # Official Doc: 004. EWT_Winter - Setpoint winter temperature Geothermal heat exchanger (-100 - 100 °C)
+
+  temperaturregelungsart_select:
+    name: Temperaturregelungsart
+    address: 7
+    control: select
+    options:
+      1: Abluft
+      2: Zuluft
+      3: Raum
+    icon: mdi:thermometer-lines
+    entity_category: config
+    # Official Doc: 007. Regelung NHR (1=Abluft, 2=Zuluft, 3=Raum)
+
+  # Numbers (Holding Registers)
+
+  volumenstrom_luftungsstufe_1_number:
+    name: Luftstrom Lüftungsstufe 1
+    address: 9
+    control: number
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    number:
+      min: 0
+      max: 1000
+    icon: mdi:fan-speed-1
+    entity_category: config
+    # Official Doc: 009. Luftstufe1 - Air volume flow ventilation level 1 (0 - 1000 m³/h)
+
+  volumenstrom_luftungsstufe_2_number:
+    name: Luftstrom Lüftungsstufe 2
+    address: 10
+    control: number
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    number:
+      min: 0
+      max: 1000
+    icon: mdi:fan-speed-2
+    entity_category: config
+    # Official Doc: 010. Luftstufe2 - Air volume flow ventilation level 2 (0 - 1000 m³/h)
+
+  volumenstrom_luftungsstufe_3_number:
+    name: Luftstrom Lüftungsstufe 3
+    address: 11
+    control: number
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    number:
+      min: 0
+      max: 1000
+    icon: mdi:fan-speed-3
+    entity_category: config
+    # Official Doc: 011. Luftstufe3 - Air volume flow ventilation level 3 (0 - 1000 m³/h)
+
+  volumenstrom_grundluftung_number:
+    name: Luftstrom Grundlüftung
+    address: 12
+    control: number
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    number:
+      min: 0
+      max: 1000
+    icon: mdi:fan
+    entity_category: config
+    # Official Doc: 012. Grundlüftung - Air volume flow basic ventilation level (0 - 1000 m³/h)
+
+  soll_zulufttemperatur_number:
+    name: Soll Zulufttemperatur
+    address: 22
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    # Official Doc: 022. Zuluftsollwert - Setpoint supply air temperature (-100 - 100 °C)
+
+  soll_raumlufttemperatur_number:
+    name: Soll Raumlufttemperatur
+    address: 23
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    # Official Doc: 023. Raumsollwert - Setpoint room temperature (-100 - 100 °C)
+
+  soll_ablufttemperatur_number:
+    name: Soll Ablufttemperatur
+    address: 24
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    # Official Doc: 024. Abluftsollwert - Setpoint extract air temperature (-100 - 100 °C)
+
+  ext_e2_luftstufe3_nachlaufzeit_number:
+    name: Lüftungsstufe 3 Nachlaufzeit (External Din2)
+    address: 31
+    control: number
+    number:
+      min: 0
+      max: 1000
+    unit_of_measurement: min
+    icon: mdi:fan-clock
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 031. EXT_E2_Luftstufe3_Nachlaufzeit - Time in ventilation level 3 with external contact Din2 (0 - 1000 min)
+
+  raumtemperaturfuhler_select:
+    name: Raumtemperaturfühler Quelle
+    address: 32
+    control: select
+    options:
+      1: T8 extern
+      2: TouchDisplay
+    icon: mdi:thermometer
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 032. Raumtemperaturfühler - Room temperature sensor source (1=T8 external, 2=TouchDisplay)
+
+  filter_timer_control:
+    name: Filter Timer Control
+    address: 33
+    control: select
+    options:
+      0: Keine Aktion
+      1: Reset
+      2: Später erinnern
+    icon: mdi:timer-refresh-outline
+    # Official Doc: 033. Filterintervall zurücksetzen (1=Reset 2=später erinnern)
+
+  konfiguration_luftungsstufe_select:
+    name: Konfiguration Lüftungsstufe
+    address: 34
+    control: select
+    options:
+      0: Standby
+      1: Grundlüftung
+    icon: mdi:fan
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 034. Konfiguration Lüftungsstufe (0=Standby, 1=Grundlüftung)
+
+  bedieneinheit_fehlerausgabe_select:
+    name: Bedieneinheit Fehlerausgabe
+    address: 35
+    control: select
+    options:
+      0: Nein
+      1: Ja
+    icon: mdi:alert-circle
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 035. Bedieneinheit Fehlerausgabe (0=Nein, 1=Ja)
+
+  co2_regelung_select:
+    name: CO2 Regelung
+    address: 39
+    control: select
+    options:
+      0: Aus
+      1: Ein
+    icon: mdi:molecule-co2
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 039. CO2 Regelung (0=Aus, 1=Ein)
+
+  co2_sollwert_number:
+    name: CO2 Sollwert
+    address: 40
+    control: number
+    number:
+      min: 0
+      max: 2000
+    unit_of_measurement: ppm
+    device_class: co2
+    icon: mdi:molecule-co2
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 040. CO2 Sollwert - Setpoint CO2 control (0 - 2000 ppm)
+
+  luftfeuchtigkeit_regelung_select:
+    name: Feuchte-Regelung
+    address: 44
+    control: select
+    options:
+      0: Aus
+      1: Ein
+    icon: mdi:water-percent
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 044. Feuchte-Regelung (0=Aus, 1=Ein)
+
+  luftfeuchtigkeit_sollwert_number:
+    name: Luftfeuchte-Sollwert
+    address: 45
+    control: number
+    number:
+      min: 0
+      max: 100
+    unit_of_measurement: "%"
+    device_class: humidity
+    icon: mdi:water-percent
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 045. Luftfeuchte-Sollwert - Relative humidity setpoint Summer (0 - 100 %)
+
+  feuchte_regelung_ls3_max_zeit_number:
+    name: Feuchte-Regelung LS3 maximale Zeit
+    address: 46
+    control: number
+    number:
+      min: 0
+      max: 10000
+    unit_of_measurement: min
+    icon: mdi:fan-clock
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 046. Feuchte-Regelung LS3 maximale Zeit - Maximum time in ventilation level 3 if relative humidity setpoint is passed (0 - 10000 min)
+
+  sommer_winter_zeitumstellung_select:
+    name: Sommer/Winter Zeitumstellung
+    address: 48
+    control: select
+    options:
+      0: Aus
+      1: Automatisch
+    icon: mdi:calendar-clock
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 048. Sommer/Winter-Zeitumstellung (0=Aus, 1=Automatisch)
+
+  soll_zulufttemperatur_abgesenkt_number:
+    name: Soll Zulufttemperatur (Abgesenkt)
+    address: 56
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 056. Zuluftsollwert abgesenkt - Setpoint lowered supply air temperature (-100 - 100 °C)
+
+  soll_raumlufttemperatur_abgesenkt_number:
+    name: Soll Raumlufttemperatur (Abgesenkt)
+    address: 57
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 057. Raumsollwert abgesenkt - Setpoint lowered room air temperature (-100 - 100 °C)
+
+  soll_ablufttemperatur_abgesenkt_number:
+    name: Soll Ablufttemperatur (Abgesenkt)
+    address: 58
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 058. Abluftsollwert abgesenkt - Setpoint lowered extract air temperature (-100 - 100 °C)
+
+  system_reset_select:
+    name: System Zurücksetzen
+    address: 63
+    control: select
+    options:
+      0: Keine Aktion
+      1: Fehlerprotokoll löschen
+      2: Filterprotokoll löschen
+      3: Neustart
+    icon: mdi:restart
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 063. Zurücksetzen (1=Fehlerprotokoll löschen, 2=Filterprotokoll löschen, 3=Neustart)
+
+  automatische_umschaltung_sommer_winter:
+    name: Automatische Umschaltung Sommer/Winter
+    address: 69
+    control: select
+    options:
+      0: Aus
+      1: Ein
+    icon: mdi:auto-mode
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 069. Automatische Umschaltung Sommer/Winter (0=Aus, 1=Ein)
+
+  abluftbalance_stufe1_number:
+    name: Abluft-Balance Lüftungsstufe 1
+    address: 83
+    control: number
+    offset: -500
+    number:
+      min: -500
+      max: 500
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    icon: mdi:fan-speed-1
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 083. Luftstufe1 ABL-Balance - Disbalance air volume flow ventilation level 1 (-500 - 500 m³/h)
+
+  abluftbalance_stufe2_number:
+    name: Abluft-Balance Lüftungsstufe 2
+    address: 84
+    control: number
+    offset: -500
+    number:
+      min: -500
+      max: 500
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    icon: mdi:fan-speed-2
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 084. Luftstufe2 ABL-Balance - Disbalance air volume flow ventilation level 2 (-500 - 500 m³/h)
+
+  abluftbalance_stufe3_number:
+    name: Abluft-Balance Lüftungsstufe 3
+    address: 85
+    control: number
+    offset: -500
+    number:
+      min: -500
+      max: 500
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    icon: mdi:fan-speed-3
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 085. Luftstufe3 ABL-Balance - Disbalance air volume flow ventilation level 3 (-500 - 500 m³/h)
+
+  abluftbalance_grundluftung_number:
+    name: Abluft-Balance Grundlüftung
+    address: 86
+    control: number
+    offset: -500
+    number:
+      min: -500
+      max: 500
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    icon: mdi:fan
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 086. Grundluftung ABL-Balance - Disbalance air volume flow basic ventilation level (-500 - 500 m³/h)
+
+  freigabe_heizen_select:
+    name: Freigabe Heizen
+    address: 89
+    control: select
+    options:
+      0: Aktivieren
+      1: Deaktivieren
+    icon: mdi:fire
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 089. Heizen (0=Nein, 1=Ja) - Release heating demand (0=Off, 1=On)
+
+  freigabe_kuhlen_select:
+    name: Freigabe Kühlen
+    address: 90
+    control: select
+    options:
+      0: Aktivieren
+      1: Deaktivieren
+    icon: mdi:snowflake
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 090. Kühlen (0=Nein, 1=Ja) - Release cooling demand (0=Off, 1=On)
+
+  zeitprogramm_luftungsstufen_select:
+    name: Zeitprogramm Lüftungsstufen
+    address: 103
+    control: select
+    options:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:calendar-clock
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 103. Zeitprogramm Lüftungsstufen (0=Inaktiv, 1=Aktiv)
+
+  zeitprogramm_temperaturregelung_select:
+    name: Zeitprogramm Temperaturregelung
+    address: 104
+    control: select
+    options:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:calendar-clock
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 104. Zeitprogramm Temperaturregelung (0=Inaktiv, 1=Aktiv)
+
+read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
+  # External Temperature Sensors (4-5, 9-10)
+  t6_zuluft_extern:
+    name: Zuluft Temperatur (extern)
+    address: 4
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+    # Official Doc: T6_Zuluft_extern - External supply air temperature (-30 - 130 °C)
+
+  t7_aussen_extern:
+    name: Außenluft Temperatur (extern)
+    address: 5
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+    # Official Doc: T7_Außen_extern - External outdoor air temperature (-30 - 130 °C)
+
+  t8_raum_extern:
+    name: Raum Temperatur (extern)
+    address: 9
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+    # Official Doc: T8_Raum_extern - External room temperature (-30 - 130 °C)
+
+  t9_touch_display:
+    name: Raumtemperatur TouchDisplay
+    address: 10
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+    # Official Doc: T9_TouchDisplay - Room temperature touch display (-30 - 130 °C)
+
+  # Control Signals (11-12, 26)
+  mischer_heizen_0_10v:
+    name: Heizmischer Steuersignal
+    address: 11
+    size: 1
+    multiplier: 0.01
+    precision: 2
+    unit_of_measurement: V
+    state_class: measurement
+    icon: mdi:fire
+    entity_registry_enabled_default: False
+    # Official Doc: Mischer_0_10V_Heizen - Heat mixing valve control signal (0 - 10 V)
+
+  mischer_kuhlen_0_10v:
+    name: Kühlmischer Steuersignal
+    address: 12
+    size: 1
+    multiplier: 0.01
+    precision: 2
+    unit_of_measurement: V
+    state_class: measurement
+    icon: mdi:snowflake
+    entity_registry_enabled_default: False
+    # Official Doc: Mischer_0_10V_Kühlen - Cooling mixing valve control signal (0 - 10 V)
+
+  mischer_kombi_0_10v:
+    name: Kombiregister Mischer Steuersignal
+    address: 26
+    size: 1
+    multiplier: 0.01
+    precision: 2
+    unit_of_measurement: V
+    state_class: measurement
+    icon: mdi:water-opacity
+    entity_registry_enabled_default: False
+    # Official Doc: Mischer_0_10V_Kombi - Combi-coil mixing valve control signal (0 - 10 V)
+
+  # Relays / Status (16-21, 27-29, 41)
+  relais_h2_vorheizregister:
+    name: Vorheizregister Relais
+    address: 16
+    map:
+      0: Aus
+      1: Ein
+    icon: mdi:radiator
+    # Official Doc: Relais_H2 - Preheater relay (0=Off, 1=On)
+
+  relais_h3_heizanforderung:
+    name: Heizanforderung
+    address: 17
+    map:
+      0: Aus
+      1: Ein
+    icon: mdi:fire
+    entity_registry_enabled_default: False
+    # Official Doc: Relais_H3 - Heat demand (0=Off, 1=On)
+
+  relais_h5_kuhlanforderung:
+    name: Kühlanforderung
+    address: 18
+    map:
+      0: Aus
+      1: Ein
+    icon: mdi:snowflake
+    entity_registry_enabled_default: False
+    # Official Doc: Relais_H5 - Cool demand (0=Off, 1=On)
+
+  relais_h67_ventilatoren:
+    name: Ventilatoren
+    address: 19
+    map:
+      0: Aus
+      1: Ein
+    icon: mdi:fan
+    entity_registry_enabled_default: False
+    # Official Doc: Relais_H67_Fans - Fans (0=Off, 1=On)
+
+  bypassklappe_status:
+    name: Bypassklappe Status
+    address: 20
+    map:
+      0: Geschlossen
+      1: Offen
+    icon: mdi:valve
+    # Official Doc: Relais_H8_Bypass - Bypass damper status
+
+  relais_h9_luftklappen:
+    name: Außenluft- & Fortluftklappen
+    address: 21
+    map:
+      0: Geschlossen
+      1: Offen
+    icon: mdi:valve
+    entity_registry_enabled_default: False
+    # Official Doc: Relais_H9_ODA/EHA damper - Outdoor & exhaust air dampers (0=Off, 1=On)
+
+  relais_h10_heizpumpe:
+    name: Pumpe Nachheizregister
+    address: 27
+    map:
+      0: Aus
+      1: Ein
+    icon: mdi:pump
+    entity_registry_enabled_default: False
+    # Official Doc: Relais_H10 - Heating pump (0=Off, 1=On)
+
+  relais_h11_kuhlpumpe:
+    name: Pumpe Kühl-/Kombiregister
+    address: 28
+    map:
+      0: Aus
+      1: Ein
+    icon: mdi:pump
+    entity_registry_enabled_default: False
+    # Official Doc: Relais_H11 - Cooling or combi coil pump (0=Off, 1=On)
+
+  summenstoermeldung:
+    name: Summenstörmeldung
+    address: 29
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    # Official Doc: Relais_H12A - Error indication
+
+  relais_h12b_filtermeldung:
+    name: Filtermeldung
+    address: 41
+    map:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:air-filter
+    entity_registry_enabled_default: False
+    # Official Doc: Relais_H12B - Air filter indication
+
+  # Main Temperature Sensors (30-34)
+  temperatur_aussenluft:
+    name: Temperatur Außenluft
+    address: 30
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    # Official Doc: T1_Außenluft - Outdoor air temperature (-30 - 130 °C)
+
+  temperatur_fortluft:
+    name: Temperatur Fortluft
+    address: 31
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    # Official Doc: T2_Fortluft - Exhaust air temperature (-30 - 130 °C)
+
+  temperatur_abluft:
+    name: Temperatur Abluft
+    address: 32
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    # Official Doc: T3_Abluft - Extract air temperature (-30 - 130 °C)
+
+  temperatur_zuluft:
+    name: Temperatur Zuluft
+    address: 33
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    # Official Doc: T4_Zuluft - Supply air temperature (-30 - 130 °C)
+
+  temperatur_vorheizregister:
+    name: Temperatur Vorheizregister
+    address: 34
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+    # Official Doc: T5_VHR - Air temperature preheater (-30 - 130 °C)
+
+  # External Digital Inputs (37-38)
+  e1_din_extern_aus_bmz:
+    name: Extern Aus / BMZ
+    address: 37
+    map:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: E1_Din - External off / fire alarm system (0=inactiv, 1=activ)
+
+  e2_din_extern_luftstufe3:
+    name: Extern Lüftungsstufe 3
+    address: 38
+    map:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:fan
+    entity_registry_enabled_default: False
+    # Official Doc: E2_Din - External ventilation level 3 (0=inactiv, 1=activ)
+
+  # Air Volume Setpoints (42-43)
+  zuluft_volumenstrom_sollwert:
+    name: Sollwert Zuluftvolumenstrom
+    address: 42
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    state_class: measurement
+    icon: mdi:air-filter
+    # Official Doc: Zuluft_Volumenstrom_Sollwert - Setpoint supply air volume (m³/h)
+
+  abluft_volumenstrom_sollwert:
+    name: Sollwert Abluftvolumenstrom
+    address: 43
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    state_class: measurement
+    icon: mdi:air-filter
+    # Official Doc: Abluft_Volumenstrom_Sollwert - Setpoint extract air volume (m³/h)
+
+  # Modbus Sensor Data (44-45, 97-98)
+  msensor1_co2:
+    name: CO2 Modbus Sensor 1
+    address: 44
+    unit_of_measurement: ppm
+    device_class: co2
+    state_class: measurement
+    icon: mdi:molecule-co2
+    entity_registry_enabled_default: False
+    # Official Doc: MSensor1_CO2 - CO2 air quality modbus sensor 1 (0 - 2000 ppm)
+
+  msensor1_rf:
+    name: Luftfeuchte Modbus Sensor 1
+    address: 45
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+    entity_registry_enabled_default: False
+    # Official Doc: Msensor1_rF - Relative humidity modbus sensor 1 (0 - 100%)
+
+  # Air Volume Actual Values (46-47)
+  zuluft_volumenstrom_istwert:
+    name: Istwert Zuluftvolumenstrom
+    address: 46
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    state_class: measurement
+    icon: mdi:air-filter
+    # Official Doc: Zuluft_Volumenstrom_Istwert - Supply air volume flow (m³/h)
+
+  abluft_volumenstrom_istwert:
+    name: Istwert Abluftvolumenstrom
+    address: 47
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    state_class: measurement
+    icon: mdi:air-filter
+    # Official Doc: Abluft_Volumenstrom_Istwert - Extract air volume flow (m³/h)
+
+  # Operating Status & Filter (48, 50)
+  betriebsstatus:
+    name: Betriebsstatus
+    address: 48
+    map:
+      0: CPU Startup
+      1: Standby
+      2: Anlauf
+      3: Betrieb
+      4: Nachlauf
+      5: Standby Powersafe
+      6: Testmodus
+    icon: mdi:state-machine
+    # Official Doc: Betriebsstatus - Operating status (0=CPU startup, 1=Stdby, 2=Start, 3=Operation, 4=Lag, 5=StdbyPowersafe, 6=Testmode)
+
+  filter_reststandzeit:
+    name: Filter Reststandzeit
+    address: 50
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:timer-sand
+    # Official Doc: Nächster Filterwechsel - Remaining time air filter indication (time in h)
+
+  # Calculated Values (55-56, 59)
+  zuluft_temperatursollwert_berechnet:
+    name: Berechnete Zuluftsolltemperatur
+    address: 55
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+    # Official Doc: Zuluft_Temperatursollwert_berechnet - Calculated supply air temperature (-30 - 130 °C)
+
+  co2_regelsignal:
+    name: CO2 Regelsignal Sollwert
+    address: 56
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    state_class: measurement
+    icon: mdi:molecule-co2
+    entity_registry_enabled_default: False
+    # Official Doc: CO2_Regelsignal - Setpoint air volume flow at active CO2 control (m³/h)
+
+  aktuelle_luftungsstufe:
+    name: Aktuelle Lüftungsstufe
+    address: 59
+    map:
+      0: Standby
+      1: Stufe 1
+      2: Stufe 2
+      3: Stufe 3
+      4: Grundlüftung
+      6: AUS von extern
+      7: Fehler
+    icon: mdi:stairs
+    # Official Doc: Lüfterstufe_aktuell - Current ventilation level (0=Stdby, 1=Level 1, 2=Level 2, 3=Level 3, 4=Basic, 6=Extern off, 7=Error)
+
+  # Error Status Registers (60-76, 80, 88)
+  fehler_ewt:
+    name: Fehler Erdwärmetauscher
+    address: 60
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z01 - Error geothermal heat exchanger
+
+  fehler_bedieneinheit:
+    name: Fehler Bedieneinheit
+    address: 61
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z02 - Error operating panel
+
+  fehler_frostschutz_nhr:
+    name: Fehler Frostschutz NHR (Din3)
+    address: 62
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z03 - Error frost risk post-heater
+
+  fehler_fortluftventilator:
+    name: Fehler Fortluftventilator
+    address: 63
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    # Official Doc: Fehler Z04 - Error exhaust air fan
+
+  fehler_zuluftventilator:
+    name: Fehler Zuluftventilator
+    address: 64
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    # Official Doc: Fehler Z05 - Error supply air fan
+
+  fehler_t1_aussenluft:
+    name: Fehler Temperatur T1 (Außenluft)
+    address: 65
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z06 - Error outdoor air temperature sensor
+
+  fehler_t2_fortluft:
+    name: Fehler Temperatur T2 (Fortluft)
+    address: 66
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z07 - Error exhaust air temperature sensor
+
+  fehler_t3_abluft:
+    name: Fehler Temperatur T3 (Abluft)
+    address: 67
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z08 - Error extract air temperature sensor
+
+  fehler_t4_zuluft:
+    name: Fehler Temperatur T4 (Zuluft)
+    address: 68
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z09 - Error supply air temperature sensor
+
+  fehler_t5_vorheizregister:
+    name: Fehler Temperatur T5 (Vorheizregister)
+    address: 69
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z10 - Error preheater temperature sensor
+
+  fehler_t6_zuluft_extern:
+    name: Fehler Temperatur T6 (Zuluft extern)
+    address: 70
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z11 - Error external supply air temperature sensor
+
+  fehler_t7_aussenluft_extern:
+    name: Fehler Temperatur T7 (Außenluft extern)
+    address: 71
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z12 - Error external outdoor air temperature sensor
+
+  fehler_t8_raum_extern:
+    name: Fehler Temperatur T8 (Raum extern)
+    address: 72
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z13 - Error external room temperature
+
+  fehler_ventilatoren_kommunikation:
+    name: Fehler Ventilatoren Kommunikation
+    address: 73
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z14 - Error fan communication
+
+  fehler_niedrige_zuluft_temperatur:
+    name: Fehler Niedrige Zulufttemperatur
+    address: 74
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z15 - Error low supply air temperature
+
+  fehler_filtermeldung:
+    name: Fehler Filtermeldung
+    address: 75
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    # Official Doc: Fehler Z16 - Filter indication
+
+  fehler_niedrige_vhr_temperatur:
+    name: Fehler Niedrige Vorheizregister Temperatur
+    address: 76
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z17 - Error low preheating temperature
+
+  fehler_nhr_frostschutz:
+    name: Fehler NHR Frostschutz
+    address: 80
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z21 - Error post-heater (frost protection)
+
+  fehler_modbus_sensoren:
+    name: Fehler Modbus Sensoren
+    address: 88
+    map:
+      0: Kein Alarm
+      1: Alarm
+    icon: mdi:alert-circle
+    entity_registry_enabled_default: False
+    # Official Doc: Fehler Z22 - Error modbus sensors
+
+  # CO2 & Humidity Sensors (89-92, 97-98)
+  co2_sensor_1:
+    name: CO2 Sensor 1
+    address: 89
+    unit_of_measurement: ppm
+    device_class: co2
+    state_class: measurement
+    icon: mdi:molecule-co2
+    entity_registry_enabled_default: False
+    # Official Doc: CO2_S1 - CO2 air quality sensor 1 (0 - 2000 ppm)
+
+  co2_sensor_2:
+    name: CO2 Sensor 2
+    address: 90
+    unit_of_measurement: ppm
+    device_class: co2
+    state_class: measurement
+    icon: mdi:molecule-co2
+    entity_registry_enabled_default: False
+    # Official Doc: CO2_S2 - CO2 air quality sensor 2 (0 - 2000 ppm)
+
+  feuchtesensor_1:
+    name: Feuchtesensor 1
+    address: 91
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+    entity_registry_enabled_default: False
+    # Official Doc: rF_S1 - Relative humidity sensor 1 (0 - 100%)
+
+  feuchtesensor_2:
+    name: Feuchtesensor 2
+    address: 92
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+    entity_registry_enabled_default: False
+    # Official Doc: rF_S2 - Relative humidity sensor 2 (0 - 100%)
+
+  msensor2_co2:
+    name: CO2 Modbus Sensor 2
+    address: 97
+    unit_of_measurement: ppm
+    device_class: co2
+    state_class: measurement
+    icon: mdi:molecule-co2
+    entity_registry_enabled_default: False
+    # Official Doc: MSensor2_CO2 - CO2 air quality modbus sensor 2 (0 - 2000 ppm)
+
+  msensor2_rf:
+    name: Luftfeuchte Modbus Sensor 2
+    address: 98
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+    entity_registry_enabled_default: False
+    # Official Doc: MSensor2_rF - Relative humidity modbus sensor 2 (0 - 100%)
+
+  # Firmware & Device Info (23, 25, 105)
+  firmware_version:
+    name: Firmware Version
+    address: 23
+    unit_of_measurement: ""
+    state_class: measurement
+    icon: mdi:information
+    entity_registry_enabled_default: False
+    # Official Doc: FW_Version - Firmware version
+
+  lg_modell:
+    name: Lüftungsgerät Modell
+    address: 25
+    map:
+      0: LG350
+      1: LG450
+      2: LG740
+    icon: mdi:information
+    entity_registry_enabled_default: False
+    # Official Doc: LG_Modell - Air handling unit type (0=LG350, 1=LG450, 2=LG740)
+
+  firmware_version_touch_display:
+    name: Firmware Version TouchDisplay
+    address: 105
+    unit_of_measurement: ""
+    state_class: measurement
+    icon: mdi:information
+    entity_registry_enabled_default: False
+    # Official Doc: FirmwareVersion TouchDisplay - Firmware version (read-only)
+
+  # External Digital Inputs (108)
+  e3_din_frostschutz:
+    name: Extern Frostschutz
+    address: 108
+    map:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:snowflake
+    entity_registry_enabled_default: False
+    # Official Doc: E3_Din - Frost protection (0=inactiv, 1=activ)
+
+  # Time Program Status (118-119)
+  raumsoll_zeitprogramm_status:
+    name: Zeitprogramm Raumtemperatur Status
+    address: 118
+    map:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:calendar-clock
+    entity_registry_enabled_default: False
+    # Official Doc: Raumsoll_Abgesenkt_Normal - Time program room temperature (0=inactiv, 1=activ)
+
+  luftungsstufe_zeitprogramm:
+    name: Zeitprogramm Lüftungsstufe
+    address: 119
+    map:
+      0: Inaktiv
+      1: Stufe 1
+      2: Stufe 2
+      3: Stufe 3
+      4: Grundlüftung
+      5: Standby
+    icon: mdi:calendar-clock
+    entity_registry_enabled_default: False
+    # Official Doc: Zeitprogramm_Lüftungsstufe - Time program ventilation level
+
+read_write_boolean:
+  # Coils
+  # NOTE: No coils (write coils) defined in official Pichler documentation
+
+read_only_boolean:
+  # Discrete inputs
+  # NOTE: All discrete inputs with textual representations moved to read_only_word section
