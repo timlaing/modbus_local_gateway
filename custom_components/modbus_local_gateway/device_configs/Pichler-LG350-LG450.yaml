@@ -666,7 +666,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
-    # Official Doc: Relais_H12A - Error indication
+    entity_category: diagnostic
 
   relais_h12b_filtermeldung:
     name: Filtermeldung
@@ -674,6 +674,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:air-filter
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Relais_H12B - Air filter indication
 
@@ -891,6 +892,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z01 - Error geothermal heat exchanger
 
@@ -900,6 +902,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z02 - Error operating panel
 
@@ -909,6 +912,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z03 - Error frost risk post-heater
 
@@ -918,6 +922,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     # Official Doc: Fehler Z04 - Error exhaust air fan
 
   fehler_zuluftventilator:
@@ -926,6 +931,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     # Official Doc: Fehler Z05 - Error supply air fan
 
   fehler_t1_aussenluft:
@@ -934,6 +940,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z06 - Error outdoor air temperature sensor
 
@@ -943,6 +950,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z07 - Error exhaust air temperature sensor
 
@@ -952,6 +960,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z08 - Error extract air temperature sensor
 
@@ -961,6 +970,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z09 - Error supply air temperature sensor
 
@@ -970,6 +980,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z10 - Error preheater temperature sensor
 
@@ -979,6 +990,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z11 - Error external supply air temperature sensor
 
@@ -988,6 +1000,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z12 - Error external outdoor air temperature sensor
 
@@ -997,6 +1010,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z13 - Error external room temperature
 
@@ -1006,6 +1020,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z14 - Error fan communication
 
@@ -1015,6 +1030,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z15 - Error low supply air temperature
 
@@ -1024,6 +1040,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     # Official Doc: Fehler Z16 - Filter indication
 
   fehler_niedrige_vhr_temperatur:
@@ -1032,6 +1049,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z17 - Error low preheating temperature
 
@@ -1041,6 +1059,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z21 - Error post-heater (frost protection)
 
@@ -1050,6 +1069,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:alert-circle
     control: binary_sensor
     device_class: problem
+    entity_category: diagnostic
     entity_registry_enabled_default: False
     # Official Doc: Fehler Z22 - Error modbus sensors
 
@@ -1120,6 +1140,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     address: 23
     unit_of_measurement: ""
     state_class: measurement
+    entity_category: diagnostic
     icon: mdi:information
     # Official Doc: FW_Version - Firmware version
 
@@ -1131,7 +1152,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
       1: LG450
       2: LG740
     icon: mdi:information
-    entity_registry_enabled_default: False
+    entity_category: diagnostic
     # Official Doc: LG_Modell - Air handling unit type (0=LG350, 1=LG450, 2=LG740)
 
   firmware_version_touch_display:
@@ -1139,6 +1160,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     address: 105
     unit_of_measurement: ""
     state_class: measurement
+    entity_category: diagnostic
     icon: mdi:information
     # Official Doc: FirmwareVersion TouchDisplay - Firmware version (read-only)
 
