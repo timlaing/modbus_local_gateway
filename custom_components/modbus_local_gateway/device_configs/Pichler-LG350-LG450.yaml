@@ -76,6 +76,18 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_category: config
     # Official Doc: 007. Regelung NHR (1=Abluft, 2=Zuluft, 3=Raum)
 
+  bypassklappe_select:
+    name: Bypassklappe Stellung
+    address: 49
+    control: select
+    options:
+      0: Regelung arbeiten lassen
+      1: Bypass geschlossen
+      2: Bypass offen
+    icon: mdi:valve
+    entity_category: config
+    # not in official doc
+
   # Numbers (Holding Registers)
 
   volumenstrom_luftungsstufe_1_number:
@@ -373,6 +385,21 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_category: config
     entity_registry_enabled_default: False
     # Official Doc: 063. Zurücksetzen (1=Fehlerprotokoll löschen, 2=Filterprotokoll löschen, 3=Neustart)
+
+  vorheizregister_threshold_number:
+    name: Vorheizregister Schwellwert
+    address: 65
+    control: number
+    multiplier: 0.1
+    offset: -1000
+    number:
+      min: -1000
+      max: -900
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+    # not in official doc
 
   automatische_umschaltung_sommer_winter:
     name: Automatische Umschaltung Sommer/Winter
@@ -772,7 +799,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     unit_of_measurement: rpm
     state_class: measurement
     icon: mdi:fan
-    # Official Doc: Drehzahl Zuluft - Supply air fan speed (rpm)
+    # Not in official Doc
 
   drehzahl_abluft:
     name: Drehzahl Abluft
@@ -781,7 +808,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     unit_of_measurement: rpm
     state_class: measurement
     icon: mdi:fan
-    # Official Doc: Drehzahl Abluft - Extract air fan speed (rpm)
+    # Not in official Doc
 
   # Air Volume Setpoints (42-43)
   zuluft_volumenstrom_sollwert:
@@ -889,6 +916,17 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:molecule-co2
     entity_registry_enabled_default: False
     # Official Doc: CO2_Regelsignal - Setpoint air volume flow at active CO2 control (m³/h)
+
+  vorheizregister_pwm:
+    name: Vorheizregister PWM
+    address: 58
+    size: 1
+    multiplier: 0.01
+    precision: 2
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: mdi:fire-alert
+    # not in official Doc
 
   aktuelle_luftungsstufe:
     name: Aktuelle Lüftungsstufe
