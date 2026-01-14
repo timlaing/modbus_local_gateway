@@ -7,8 +7,6 @@ device:
 # modbus lists: https://www.pichlerluft.at/unterlagen.html?file=files/content/downloads/LOGIN/LG%20350_LG%20450_LG%20740_LG%201000%20SK/LIST_Modbus_ES2020_FW_LG350_LG450_LG740_LG1000_v2.0.0.xlsx
 
 read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
-  # Selects
-
   betriebsmodus_sommer_winter_select:
     name: Betriebsmodus Sommer/Winter
     address: 1
@@ -32,7 +30,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     icon: mdi:stairs
     # Official Doc: 002. Luftstufe (0=Stdby, 1=LS1, 2=LS2, 3=LS3, 4=Grundlüftung)
 
-  ewt_sommer_select:
+  ewt_sommer_number:
     name: EWT Sommer Umschaltpunkt
     address: 3
     control: number
@@ -48,7 +46,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_registry_enabled_default: False
     # Official Doc: 003. EWT_Sommer - Setpoint summer temperature Geothermal heat exchanger (-100 - 100 °C)
 
-  ewt_winter_select:
+  ewt_winter_number:
     name: EWT Winter Umschaltpunkt
     address: 4
     control: number
@@ -75,20 +73,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     icon: mdi:thermometer-lines
     entity_category: config
     # Official Doc: 007. Regelung NHR (1=Abluft, 2=Zuluft, 3=Raum)
-
-  bypassklappe_select:
-    name: Bypassklappe Stellung
-    address: 49
-    control: select
-    options:
-      0: Regelung arbeiten lassen
-      1: Bypass geschlossen
-      2: Bypass offen
-    icon: mdi:valve
-    entity_category: config
-    # not in official doc
-
-  # Numbers (Holding Registers)
 
   volumenstrom_luftungsstufe_1_number:
     name: Luftstrom Lüftungsstufe 1
@@ -323,6 +307,18 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_category: config
     entity_registry_enabled_default: False
     # Official Doc: 048. Sommer/Winter-Zeitumstellung (0=Aus, 1=Automatisch)
+
+  bypassklappe_select:
+    name: Bypassklappe Stellung
+    address: 49
+    control: select
+    options:
+      0: Regelung arbeiten lassen
+      1: Bypass geschlossen
+      2: Bypass offen
+    icon: mdi:valve
+    entity_category: config
+    # not in official doc
 
   soll_zulufttemperatur_abgesenkt_number:
     name: Soll Zulufttemperatur (Abgesenkt)
