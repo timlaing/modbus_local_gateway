@@ -382,15 +382,15 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_registry_enabled_default: False
     # Official Doc: 063. Zurücksetzen (1=Fehlerprotokoll löschen, 2=Filterprotokoll löschen, 3=Neustart)
 
-  vorheizregister_threshold_number:
-    name: Vorheizregister Schwellwert
+  vorheizregister_target_number:
+    name: Vorheizregister Zielwert
     address: 65
     control: number
     multiplier: 0.1
-    offset: -1000
+    offset: -100
     number:
-      min: -1000
-      max: -900
+      min: -100
+      max: 100
     unit_of_measurement: °C
     device_class: temperature
     icon: mdi:thermometer
