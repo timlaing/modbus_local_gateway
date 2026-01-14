@@ -764,6 +764,25 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_registry_enabled_default: False
     # Official Doc: E2_Din - External ventilation level 3 (0=inactiv, 1=activ)
 
+  # Fan speeds (39-40)
+  drehzahl_zuluft:
+    name: Drehzahl Zuluft
+    address: 39
+    size: 1
+    unit_of_measurement: rpm
+    state_class: measurement
+    icon: mdi:fan
+    # Official Doc: Drehzahl Zuluft - Supply air fan speed (rpm)
+
+  drehzahl_abluft:
+    name: Drehzahl Abluft
+    address: 40
+    size: 1
+    unit_of_measurement: rpm
+    state_class: measurement
+    icon: mdi:fan
+    # Official Doc: Drehzahl Abluft - Extract air fan speed (rpm)
+
   # Air Volume Setpoints (42-43)
   zuluft_volumenstrom_sollwert:
     name: Sollwert Zuluftvolumenstrom
