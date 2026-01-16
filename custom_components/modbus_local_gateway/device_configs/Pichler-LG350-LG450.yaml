@@ -127,7 +127,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 012. Grundlüftung - Air volume flow basic ventilation level (0 - 1000 m³/h)
 
   h2_temperatureinstellung_vhr_number:
-    name: Vorheizregister Schwellwert
+    name: Vorheizregister Relais Schwellwert
     address: 13
     control: number
     multiplier: 0.1
@@ -488,7 +488,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 069. Automatische Umschaltung Sommer/Winter (0=Aus, 1=Ein)
 
   para_max_zeit_luftungsstufe_3_number:
-    name: Maximale Zeit Lüftungsstufe 3
+    name: Lüftungsstufe 3 Maximale Zeit
     address: 70
     control: number
     number:
@@ -500,9 +500,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_registry_enabled_default: False
 
   zul_kanaldruck_stufe_1_number:
-    name: Zuluft-Kanaldruck Stufe 1
+    name: Kanaldruck Zuluft Stufe 1
     address: 95
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -511,9 +514,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0122. ZUL-Kanaldruck Stufe 1
 
   zul_kanaldruck_stufe_2_number:
-    name: Zuluft-Kanaldruck Stufe 2
+    name: Kanaldruck Zuluft Stufe 2
     address: 96
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -522,9 +528,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0123. ZUL-Kanaldruck Stufe 2
 
   zul_kanaldruck_stufe_3_number:
-    name: Zuluft-Kanaldruck Stufe 3
+    name: Kanaldruck Zuluft Stufe 3
     address: 97
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -533,9 +542,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0124. ZUL-Kanaldruck Stufe 3
 
   zul_kanaldruck_grundluftung_number:
-    name: Zuluft-Kanaldruck Grundlüftung
+    name: Kanaldruck Zuluft Grundlüftung
     address: 98
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -544,9 +556,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0125. ZUL-Kanaldruck Grundlüftung
 
   abl_kanaldruck_stufe_1_number:
-    name: Abluft-Kanaldruck Stufe 1
+    name: Kanaldruck Abluft Stufe 1
     address: 99
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -555,9 +570,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0126. ABL-Kanaldruck Stufe 1
 
   abl_kanaldruck_stufe_2_number:
-    name: Abluft-Kanaldruck Stufe 2
+    name: Kanaldruck Abluft Stufe 2
     address: 100
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -566,9 +584,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0127. ABL-Kanaldruck Stufe 2
 
   abl_kanaldruck_stufe_3_number:
-    name: Abluft-Kanaldruck Stufe 3
+    name: Kanaldruck Abluft Stufe 3
     address: 101
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -577,9 +598,12 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0128. ABL-Kanaldruck Stufe 3
 
   abl_kanaldruck_grundluftung_number:
-    name: Abluft-Kanaldruck Grundlüftung
+    name: Kanaldruck Abluft Grundlüftung
     address: 102
     control: number
+    number:
+      min: 0
+      max: 1000
     unit_of_measurement: Pa
     device_class: pressure
     icon: mdi:waveform
@@ -1315,7 +1339,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z15 - Error low supply air temperature
 
   fehler_filtermeldung:
@@ -1334,7 +1357,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z17 - Error low preheating temperature
 
   fehler_nhr_frostschutz:
