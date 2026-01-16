@@ -82,7 +82,9 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     number:
       min: 0
-      max: 1000
+      max: 500
+      mode: slider
+      step: 5
     icon: mdi:fan-speed-1
     entity_category: config
     # Official Doc: 009. Luftstufe1 - Air volume flow ventilation level 1 (0 - 1000 m³/h)
@@ -95,7 +97,9 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     number:
       min: 0
-      max: 1000
+      max: 500
+      mode: slider
+      step: 5
     icon: mdi:fan-speed-2
     entity_category: config
     # Official Doc: 010. Luftstufe2 - Air volume flow ventilation level 2 (0 - 1000 m³/h)
@@ -108,7 +112,9 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     number:
       min: 0
-      max: 1000
+      max: 500
+      mode: slider
+      step: 5
     icon: mdi:fan-speed-3
     entity_category: config
     # Official Doc: 011. Luftstufe3 - Air volume flow ventilation level 3 (0 - 1000 m³/h)
@@ -121,7 +127,9 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     number:
       min: 0
-      max: 1000
+      max: 500
+      mode: slider
+      step: 5
     icon: mdi:fan
     entity_category: config
     # Official Doc: 012. Grundlüftung - Air volume flow basic ventilation level (0 - 1000 m³/h)
