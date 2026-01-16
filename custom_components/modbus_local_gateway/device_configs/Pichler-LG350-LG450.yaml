@@ -126,6 +126,20 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_category: config
     # Official Doc: 012. Grundlüftung - Air volume flow basic ventilation level (0 - 1000 m³/h)
 
+  h2_temperatureinstellung_vhr_number:
+    name: Vorheizregister Schwellwert
+    address: 13
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: -100
+      max: 100
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer
+    entity_category: config
+
   soll_zulufttemperatur_number:
     name: Soll Zulufttemperatur
     address: 22
@@ -183,6 +197,29 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_category: config
     entity_registry_enabled_default: False
     # Official Doc: 031. EXT_E2_Luftstufe3_Nachlaufzeit - Time in ventilation level 3 with external contact Din2 (0 - 1000 min)
+
+  filter_tauschintervall_stunden_number:
+    name: Tauschintervall Filter
+    address: 29
+    control: number
+    number:
+      min: 0
+      max: 65000
+    unit_of_measurement: h
+    icon: mdi:air-filter
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  #  nachheizregister_vermutlich_number:
+  #    name: Nachheizregister (vermutlich)
+  #    address: 30
+  #    control: number
+  #    number:
+  #      min: 0
+  #      max: 65000
+  #    icon: mdi:radiator
+  #    entity_category: config
+  #    entity_registry_enabled_default: False
 
   raumtemperaturfuhler_select:
     name: Raumtemperaturfühler Quelle
@@ -320,6 +357,47 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_category: config
     # not in official doc
 
+  #  test_zuluftvolumenstrom_number:
+  #    name: Test Zuluftvolumenstrom
+  #    address: 50
+  #    control: number
+  #    unit_of_measurement: m³/h
+  #    device_class: volume_flow_rate
+  #    icon: mdi:air-filter
+  #    entity_category: config
+  #    entity_registry_enabled_default: False
+
+  #  test_abluftvolumenstrom_number:
+  #    name: Test Abluftvolumenstrom
+  #    address: 51
+  #    control: number
+  #    unit_of_measurement: m³/h
+  #    device_class: volume_flow_rate
+  #    icon: mdi:air-filter
+  #    entity_category: config
+  #    entity_registry_enabled_default: False
+
+  #  testmodus_select:
+  #    name: Testmodus
+  #    address: 52
+  #    control: select
+  #    options:
+  #      0: Nein
+  #      1: J
+  #      2: H2
+  #      3: H3
+  #      4: H5
+  #      5: H8
+  #      6: H10
+  #      7: H11
+  #      8: H12A
+  #      9: H12B
+  #      10: H2 SSR1
+  #      11: H2 SSR2
+  #    icon: mdi:clipboard-play
+  #    entity_category: config
+  #    entity_registry_enabled_default: False
+
   soll_zulufttemperatur_abgesenkt_number:
     name: Soll Zulufttemperatur (Abgesenkt)
     address: 56
@@ -383,7 +461,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 063. Zurücksetzen (1=Fehlerprotokoll löschen, 2=Filterprotokoll löschen, 3=Neustart)
 
   vorheizregister_target_number:
-    name: Vorheizregister Zielwert
+    name: Vorheizregister Zieltemperatur
     address: 65
     control: number
     multiplier: 0.1
@@ -408,6 +486,106 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_category: config
     entity_registry_enabled_default: False
     # Official Doc: 069. Automatische Umschaltung Sommer/Winter (0=Aus, 1=Ein)
+
+  para_max_zeit_luftungsstufe_3_number:
+    name: Maximale Zeit Lüftungsstufe 3
+    address: 70
+    control: number
+    number:
+      min: 0
+      max: 65000
+    unit_of_measurement: min
+    icon: mdi:fan-clock
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  zul_kanaldruck_stufe_1_number:
+    name: Zuluft-Kanaldruck Stufe 1
+    address: 95
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0122. ZUL-Kanaldruck Stufe 1
+
+  zul_kanaldruck_stufe_2_number:
+    name: Zuluft-Kanaldruck Stufe 2
+    address: 96
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0123. ZUL-Kanaldruck Stufe 2
+
+  zul_kanaldruck_stufe_3_number:
+    name: Zuluft-Kanaldruck Stufe 3
+    address: 97
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0124. ZUL-Kanaldruck Stufe 3
+
+  zul_kanaldruck_grundluftung_number:
+    name: Zuluft-Kanaldruck Grundlüftung
+    address: 98
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0125. ZUL-Kanaldruck Grundlüftung
+
+  abl_kanaldruck_stufe_1_number:
+    name: Abluft-Kanaldruck Stufe 1
+    address: 99
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0126. ABL-Kanaldruck Stufe 1
+
+  abl_kanaldruck_stufe_2_number:
+    name: Abluft-Kanaldruck Stufe 2
+    address: 100
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0127. ABL-Kanaldruck Stufe 2
+
+  abl_kanaldruck_stufe_3_number:
+    name: Abluft-Kanaldruck Stufe 3
+    address: 101
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0128. ABL-Kanaldruck Stufe 3
+
+  abl_kanaldruck_grundluftung_number:
+    name: Abluft-Kanaldruck Grundlüftung
+    address: 102
+    control: number
+    unit_of_measurement: Pa
+    device_class: pressure
+    icon: mdi:waveform
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 0129. ABL-Kanaldruck Grundlüftung
 
   abluftbalance_stufe1_number:
     name: Abluft-Balance Lüftungsstufe 1
