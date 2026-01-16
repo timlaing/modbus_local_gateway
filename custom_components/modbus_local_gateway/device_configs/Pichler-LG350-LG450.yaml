@@ -518,6 +518,59 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 104. Zeitprogramm Temperaturregelung (0=Inaktiv, 1=Aktiv)
 
 read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
+  # Analog Inputs (2-3, 13, 103)
+  l5_ai1_co2_sensor:
+    name: L5/Ai1 CO2 Sensor
+    address: 2
+    size: 1
+    multiplier: 0.4884
+    precision: 0
+    unit_of_measurement: ppm
+    device_class: co2
+    state_class: measurement
+    icon: mdi:molecule-co2
+    entity_registry_enabled_default: False
+    # Value: raw/4095*2000
+
+  l7_ai2_rf_sensor:
+    name: L7/Ai2 rF Sensor
+    address: 3
+    size: 1
+    multiplier: 0.02442
+    precision: 1
+    unit_of_measurement: "%"
+    device_class: humidity
+    state_class: measurement
+    icon: mdi:water-percent
+    entity_registry_enabled_default: False
+    # Value: raw/4095*100
+
+  aussentemperatur_gedaempft:
+    name: Außentemperatur gedämpft
+    address: 13
+    size: 1
+    multiplier: 0.1
+    offset: -100
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+
+  l7_ai4_abluft_extern:
+    name: L7/Ai4 Abluft externer Sensor
+    address: 103
+    size: 1
+    multiplier: 0.01221
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_registry_enabled_default: False
+    # Value: raw*50/4095
+
   # External Temperature Sensors (4-5, 9-10)
   t6_zuluft_extern:
     name: Zuluft Temperatur (extern)
@@ -1250,6 +1303,63 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:calendar-clock
     entity_registry_enabled_default: False
     # Official Doc: Zeitprogramm_Lüftungsstufe - Time program ventilation level
+
+  # Operating Hours (81-87)
+  betriebsstunden_luftungsstufe_2:
+    name: Betriebsstunden Stufe 2
+    address: 81
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:fan-speed-2
+    entity_category: diagnostic
+
+  betriebsstunden_luftungsstufe_3:
+    name: Betriebsstunden Stufe 3
+    address: 82
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:fan-speed-3
+    entity_category: diagnostic
+
+  betriebsstunden_grundluftung:
+    name: Betriebsstunden Grundlüftung
+    address: 83
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:fan
+    entity_category: diagnostic
+
+  betriebsstunden_luftungsbetrieb_gesamt:
+    name: Betriebsstunden Gesamt
+    address: 84
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:fan
+    entity_category: diagnostic
+
+  betriebsstunden_heizregister:
+    name: Betriebsstunden Heizregister
+    address: 85
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:fire
+    entity_category: diagnostic
+
+  betriebsstunden_bypass:
+    name: Betriebsstunden Bypass
+    address: 86
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:valve
+    entity_category: diagnostic
+
+  betriebsstunden_luftungsstufe_1:
+    name: Betriebsstunden Stufe 1
+    address: 87
+    unit_of_measurement: h
+    state_class: total
+    icon: mdi:fan-speed-1
+    entity_category: diagnostic
 
 read_write_boolean:
   # Coils
