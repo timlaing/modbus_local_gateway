@@ -684,8 +684,8 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     address: 89
     control: select
     options:
-      0: Aktivieren
-      1: Deaktivieren
+      0: Deaktivieren
+      1: Aktivieren
     icon: mdi:fire
     entity_category: config
     entity_registry_enabled_default: False
@@ -696,8 +696,8 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     address: 90
     control: select
     options:
-      0: Aktivieren
-      1: Deaktivieren
+      0: Deaktivieren
+      1: Aktivieren
     icon: mdi:snowflake
     entity_category: config
     entity_registry_enabled_default: False
