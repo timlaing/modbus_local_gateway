@@ -6,6 +6,7 @@ import logging
 from os.path import join
 from typing import Any
 
+from homeassistant.components.number import NumberMode
 from homeassistant.const import CONF_SCAN_INTERVAL, EntityCategory
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util.yaml import load_yaml
@@ -382,6 +383,16 @@ class ModbusDeviceInfo:
             return None
         params["min"] = number_data["min"]
         params["max"] = number_data["max"]
+        if "step" in number_data:
+            params["native_step"] = number_data["step"]
+        mode = number_data.get("mode")
+        if mode is not None:
+            if str(mode).lower() == "slider":
+                params["mode"] = NumberMode.SLIDER
+            elif str(mode).lower() == "box":
+                params["mode"] = NumberMode.BOX
+            else:
+                _LOGGER.warning("Unknown number mode '%s' for %s", mode, entity)
         params["precision"] = _data.get(PRECISION)
         return ModbusNumberEntityDescription
 

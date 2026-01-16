@@ -49,13 +49,22 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
             self._attr_native_max_value = ctx.desc.max
             self._attr_native_min_value = ctx.desc.min
             self._attr_native_step = (
-                ctx.desc.conv_multiplier
-                if ctx.desc.conv_multiplier is not None
-                else 1.0
+                ctx.desc.native_step
+                if ctx.desc.native_step is not None
+                else (
+                    ctx.desc.conv_multiplier
+                    if ctx.desc.conv_multiplier is not None
+                    else 1.0
+                )
             )
         else:
             raise TypeError()
-        self._attr_mode = NumberMode.BOX
+        self._attr_mode = (
+            ctx.desc.mode
+            if isinstance(ctx.desc, ModbusNumberEntityDescription)
+            and ctx.desc.mode is not None
+            else NumberMode.BOX
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
