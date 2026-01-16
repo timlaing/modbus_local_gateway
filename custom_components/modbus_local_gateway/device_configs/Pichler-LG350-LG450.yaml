@@ -1147,7 +1147,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     name: Filter Reststandzeit
     address: 50
     unit_of_measurement: h
-    state_class: total
+    state_class: measurement
     icon: mdi:timer-sand
     # Official Doc: Nächster Filterwechsel - Remaining time air filter indication (time in h)
 
