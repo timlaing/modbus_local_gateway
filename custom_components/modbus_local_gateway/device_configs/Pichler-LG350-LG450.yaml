@@ -1036,7 +1036,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     name: Extern Aus / BMZ
     address: 37
     control: binary_sensor
-    device_class: none
     icon: mdi:alert-circle
     entity_registry_enabled_default: False
     # Official Doc: E1_Din - External off / fire alarm system (0=inactiv, 1=activ)
