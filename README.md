@@ -129,6 +129,8 @@ For all entity definitions:
       number:         # Optional
         min: 10.0     # float
         max: 100.0    # float
+        step: 5       # optional (defaults to modbus multiplier or 1.0)
+        mode: slider  # optional: slider or box (default)
       ```
   - `control: select`: Creates a select entity.
     - E.g.:
