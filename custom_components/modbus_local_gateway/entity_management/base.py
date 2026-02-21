@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
-from homeassistant.components.number import NumberEntityDescription
+from homeassistant.components.number import NumberEntityDescription, NumberMode
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
@@ -243,6 +243,7 @@ class ModbusNumberEntityDescription(NumberEntityDescription, ModbusEntityDescrip
 
     max: int
     min: int
+    mode: NumberMode | None = None
 
 
 @dataclass(kw_only=True, frozen=True)
