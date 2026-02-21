@@ -1,37 +1,53 @@
-name: Python tests
+name: Tests
+
+# yamllint disable-line rule:truthy
+on: [workflow_dispatch, push, pull_request]
+
 permissions:
   contents: read
-
-on:
-  workflow_dispatch:
-  push:
-  pull_request:
-  repository_dispatch:
-    types: [ha-dev-test]
+  pull-requests: write
 
 jobs:
-  tests:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.14"]
-
+        python-version:
+          - "3.14"
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+
+      - name: Register Python problem matcher
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-      - name: Test with pytest
-        run: pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml
-      - name: Upload code coverage
-        uses: actions/upload-artifact@v6
-        with:
-          name: code-coverage
-          path: coverage.xml
+          echo "::add-matcher::.github/workflows/matchers/python.json"
+      - name: Register pytest slow test problem matcher
+        run: |
+          echo "::add-matcher::.github/workflows/matchers/pytest-slow.json"
+
+      - name: Create Python virtual environment
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+          python --version
+          python3 -m pip install uv
+          uv pip install -U "pip>=25.2"
+          uv pip install -r requirements_all.txt
+      - name: Run pytest
+        timeout-minutes: 60
+        id: pytest-full
+        env:
+          PYTHONDONTWRITEBYTECODE: 1
+        run: |
+          . venv/bin/activate
+          python --version
+          set -o pipefail
+          python3 -b -m pytest \
+            --cov="custom_components/modbus_local_gateway"\
+            --cov-report=xml \
+            --junitxml=junit.xml -o junit_family=legacy

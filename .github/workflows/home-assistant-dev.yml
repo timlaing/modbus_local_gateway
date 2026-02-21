@@ -1,200 +1,170 @@
-name: Test against Home Assistant dev
+name: Validate against Home Assistant dev
 
 on:
   schedule:
-    - cron: "0 0 * * *" # 1️⃣ run every at midnight
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
+  issues: write
 
 jobs:
-  sync-and-test:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
-      # --- Step 1a: find latest HA dev commit ------------------------
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Get latest Home Assistant dev commit
         id: hass
         run: |
-          LATEST=$(git ls-remote https://github.com/home-assistant/core.git refs/heads/dev | cut -f1)
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          echo "Latest Home Assistant dev commit: $LATEST"
+          LATEST="$(git ls-remote https://github.com/home-assistant/core.git refs/heads/dev | cut -f1)"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "Home Assistant dev commit: $LATEST" >> "$GITHUB_STEP_SUMMARY"
 
-      # --- Step 1b: Restore last known commit from cache --------------
-      - name: Restore last commit record
-        id: cache
-        uses: actions/cache@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: .hass_last_commit
-          key: hass-dev-commit
+          python-version: "3.14"
 
-      - name: Compare to last run
-        id: compare
+      - name: Install dependencies against Home Assistant dev
         run: |
-          LAST=$(cat .hass_last_commit 2>/dev/null || echo none)
-          echo "Previous commit: $LAST"
-          echo "Latest commit: ${{ steps.hass.outputs.latest }}"
+          python -m pip install --upgrade pip
+          python - <<'PY'
+          from pathlib import Path
 
-          if [ "$LAST" = "${{ steps.hass.outputs.latest }}" ]; then
-            echo "No change in Home Assistant dev branch — skipping run."
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "${{ steps.hass.outputs.latest }}" > .hass_last_commit
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
+          source = Path("requirements_dev.txt")
+          target = Path("requirements_dev_ha_dev.txt")
+          latest = "${{ steps.hass.outputs.latest }}"
 
-      - name: Save new commit record
-        if: steps.compare.outputs.changed == 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: .hass_last_commit
-          key: hass-dev-commit
+          lines = source.read_text(encoding="utf-8").splitlines()
+          with target.open("w", encoding="utf-8") as out:
+              for line in lines:
+                  if line.strip().startswith("homeassistant=="):
+                      out.write(f"git+https://github.com/home-assistant/core.git@{latest}\n")
+                  else:
+                      out.write(f"{line}\n")
+          PY
+          pip install -r requirements.txt -r requirements_dev_ha_dev.txt
 
-      # --- Step 1c: Stop if no change ---------------------------------
-      - name: Stop if no upstream change
-        if: steps.compare.outputs.changed == 'false'
+      - name: Run lint checks
         run: |
-          echo "✅ Upstream unchanged. Exiting."
-          exit 0
+          isort --check-only --diff .
+          ruff format --check .
+          ruff check .
 
-      # --- Step 2: checkout your repo --------------------------------
-      - name: Checkout repo
-        uses: actions/checkout@v6
+      - name: Run unit tests
+        run: pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml
+
+      - name: Validate with hassfest
+        uses: home-assistant/actions/hassfest@master
+
+      - name: Validate with HACS
+        uses: hacs/action@main
         with:
-          fetch-depth: 0
+          category: integration
+          ignore: wheels
 
-      # --- Step 3: close any old update branches ---------------------
-      - name: Close old PRs and delete old branches
-        uses: actions/github-script@v8
+      - name: Open or update failure issue
+        if: failure()
+        uses: actions/github-script@v7
         with:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            const title = "Home Assistant dev validation is failing";
+            const label = "ha-dev-validation";
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const latest = "${{ steps.hass.outputs.latest }}";
 
-            // --- 1️⃣ Find old PRs matching our "ha-dev-" naming pattern
-            const { data: prs } = await github.rest.pulls.list({
+            const { data: labels } = await github.rest.issues.listLabelsOnRepo({ owner, repo, per_page: 100 });
+            if (!labels.some((item) => item.name === label)) {
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: label,
+                color: "d73a4a",
+                description: "Tracking failures in HA dev compatibility workflow",
+              });
+            }
+
+            const { data: existing } = await github.rest.issues.listForRepo({
               owner,
               repo,
               state: "open",
+              labels: label,
               per_page: 100,
             });
 
-            const haDevPRs = prs.filter(pr => pr.head.ref.startsWith("ha-dev-"));
+            const issue = existing.find((item) => item.title === title);
+            const body = [
+              "Nightly validation against Home Assistant dev failed.",
+              "",
+              `- Home Assistant dev commit: ${latest}`,
+              `- Workflow run: ${runUrl}`,
+              "",
+              "Please review the failed checks and update the integration if needed.",
+            ].join("\n");
 
-            for (const pr of haDevPRs) {
-              core.info(`Closing PR #${pr.number} (${pr.head.ref})`);
-              await github.rest.pulls.update({
+            if (issue) {
+              await github.rest.issues.createComment({
                 owner,
                 repo,
-                pull_number: pr.number,
-                state: "closed",
+                issue_number: issue.number,
+                body,
               });
-
-              // --- 2️⃣ Attempt to delete the remote branch
-              try {
-                await github.rest.git.deleteRef({
-                  owner,
-                  repo,
-                  ref: `heads/${pr.head.ref}`,
-                });
-                core.info(`Deleted branch ${pr.head.ref}`);
-              } catch (error) {
-                if (error.status === 422) {
-                  core.warning(`Branch ${pr.head.ref} already deleted`);
-                } else {
-                  core.error(`Failed to delete branch ${pr.head.ref}: ${error.message}`);
-                }
-              }
+              core.info(`Updated existing issue #${issue.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: [label],
+              });
+              core.info(`Created issue #${created.data.number}`);
             }
 
-            // --- 3️⃣ Also delete any leftover ha-dev-* branches with no PRs
-            const { data: branches } = await github.rest.repos.listBranches({
+      - name: Close failure issue on recovery
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "Home Assistant dev validation is failing";
+            const label = "ha-dev-validation";
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            const { data: existing } = await github.rest.issues.listForRepo({
               owner,
               repo,
+              state: "open",
+              labels: label,
               per_page: 100,
             });
 
-            for (const branch of branches) {
-              if (branch.name.startsWith("ha-dev-")) {
-                const hasPR = haDevPRs.some(pr => pr.head.ref === branch.name);
-                if (!hasPR) {
-                  core.info(`Deleting orphaned branch ${branch.name}`);
-                  try {
-                    await github.rest.git.deleteRef({
-                      owner,
-                      repo,
-                      ref: `heads/${branch.name}`,
-                    });
-                  } catch (error) {
-                    core.warning(`Could not delete ${branch.name}: ${error.message}`);
-                  }
-                }
-              }
+            const issue = existing.find((item) => item.title === title);
+            if (!issue) {
+              core.info("No open failure issue to close");
+              return;
             }
 
-      # --- Step 4: create new branch with updated requirements -------
-      - name: Create new branch for this dev commit
-        id: branch
-        run: |
-          BRANCH="ha-dev-${{ steps.hass.outputs.latest }}"
-          git checkout -b "$BRANCH"
-          sed -i 's|homeassistant==.*|git+https://github.com/home-assistant/core.git@dev|' requirements-dev.txt
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add requirements-dev.txt
-          git commit -m "Test against Home Assistant dev @ ${{ steps.hass.outputs.latest }}"
-          git push origin "$BRANCH"
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issue.number,
+              body: `Validation is passing again. Closing via run ${runUrl}`,
+            });
 
-      # --- Step 5: run existing workflows/tests ----------------------
-      - name: Run existing workflows on the new branch
-        id: trigger
-        uses: peter-evans/repository-dispatch@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: ha-dev-test
-          client-payload: |
-            {"branch": "${{ steps.branch.outputs.branch }}"}
+            await github.rest.issues.update({
+              owner,
+              repo,
+              issue_number: issue.number,
+              state: "closed",
+            });
 
-      # --- Step 6: wait for tests to finish --------------------------
-      - name: Wait for workflow run
-        id: wait-on-check
-        uses: lewagon/wait-on-check-action@v1.4.1
-        with:
-          ref: ${{ steps.branch.outputs.branch }}
-          check-name: validate
-          running-workflow-name: sync-and-test
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-          allowed-conclusions: success, failure, cancelled
-
-      # --- Step 7: check result and act accordingly ------------------
-      - name: Determine test result
-        id: result
-        run: |
-          if [ "${{ steps.wait-on-check.outputs.conclusion }}" = "success" ]; then
-            echo "result=pass" >> $GITHUB_OUTPUT
-          else
-            echo "result=fail" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Handle pass → delete branch
-        if: steps.result.outputs.result == 'pass'
-        run: |
-          echo "✅ Tests passed, cleaning up..."
-          git push origin --delete "${{ steps.branch.outputs.branch }}"
-
-      - name: Handle fail → open/update PR
-        if: steps.result.outputs.result == 'fail'
-        uses: peter-evans/create-pull-request@v8
-        with:
-          base: $BRANCH
-          branch: ${{ steps.branch.outputs.branch }}
-          title: "⚠️ Home Assistant dev build broke compatibility"
-          body: |
-            Automated test run detected issues with Home Assistant dev build
-            Upstream commit: `${{ steps.hass.outputs.latest }}`
-            Please review test results.
+            core.info(`Closed issue #${issue.number}`);
