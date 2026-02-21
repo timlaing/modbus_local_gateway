@@ -1,21 +1,20 @@
 {
 	"name": "Modbus Local Dev",
-	"image": "mcr.microsoft.com/devcontainers/python:3.14-bookworm",
-	"postCreateCommand": "scripts/setup",
-	"mounts": [
-		"source=${env:HOME}${env:USERPROFILE}/.ssh,target=/root/.ssh,type=bind"
-	],
+	"image": "mcr.microsoft.com/devcontainers/python:3-3-trixie",
 	"containerEnv": {
+		"WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}",
 		"DEVCONTAINER": "1"
 	},
+	"postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && scripts/setup.sh",
+	"postStartCommand": "scripts/startup.sh",
 	"appPort": [
-		"8123:8123"
+		"9123:8123"
 	],
 	"forwardPorts": [
-		8123
+		9123
 	],
 	"portsAttributes": {
-		"8123": {
+		"9123": {
 			"label": "Home Assistant",
 			"onAutoForward": "openBrowserOnce"
 		},
@@ -42,7 +41,8 @@
 				"charliermarsh.ruff",
 				"ms-azuretools.vscode-docker",
 				"coderabbit.coderabbit-vscode",
-				"GitHub.copilot"
+				"GitHub.copilot",
+				"foxundermoon.shell-format"
 			],
 			"settings": {
 				"editor.formatOnPaste": true,
@@ -84,11 +84,8 @@
 				"libpcap-dev"
 			]
 		},
-		"ghcr.io/devcontainers/features/github-cli:1": {
-			"version": "latest"
-		},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
 		"ghcr.io/devcontainers/features/java:1": {
-			"version": "latest",
 			"jdkDistro": "open",
 			"gradleVersion": "latest",
 			"mavenVersion": "latest",
@@ -100,9 +97,7 @@
 			"pnpmVersion": "latest",
 			"nvmVersion": "latest"
 		},
-		"ghcr.io/va-h/devcontainers-features/uv:1": {
-			"shellautocompletion": true,
-			"version": "latest"
-		}
+		"ghcr.io/devcontainers-extra/features/uv": {},
+		"ghcr.io/devcontainers-extra/features/pre-commit:2": {}
 	}
 }
