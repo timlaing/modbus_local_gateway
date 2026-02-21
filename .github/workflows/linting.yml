@@ -1,28 +1,23 @@
 name: Linting
 
-on:
-  push:
-  pull_request:
-  repository_dispatch:
-    types: [ha-dev-test]
+# yamllint disable-line rule:truthy
+on: [push, pull_request]
+
+permissions:
+  contents: read
 jobs:
-  lint:
+  prek:
+    name: Run prek checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.14"
-
-      - name: Install dependencies
+      - name: Register problem matchers
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements_dev.txt
-      - name: isort
-        run: isort --recursive --diff .
-      - name: Ruff Format
-        run: ruff format --check .
-      - name: Ruff Check
-        run: ruff check .
+          echo "::add-matcher::.github/workflows/matchers/yamllint.json"
+          echo "::add-matcher::.github/workflows/matchers/check-json.json"
+          echo "::add-matcher::.github/workflows/matchers/check-executables-have-shebangs.json"
+          echo "::add-matcher::.github/workflows/matchers/codespell.json"
+      - name: Run prek
+        uses: j178/prek-action@v1.1.1 # v1.1.0
+        env:
+          RUFF_OUTPUT_FORMAT: github
