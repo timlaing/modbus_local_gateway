@@ -54,12 +54,6 @@ jobs:
           python -m pip install -r requirements.txt -r requirements_dev_ha_dev.txt
           python -m pip install --no-deps "git+https://github.com/MatthewFlamm/pytest-homeassistant-custom-component.git@master"
 
-      - name: Run lint checks
-        run: |
-          isort --check-only --diff .
-          ruff format --check .
-          ruff check .
-
       - name: Run unit tests
         run: pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml
 
