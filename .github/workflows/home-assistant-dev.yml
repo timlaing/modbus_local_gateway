@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get latest Home Assistant dev commit
         id: hass
@@ -26,7 +26,7 @@ jobs:
           echo "Home Assistant dev commit: $LATEST" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.14"
 
@@ -42,13 +42,18 @@ jobs:
 
           lines = source.read_text(encoding="utf-8").splitlines()
           with target.open("w", encoding="utf-8") as out:
-              for line in lines:
-                  if line.strip().startswith("homeassistant=="):
-                      out.write(f"git+https://github.com/home-assistant/core.git@{latest}\n")
-                  else:
-                      out.write(f"{line}\n")
+            for line in lines:
+              stripped = line.strip()
+              if stripped.startswith("homeassistant=="):
+                out.write(f"git+https://github.com/home-assistant/core.git@{latest}\n")
+              elif stripped.startswith("pytest-homeassistant-custom-component"):
+                out.write(
+                  "git+https://github.com/MatthewFlamm/pytest-homeassistant-custom-component.git@master\n"
+                )
+              else:
+                out.write(f"{line}\n")
           PY
-          pip install -r requirements.txt -r requirements_dev_ha_dev.txt
+          python -m pip install -r requirements.txt -r requirements_dev_ha_dev.txt
 
       - name: Run lint checks
         run: |
@@ -80,7 +85,7 @@ jobs:
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
             const latest = "${{ steps.hass.outputs.latest }}";
 
-            const { data: labels } = await github.rest.issues.listLabelsOnRepo({ owner, repo, per_page: 100 });
+            const { data: labels } = await github.rest.issues.listLabelsForRepo({ owner, repo, per_page: 100 });
             if (!labels.some((item) => item.name === label)) {
               await github.rest.issues.createLabel({
                 owner,
