@@ -1,0 +1,571 @@
+device:
+  manufacturer: "Fröling GmbH"
+  model: "BWP300 PV"
+  max_register_read: 160
+
+# =========================
+# Input Registers (3x) read-only
+# =========================
+read_only_word:
+
+  di1_pressostat:
+    name: "Kontakt 1: Pressostat"
+    icon: mdi:gauge
+    address: 0
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  di2_pv:
+    name: "Kontakt 2: SG-Ready"
+    icon: mdi:solar-power
+    address: 1
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  t1:
+    name: "Temperatur: T1 (Verdampfer)"
+    icon: mdi:thermometer
+    address: 7
+    signed: true
+    multiplier: 0.1
+    precision: 0
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    entity_registry_enabled_default: true
+
+  t2:
+    name: "Temperatur: T2 (Speicher)"
+    icon: mdi:water-boiler
+    address: 8
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    entity_registry_enabled_default: true
+
+  relay1_kompressor:
+    name: "Relais 1: Kompressor"
+    icon: mdi:engine
+    address: 9
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  relay2_elpatron:
+    name: "Relais 2: Heizstab (EL)"
+    icon: mdi:radiator
+    address: 10
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  relay3_kessel:
+    name: "Relais 3: Kessel"
+    icon: mdi:water-boiler
+    address: 11
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  relay4_magnetventil:
+    name: "Relais 4: Magnetventil"
+    icon: mdi:valve
+    address: 12
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  relay6_kondensator:
+    name: "Relais 6: Kondensator"
+    icon: mdi:hvac
+    address: 13
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  relay7_ventilator:
+    name: "Relais 7: Ventilator"
+    icon: mdi:fan
+    address: 14
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+  # Status ist ein Bitfeld -> flags sind BIT-POSITIONEN (0..15), nicht 1/2/4/8...
+  status:
+    name: "Status"
+    icon: mdi:information-outline
+    address: 16
+    entity_category: diagnostic
+    flags:
+      1: "Aus"
+      2: "Betriebsbereit"
+      4: "In Betrieb"
+      8: "Legionellenmodus"
+      32: "Legionellenmodus-Ende"
+      64: "Abtau"
+      128: "Abtau-Ende"
+      256: "Störung"
+      512: "Boost"
+      1024: "WP Gesperrt"
+      2048: "Ferien"
+      4096: "SG-ENABLED"
+      8192: "PV-WP"
+      16384: "PV-EL"
+      32768: "PV-WP+EL"
+    entity_registry_enabled_default: true
+
+  holyday_remaining_days:
+    name: "Abwesenheit: Verbleibend"
+    icon: mdi:calendar-clock
+    address: 17
+    unit_of_measurement: "Tag/e"
+    device_class: duration
+    state_class: measurement
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  # Unit_Alarm ist ein Bitfeld (Fehlerbits) -> hier sind es Bit-Positionen 0..15
+  alarm:
+    name: "Unit Alarm"
+    icon: mdi:alert-circle
+    address: 18
+    entity_category: diagnostic
+    flags:
+      0: "Speicherfühler: Kurzschluss"
+      1: "Speicherfühler: Unterbrechung"
+      2: "Verdampferfühler: Kurzschluss"
+      3: "Verdampferfühler: Unterbrechung"
+      4: "1ste Pressostat Meldung"
+      5: "Pressostat Störung"
+      6: "Anode kontrollieren"
+      7: "Legio Temperatur nicht erreicht"
+      8: "Uhrzeit einstellen!"
+    entity_registry_enabled_default: false
+
+  alarm_raw:
+    name: "Unit Alarm (raw)"
+    icon: mdi:alert-circle-outline
+    address: 18
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  fw_version:
+    name: "FW Version"
+    icon: mdi:chip
+    address: 119
+    multiplier: 1
+    precision: 0
+    entity_category: diagnostic
+    entity_registry_enabled_default: true
+
+# =========================
+# Holding Registers (4x) read/write
+# =========================
+read_write_word:
+
+  # --- Temperaturen / Setpoints ---
+  t_setpoint_set:
+    name: "Temperatur: T Soll"
+    icon: mdi:target
+    address: 4
+    control: number
+    unit_of_measurement: "°C"
+    device_class: temperature
+    number:
+      min: 5
+      max: 62
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  t_min_set:
+    name: "Temperatur: T min"
+    icon: mdi:thermometer-low
+    address: 5
+    control: number
+    unit_of_measurement: "°C"
+    device_class: temperature
+    number:
+      min: 5
+      max: 62
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  t2_min_set:
+    name: "Temperatur: T2 min"
+    icon: mdi:thermometer-low
+    address: 6
+    control: number
+    unit_of_measurement: "°C"
+    device_class: temperature
+    number:
+      min: 5
+      max: 62
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- Timer ---
+  timer_enable:
+    name: "Zeitplanung: Zustand"
+    icon: mdi:calendar-clock
+    address: 7
+    control: switch
+    switch:
+      "on": 1
+      "off": 0
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  start_hp_hour:
+    name: "Zeitplanung: Start Heizpatrone (Stunde)"
+    icon: mdi:clock-start
+    address: 8
+    control: number
+    number:
+      min: 0
+      max: 23
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  start_hp_min:
+    name: "Zeitplanung: Start Heizpatrone (Minute)"
+    icon: mdi:clock-start
+    address: 9
+    control: number
+    number:
+      min: 0
+      max: 59
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  stop_hp_hour:
+    name: "Zeitplanung: Stop Heizpatrone (Stunde)"
+    icon: mdi:clock-end
+    address: 10
+    control: number
+    number:
+      min: 0
+      max: 23
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  stop_hp_min:
+    name: "Zeitplanung: Stop Heizpatrone (Minute)"
+    icon: mdi:clock-end
+    address: 11
+    control: number
+    number:
+      min: 0
+      max: 59
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  # --- Betriebsart (als Control gewünscht) ---
+  betriebsart:
+    name: "Betriebsmodus: Standart"
+    icon: mdi:hvac
+    address: 12
+    control: select
+    options:
+      0: "Aus"
+      1: "WP"
+      2: "EL"
+      3: "WP+EL"
+      4: "Kessel"
+      5: "WP+Kessel"
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- Legionellen ---
+  legionel_auto_funktion:
+    name: "Temperatur: T Legio"
+    icon: mdi:bacteria-outline
+    address: 13
+    control: select
+    options:
+      0: "Aus"
+      1: "60°C"
+      2: "65°C"
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  wwprotec_tmin_rl:
+    name: "Tmin RL"
+    icon: mdi:thermometer-alert
+    address: 14
+    control: number
+    unit_of_measurement: "°C"
+    device_class: temperature
+    number:
+      min: 5
+      max: 20
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- Lüfter WP (FanOper / WP_LS) ---
+  wp_ls:
+    name: "WP_LS"
+    icon: mdi:fan
+    address: 15
+    control: select
+    options:
+      0: "Niedrig/Aus"
+      1: "Hoch/EC Niedrig"
+      2: "EC Mittel"
+      3: "EC Hoch"
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- KWL (FanCon / KWL) ---
+  kwl:
+    name: "KWL (Raumlüftung)"
+    icon: mdi:air-filter
+    address: 16
+    control: select
+    options:
+      0: "Aus"
+      1: "Niedrig"
+      2: "Mittel"
+      3: "Hoch"
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- PV / SmartGrid ---
+  pv_modus:
+    name: "Betriebsmodus: PV/SG"
+    icon: mdi:solar-power
+    address: 17
+    control: select
+    options:
+      0: "Aus"
+      1: "WP"
+      2: "EL"
+      3: "WP+EL"
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  t_pv_wp:
+    name: "Temperatur: T.PV_WP"
+    icon: mdi:solar-power
+    address: 18
+    control: number
+    unit_of_measurement: "°C"
+    device_class: temperature
+    number:
+      min: 5
+      max: 62
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  t_pv_el:
+    name: "Temperatur: T.PV_EL"
+    icon: mdi:solar-power
+    address: 19
+    control: number
+    unit_of_measurement: "°C"
+    device_class: temperature
+    number:
+      min: 5
+      max: 62
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- Ferien / Abwesenheit ---
+  feriendauer:
+    name: "Abwesenheit: Zustand"
+    icon: mdi:beach
+    address: 20
+    control: select
+    options:
+      0: "Aus"
+      1: "1 Woche"
+      2: "2 Woche"
+      3: "3 Woche"
+      4: "3 Tage"
+      5: "Manuell"
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  abw_tage:
+    name: "Abwesenheit: Manuell"
+    icon: mdi:calendar
+    address: 21
+    control: number
+    unit_of_measurement: "d"
+    number:
+      min: 1
+      max: 99
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  # --- Boost ---
+  boost_enable:
+    name: "Boost"
+    icon: mdi:rocket-launch
+    address: 22
+    control: switch
+    switch:
+      "on": 1
+      "off": 0
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- Lüfterpause ---
+  fanpause:
+    name: "Lüfterpause"
+    icon: mdi:fan-off
+    address: 23
+    control: select
+    options:
+      0: "Off"
+      1: "30m / 15s"
+      2: "30m / 30s"
+      3: "60m / 15s"
+      4: "60m / 30s"
+      5: "90m / 15s"
+      6: "90m / 30s"
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  # --- Sprache ---
+  language:
+    name: "Sprache"
+    icon: mdi:translate
+    address: 25
+    control: select
+    options:
+      0: "English"
+      1: "German"
+      2: "French"
+      3: "Dutch"
+      4: "Spanish"
+      5: "Italian"
+      6: "Danish"
+      7: "Swedish"
+      8: "Norwegian"
+      9: "Polish"
+      10: "Slovenian"
+      11: "Croatian"
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  # --- Abtauart (lieber nicht ändern) ---
+  defrost_mode:
+    name: "Abtauart"
+    icon: mdi:snowflake-melt
+    address: 26
+    control: select
+    options:
+      0: "Air"
+      1: "Gas"
+      2: "Tmin RF"
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  # --- Anode ---
+  anode:
+    name: "Anode"
+    icon: mdi:shield-outline
+    address: 27
+    control: switch
+    switch:
+      "on": 1
+      "off": 0
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  # --- Tmax ---
+  t_max:
+    name: "Temperatur: T max"
+    icon: mdi:thermometer-high
+    address: 28
+    control: number
+    unit_of_measurement: "°C"
+    device_class: temperature
+    number:
+      min: 5
+      max: 62
+    entity_category: config
+    entity_registry_enabled_default: true
+
+  # --- Lüftertyp ---
+  fantype:
+    name: "Lüftertyp"
+    icon: mdi:fan
+    address: 29
+    control: select
+    options:
+      0: "AC"
+      1: "EC"
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  # --- EC Fan Levels ---
+  ec_ls1:
+    name: "EC LS1"
+    icon: mdi:numeric-1-circle-outline
+    address: 30
+    control: number
+    unit_of_measurement: "%"
+    number:
+      min: 0
+      max: 100
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  ec_ls2:
+    name: "EC LS2"
+    icon: mdi:numeric-2-circle-outline
+    address: 31
+    control: number
+    unit_of_measurement: "%"
+    number:
+      min: 0
+      max: 100
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  ec_ls3:
+    name: "EC LS3"
+    icon: mdi:numeric-3-circle-outline
+    address: 32
+    control: number
+    unit_of_measurement: "%"
+    number:
+      min: 0
+      max: 100
+    entity_category: config
+    entity_registry_enabled_default: false
+
+  legi_tage:
+    name: "Legionellenfunktion: Intervall"
+    icon: mdi:calendar-sync
+    address: 33
+    control: number
+    unit_of_measurement: "d"
+    number:
+      min: 3
+      max: 14
+    entity_category: config
+    entity_registry_enabled_default: true  # Icons ergänzt
