@@ -12,4 +12,4 @@ pytest-cov>=7.0.0
 pytest-homeassistant-custom-component>=0.13.297
 pytest-picked
 ruff>=0.15.12
-yarl>=0.148.0
+yarl>=1.23.0
