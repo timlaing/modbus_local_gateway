@@ -4,7 +4,7 @@ fuzzywuzzy>=0.18.0
 homeassistant==2026.2.3
 isort>=8.0.1
 levenshtein>=0.27.3
-prek>=0.3.10
+prek>=0.3.13
 pylint>=4.0.5
 pytest>=8.4.2
 pytest-asyncio>=1.2.0
