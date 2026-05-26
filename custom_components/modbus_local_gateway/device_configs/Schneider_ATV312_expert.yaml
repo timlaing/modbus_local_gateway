@@ -1,0 +1,188 @@
+# Schneider Electric Altivar ATV312 expert profile
+# Source: ATV312 communication variables manual BBV51701 06/2009
+# This file exposes additional low-level diagnostics and communication settings that are
+# intentionally excluded from the standard pool-pump profile. Keep every expert entity
+# disabled by default and change these values only during supervised maintenance.
+
+device:
+  manufacturer: "Schneider Electric"
+  model: "Altivar ATV312 Expert"
+  max_register_read: 8
+
+read_write_word:
+  # Expert Modbus communication settings.
+  # R/WS: writable only when drive is stopped.
+  # Changing these values remotely can break Modbus communication immediately.
+  add_modbus_drive_address:
+    name: "Modbus Drive Address"
+    address: 6001
+    control: number
+    number:
+      min: 1
+      max: 247
+      step: 1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  tbr_modbus_transmission_speed:
+    name: "Modbus Transmission Speed"
+    address: 6003
+    control: select
+    options:
+      24: "4.8 kbps"
+      28: "9.6 kbps"
+      32: "19.2 kbps"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  tfo_modbus_communication_format:
+    name: "Modbus Communication Format"
+    address: 6004
+    control: select
+    options:
+      2: "8O1"
+      3: "8E1"
+      4: "8n1"
+      5: "8n2"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  tto_modbus_timeout:
+    name: "Modbus Time-out"
+    address: 6005
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Seconds
+    control: number
+    number:
+      min: 0.1
+      max: 10.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Expert-only holding-register diagnostics excluded from the standard profile.
+  # ATV312 monitoring variables are exposed as holding registers, not input registers.
+  cmi1_modbus_extended_control_image:
+    name: "CMI1 Modbus Extended Control Image"
+    address: 8541
+    flags:
+      1: "Factory settings recall request"
+      2: "EEPROM save request"
+      4: "External fault request"
+      5: "Ramp switching request"
+      10: "High resolution enabled"
+      14: "Drive locked on standstill"
+      15: "Modbus communication monitoring inhibited"
+      16: "No parameter consistency check"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  cmi2_canopen_extended_control_image:
+    name: "CMI2 CANopen Extended Control Image"
+    address: 8542
+    flags:
+      1: "Factory settings recall request"
+      2: "EEPROM save request"
+      4: "External fault request"
+      5: "Ramp switching request"
+      10: "High resolution enabled"
+      14: "Drive locked on standstill"
+      15: "Modbus communication monitoring inhibited"
+      16: "No parameter consistency check"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  # Expert-only logic I/O diagnostics.
+  # Use these to inspect relay state, including the UV relay if wired to R1 or R2.
+  iolr_logic_io_state:
+    name: "IOLR Logic IO State"
+    address: 5240
+    flags:
+      1: "LI1 active"
+      2: "LI2 active"
+      3: "LI3 active"
+      4: "LI4 active"
+      5: "LI5 active"
+      6: "LI6 active"
+      8: "Keypad present"
+      9: "R1 output active"
+      10: "R2 output active"
+      11: "LO output active"
+      15: "AOC/AOV analog output mode"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  relay_r1_output_active:
+    name: "Relay R1 Output Active"
+    address: 5240
+    bits: 1
+    shift_bits: 8
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  relay_r2_output_active:
+    name: "Relay R2 Output Active"
+    address: 5240
+    bits: 1
+    shift_bits: 9
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  logic_output_active:
+    name: "Logic Output Active"
+    address: 5240
+    bits: 1
+    shift_bits: 10
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  keypad_present:
+    name: "Keypad Present"
+    address: 5240
+    bits: 1
+    shift_bits: 7
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ai1c_analog_input_ai1:
+    name: "AI1C Analog Input AI1"
+    address: 5242
+    precision: 0
+    unit_of_measurement: mV
+    device_class: voltage
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ai2c_analog_input_ai2:
+    name: "AI2C Analog Input AI2"
+    address: 5243
+    signed: true
+    precision: 0
+    unit_of_measurement: mV
+    device_class: voltage
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ai3c_analog_input_ai3:
+    name: "AI3C Analog Input AI3"
+    address: 5244
+    precision: 0
+    unit_of_measurement: uA
+    device_class: current
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ao1r_analog_output_value:
+    name: "AO1R Analog Output Value"
+    address: 5261
+    precision: 0
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
