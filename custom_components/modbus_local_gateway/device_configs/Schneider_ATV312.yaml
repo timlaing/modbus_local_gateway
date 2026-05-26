@@ -1,0 +1,1082 @@
+# Schneider Electric Altivar ATV312
+# Source: ATV312 communication variables manual BBV51701 06/2009
+
+device:
+  manufacturer: "Schneider Electric"
+  model: "Altivar ATV312"
+  max_register_read: 8
+
+read_write_word:
+  # Safe Home Assistant motor speed control.
+  # Requires Fr1 = Mdb on the drive if Modbus is the active reference channel.
+  # Pool motor use case:
+  # - minimum usable speed: 18 Hz
+  # - normal filtration: 30 to 40 Hz
+  # - 60 Hz is a temporary boost only
+  lfr_frequency_reference_via_bus:
+    name: "LFr Frequency Reference via Bus"
+    address: 8502
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 18.0
+      max: 60.0
+      step: 0.1
+      mode: slider
+
+  # Sensitive runtime bus-control register.
+  # No Home Assistant switch is exposed in the standard profile because CMD is a full
+  # bitfield with active-low semantics and unsafe values are easy to send accidentally.
+  # bit 0: Switch on (active at 1)
+  # bit 1: Disable voltage (active at 0)
+  # bit 2: Quick stop (active at 0)
+  # bit 3: Enable operation (active at 1)
+  # bit 7: Fault state reset (active on rising edge 0 -> 1)
+  # bit 11: Reverse direction command when set
+  # bit 12: Stop command when set
+  # bit 13: Injection stop command when set
+  # bit 14: Fast stop command when set
+  cmd_control_word:
+    name: "CMD Control Word"
+    address: 8501
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Optional PI reference, not used for the standard pool-motor profile.
+  pisp_pi_reference_via_bus:
+    name: "PISP PI Reference via Bus"
+    address: 8503
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: "%"
+    control: number
+    number:
+      min: 0.0
+      max: 100.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Core motor speed and ramp settings.
+  acc_acceleration_ramp_time:
+    name: "ACC Acceleration Ramp Time"
+    address: 9001
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Seconds
+    control: number
+    number:
+      min: 0.1
+      max: 3276.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  dec_deceleration_ramp_time:
+    name: "dEC Deceleration Ramp Time"
+    address: 9002
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Seconds
+    control: number
+    number:
+      min: 0.1
+      max: 3276.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  lsp_low_speed:
+    name: "LSP Low Speed"
+    address: 3105
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 18.0
+      max: 60.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  hsp_high_speed:
+    name: "HSP High Speed"
+    address: 3104
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 18.0
+      max: 60.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  tfr_maximum_output_frequency:
+    name: "tFr Maximum Output Frequency"
+    address: 3103
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 18.0
+      max: 60.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Current limits depend on the installed drive rating, so they are exposed without a
+  # number write control in the standard profile.
+  ith_motor_thermal_protection_current:
+    name: "ItH Motor Thermal Protection Current"
+    address: 9622
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Amps
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  cli_current_limit:
+    name: "CLI Current Limit"
+    address: 9201
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Amps
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Frequency thresholds and relay-related settings useful for the UV-lamp use case.
+  # Recommended UV strategy: assign the used relay to FtA and set Ftd to the desired
+  # cruise frequency, typically between 30 and 40 Hz.
+  # R/WS: writable only when drive is stopped.
+  ftd_motor_frequency_threshold:
+    name: "Ftd Motor Frequency Threshold"
+    address: 11003
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 0.0
+      max: 60.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  relay_r1_assignment:
+    name: "Relay R1 Assignment"
+    address: 5001
+    control: select
+    options:
+      0: "nO Not assigned"
+      1: "FLt Drive detected fault"
+      2: "rUn Drive running"
+      4: "FtA Frequency threshold reached"
+      5: "FLA High speed (HSP) reached"
+      6: "CtA Current threshold reached"
+      7: "SrA Frequency reference reached"
+      8: "tSA Motor thermal threshold reached"
+      12: "APL Loss of 4-20 mA signal, even if LFL = nO"
+      129: "LI1 Returns the value of LI1"
+      130: "LI2 Returns the value of LI2"
+      131: "LI3 Returns the value of LI3"
+      132: "LI4 Returns the value of LI4"
+      133: "LI5 Returns the value of LI5"
+      134: "LI6 Returns the value of LI6"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  relay_r2_assignment:
+    name: "Relay R2 Assignment"
+    address: 5002
+    control: select
+    options:
+      0: "nO Not assigned"
+      1: "FLt Drive detected fault"
+      2: "rUn Drive running"
+      4: "FtA Frequency threshold reached"
+      5: "FLA High speed (HSP) reached"
+      6: "CtA Current threshold reached"
+      7: "SrA Frequency reference reached"
+      8: "tSA Motor thermal threshold reached"
+      9: "bLC Brake sequence (for information, as this assignment can be only be activated or deactivated via the bLC"
+      12: "APL Loss of 4-20 mA signal, even if LFL = nO"
+      129: "LI1 Returns the value of LI1"
+      130: "LI2 Returns the value of LI2"
+      131: "LI3 Returns the value of LI3"
+      132: "LI4 Returns the value of LI4"
+      133: "LI5 Returns the value of LI5"
+      134: "LI6 Returns the value of LI6"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Additional motor-behavior tuning.
+  jpf_skip_frequency:
+    name: "JPF Skip Frequency"
+    address: 11301
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 0.0
+      max: 60.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  jf2_second_skip_frequency:
+    name: "JF2 Second Skip Frequency"
+    address: 11302
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 0.0
+      max: 60.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  tLS_low_speed_operating_time:
+    name: "tLS Low Speed Operating Time"
+    address: 11701
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Seconds
+    control: number
+    number:
+      min: 0.0
+      max: 999.9
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  rpt_ramp_type:
+    name: "rPt Ramp Type"
+    address: 9004
+    control: select
+    options:
+      0: "LIn"
+      1: "S"
+      2: "U"
+      3: "CUS"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  inr_ramp_increment:
+    name: "Inr Ramp Increment"
+    address: 9020
+    control: select
+    options:
+      0: "0.01"
+      1: "0.1"
+      2: "1"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  ac2_second_acceleration_ramp_time:
+    name: "AC2 Second Acceleration Ramp Time"
+    address: 9012
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Seconds
+    control: number
+    number:
+      min: 0.1
+      max: 3276.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  de2_second_deceleration_ramp_time:
+    name: "dE2 Second Deceleration Ramp Time"
+    address: 9013
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Seconds
+    control: number
+    number:
+      min: 0.1
+      max: 3276.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  frt_ramp_switching_threshold:
+    name: "Frt Ramp Switching Threshold"
+    address: 9011
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    control: number
+    number:
+      min: 0.0
+      max: 60.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  bra_deceleration_ramp_adaptation:
+    name: "brA Deceleration Ramp Adaptation"
+    address: 9003
+    control: select
+    options:
+      0: "nO"
+      1: "YES"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  sfr_switching_frequency:
+    name: "SFr Switching Frequency"
+    address: 3102
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: kHz
+    control: number
+    number:
+      min: 2.0
+      max: 16.0
+      step: 0.1
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  nrd_noise_reduction:
+    name: "nrd Noise Reduction"
+    address: 3107
+    control: select
+    options:
+      0: "nO"
+      1: "YES"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  srf_speed_loop_filter_suppression:
+    name: "SrF Speed Loop Filter Suppression"
+    address: 9101
+    control: select
+    options:
+      0: "nO"
+      1: "YES"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Source and channel selection.
+  # R/WS: writable only when drive is stopped.
+  fr1_reference_channel_1:
+    name: "Fr1 Reference Channel 1"
+    address: 8413
+    control: select
+    options:
+      1: "AI1 Analog input AI1"
+      2: "AI2 Analog input AI2"
+      3: "AI3 Analog input AI3"
+      16: "AIV1 Analog input AIV1"
+      160: "UPdt (1) + speed/- speed via LI"
+      161: "UpdH (1) + speed/- speed using the jog dial"
+      163: "LCC Reference via the remote display terminal, LFr parameter in the SEt- or SUP-menu"
+      164: "Mdb Reference via Modbus, LFr parameter in the SEt- or SUP-menu"
+      167: "nEt Reference via CANopen, LFr parameter in the SEt- or SUP-menu"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  fr2_reference_channel_2:
+    name: "Fr2 Reference Channel 2"
+    address: 8414
+    control: select
+    options:
+      0: "nO Not assigned"
+      1: "AI1 Analog input AI1"
+      2: "AI2 Analog input AI2"
+      3: "AI3 Analog input AI3"
+      16: "AIV1 Analog input AIV1"
+      160: "UPdt (1) + speed/- speed via LI"
+      161: "UpdH (1) + speed/- speed using the jog dial"
+      163: "LCC Reference via the remote display terminal, LFr parameter in the SEt- or SUP-menu"
+      164: "Mdb Reference via Modbus, LFr parameter in the SEt- or SUP-menu"
+      167: "nEt Reference via CANopen, LFr parameter in the SEt- or SUP-menu"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  # Active only if CHCF = SEP and LAC = L3.
+  cd1_control_channel_1:
+    name: "Cd1 Control Channel 1"
+    address: 8423
+    control: select
+    options:
+      1: "tEr Terminal block control"
+      2: "LOC Keypad control"
+      3: "LCC Remote display terminal control"
+      10: "Mdb Control via Modbus"
+      20: "nEt Control via CANopen"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # R/WS: writable only when drive is stopped.
+  # Active only if CHCF = SEP and LAC = L3.
+  cd2_control_channel_2:
+    name: "Cd2 Control Channel 2"
+    address: 8424
+    control: select
+    options:
+      1: "tEr Terminal block control"
+      2: "LOC Keypad control"
+      3: "LCC Remote display terminal control"
+      10: "Mdb Control via Modbus"
+      20: "nEt Control via CANopen"
+    entity_category: config
+    entity_registry_enabled_default: False
+
+  # Holding-register monitoring and diagnostics.
+  # ATV312 monitoring variables are exposed as holding registers, not input registers.
+  eta_status_word:
+    name: "ETA Status Word"
+    address: 3201
+    flags:
+      1: "Ready to switch on"
+      2: "Switched on"
+      3: "Operation enabled"
+      4: "Detected fault"
+      6: "Quick stop"
+      7: "Switch on disabled"
+      8: "Alarm present"
+      11: "Reference reached"
+      12: "Reference exceeded LSP/HSP limits"
+      15: "STOP key imposed stop"
+      16: "Reverse rotation"
+
+  drive_fault_active:
+    name: "Drive Fault Active"
+    address: 3201
+    bits: 1
+    shift_bits: 3
+    control: binary_sensor
+
+  drive_alarm_present:
+    name: "Drive Alarm Present"
+    address: 3201
+    bits: 1
+    shift_bits: 7
+    control: binary_sensor
+    entity_category: diagnostic
+
+  reference_reached:
+    name: "Reference Reached"
+    address: 3201
+    bits: 1
+    shift_bits: 10
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  rfr_output_frequency:
+    name: "rFr Output Frequency"
+    address: 3202
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+
+  frh_frequency_reference_before_ramp:
+    name: "FrH Frequency Reference Before Ramp"
+    address: 3203
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  lfr1_modbus_frequency_reference_image:
+    name: "LFR1 Modbus Frequency Reference Image"
+    address: 8521
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Hz
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  lcr_motor_current:
+    name: "LCr Motor Current"
+    address: 3204
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Amps
+
+  otr_motor_torque:
+    name: "Otr Motor Torque"
+    address: 3205
+    precision: 0
+    unit_of_measurement: "%"
+
+  opr_motor_power:
+    name: "OPr Motor Power"
+    address: 3211
+    precision: 0
+    unit_of_measurement: "%"
+
+  uln_line_voltage:
+    name: "ULn Line Voltage"
+    address: 3207
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Volts
+
+  thr_motor_thermal_state:
+    name: "tHr Motor Thermal State"
+    address: 9630
+    precision: 0
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+
+  thd_drive_thermal_state:
+    name: "tHd Drive Thermal State"
+    address: 3209
+    precision: 0
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+
+  tdm_max_drive_thermal_state:
+    name: "TDM Max Drive Thermal State"
+    address: 3210
+    precision: 0
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  rth_operating_time:
+    name: "rtH Operating Time"
+    address: 3231
+    precision: 0
+    unit_of_measurement: h
+    entity_category: diagnostic
+
+  inv_nominal_drive_current:
+    name: "INV Nominal Drive Current"
+    address: 3017
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: Amps
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ncv_drive_rating:
+    name: "NCV Drive Rating"
+    address: 3011
+    map:
+      0: "unknown"
+      1: "018 0.18 kW"
+      2: "037 0.37 kW"
+      3: "055 0.55 kW"
+      4: "075 0.75 kW"
+      5: "U11 1.1 kW"
+      6: "U15 1.5 kW"
+      7: "U22 2.2 kW"
+      8: "U30 3 kW"
+      9: "U40 4 kW"
+      10: "U55 5.5 kW"
+      11: "U75 7.5 kW"
+      12: "D11 11 kW"
+      13: "D15 15 kW"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  vcal_drive_voltage_class:
+    name: "VCAL Drive Voltage"
+    address: 3012
+    map:
+      0: "unknown"
+      1: "M2 200...240 V single phase"
+      2: "M3 200...240 V 3-phase"
+      3: "N4 380...500 V 3-phase"
+      4: "S6 525...600 V 3-phase"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  udp_firmware_version_raw:
+    name: "UdP Firmware Version Raw"
+    address: 3302
+    precision: 0
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  tsp_drive_firmware_type:
+    name: "TSP Drive Firmware Type"
+    address: 3401
+    map:
+      128: "ATV312"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  o1ct_option_board_1_type:
+    name: "O1Ct Option Board 1 Type"
+    address: 3601
+    map:
+      0: "nO"
+      15: "PbS"
+      18: "dnt"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  # State, fault and UV-related diagnostics.
+  relay_r1_output_active:
+    name: "Relay R1 Output Active"
+    address: 5240
+    bits: 1
+    shift_bits: 8
+    control: binary_sensor
+    entity_category: diagnostic
+
+  relay_r2_output_active:
+    name: "Relay R2 Output Active"
+    address: 5240
+    bits: 1
+    shift_bits: 9
+    control: binary_sensor
+    entity_category: diagnostic
+
+  logic_output_active:
+    name: "Logic Output Active"
+    address: 5240
+    bits: 1
+    shift_bits: 10
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  iolr_logic_io_state:
+    name: "IOLR Logic IO State"
+    address: 5240
+    flags:
+      1: "LI1 active"
+      2: "LI2 active"
+      3: "LI3 active"
+      4: "LI4 active"
+      5: "LI5 active"
+      6: "LI6 active"
+      8: "Keypad present"
+      9: "R1 output active"
+      10: "R2 output active"
+      11: "LO output active"
+      15: "AOC/AOV analog output mode"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  motor_running:
+    name: "Motor Running"
+    address: 3206
+    bits: 1
+    shift_bits: 4
+    control: binary_sensor
+
+  drive_accelerating:
+    name: "Drive Accelerating"
+    address: 3206
+    bits: 1
+    shift_bits: 9
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  drive_decelerating:
+    name: "Drive Decelerating"
+    address: 3206
+    bits: 1
+    shift_bits: 10
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  current_limit_alarm:
+    name: "Current Limit Alarm"
+    address: 3206
+    bits: 1
+    shift_bits: 11
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  eti_extended_status_word:
+    name: "ETI Extended Status Word"
+    address: 3206
+    flags:
+      1: "Write parameters not authorized"
+      2: "Parameter consistency check enabled"
+      3: "Fault reset authorized"
+      5: "Motor running"
+      6: "DC injection active"
+      7: "Transient state"
+      8: "Motor thermal overload alarm"
+      9: "Excessive braking alarm"
+      10: "Accelerating"
+      11: "Decelerating"
+      12: "Current limit alarm"
+      13: "Fast stop in progress"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  frequency_threshold_reached:
+    name: "Frequency Threshold Reached"
+    address: 3250
+    bits: 1
+    shift_bits: 4
+    control: binary_sensor
+
+  high_speed_reached:
+    name: "High Speed Reached"
+    address: 3250
+    bits: 1
+    shift_bits: 5
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  speed_reference_reached_status:
+    name: "Speed Reference Reached Status"
+    address: 3250
+    bits: 1
+    shift_bits: 7
+    control: binary_sensor
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  lrs1_extended_status:
+    name: "LRS1 Extended Status"
+    address: 3250
+    flags:
+      2: "Drive detected fault"
+      3: "Motor running"
+      5: "Frequency threshold reached"
+      6: "High speed reached"
+      7: "Current threshold reached"
+      8: "Speed reference reached"
+      9: "Motor thermal overload alarm"
+      10: "Brake control in progress"
+      13: "Loss of 4-20 mA"
+      15: "Drive thermal overload alarm"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  lrs3_channel_status:
+    name: "LRS3 Channel Status"
+    address: 3252
+    flags:
+      1: "Reference uses Fr2"
+      2: "Command uses Fr2/Cd2"
+      3: "ACC2/dE2 active"
+      4: "CL2 current limit active"
+      12: "Motor 1 active"
+      13: "Motor 2 active"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  errd_active_fault_code:
+    name: "ERRD Active Fault Code"
+    address: 8606
+    map:
+      0: "0x0000 nOF"
+      4096: "0x1000 CrF/OLF/SOF"
+      8976: "0x2310 OCF overcurrent"
+      8992: "0x2320 OCF impeding short-circuit/power module"
+      9008: "0x2330 SCF short-circuit to ground"
+      9024: "0x2340 OCF phase-to-phase short-circuit"
+      12560: "0x3110 OSF line overvoltage"
+      12576: "0x3120 USF line undervoltage"
+      12592: "0x3130 PHF line phase loss"
+      13072: "0x3310 ObF/OPF DC bus overvoltage or motor phase loss"
+      16912: "0x4210 OHF drive overheating"
+      21792: "0x5520 EEF EEPROM"
+      24832: "0x6100 InF internal"
+      25344: "0x6300 CFF/CFI invalid parameter configuration"
+      29440: "0x7300 LFF 4-20 mA loss"
+      29968: "0x7510 SLF/CNF communication interruption"
+      29984: "0x7520 ILF optional internal link"
+      33024: "0x8100 COF CANopen communication interruption"
+      36864: "0x9000 EPF external fault"
+      65280: "0xFF00 tnF auto-tuning unsuccessful"
+      65281: "0xFF01 bLF brake control"
+    entity_category: diagnostic
+
+  lft_last_detected_fault:
+    name: "LFt Last Detected Fault"
+    address: 7121
+    map:
+      0: "nOF No fault code saved"
+      3: "CFF Incorrect configuration (parameters)"
+      4: "CFI Invalid configuration (parameters)"
+      5: "SLF Modbus communication interruption"
+      6: "ILF Internal communication interruption"
+      7: "CnF Communication option card fault"
+      8: "EPF External fault"
+      9: "OCF Overcurrent"
+      10: "CrF Capacitor pre-charge fault"
+      13: "LFF 4 - 20 mA loss"
+      16: "OHF Drive overheating"
+      17: "OLF Motor overload"
+      18: "ObF DC bus overvoltage"
+      19: "OSF Line supply overvoltage"
+      20: "OPF Motor phase loss"
+      21: "PHF Line phase loss"
+      22: "USF Line supply undervoltage"
+      23: "OCF Phase-to-phase short-circuit"
+      24: "SOF Motor overspeed"
+      25: "tnF Auto-tuning was unsuccessful"
+      26: "IF1 Unknown rating"
+      27: "IF2 MMI card"
+      28: "IF3 MMI communication interruption"
+      29: "IF4 Industrial EEPROM fault"
+      30: "EEF EEPROM memory fault"
+      31: "OCF impeding short-circuit"
+      32: "SCF Motor short-circuit (to ground)"
+      33: "OPF Motor phase loss - 3 phases"
+      34: "COF Communication interuption, fault line 2 (CANopen)"
+      35: "bLF Brake control fault"
+      36: "OCF Power module, specific to ATV312pD15p"
+      55: "SCF Power module or motor short-circuit, detected at power up"
+
+  dp1_past_detected_fault_1:
+    name: "DP1 Past Detected Fault 1"
+    address: 7201
+    map:
+      0: "nOF No fault code saved"
+      3: "CFF Incorrect configuration (parameters)"
+      4: "CFI Invalid configuration (parameters)"
+      5: "SLF Modbus communication interruption"
+      6: "ILF Internal communication interruption"
+      7: "CnF Communication option card fault"
+      8: "EPF External fault"
+      9: "OCF Overcurrent"
+      10: "CrF Capacitor pre-charge fault"
+      13: "LFF 4 - 20 mA loss"
+      16: "OHF Drive overheating"
+      17: "OLF Motor overload"
+      18: "ObF DC bus overvoltage"
+      19: "OSF Line supply overvoltage"
+      20: "OPF Motor phase loss"
+      21: "PHF Line phase loss"
+      22: "USF Line supply undervoltage"
+      23: "OCF Phase-to-phase short-circuit"
+      24: "SOF Motor overspeed"
+      25: "tnF Auto-tuning was unsuccessful"
+      26: "IF1 Unknown rating"
+      27: "IF2 MMI card"
+      28: "IF3 MMI communication interruption"
+      29: "IF4 Industrial EEPROM fault"
+      30: "EEF EEPROM memory fault"
+      31: "OCF impeding short-circuit"
+      32: "SCF Motor short-circuit (to ground)"
+      33: "OPF Motor phase loss - 3 phases"
+      34: "COF Communication interuption, fault line 2 (CANopen)"
+      35: "bLF Brake control fault"
+      36: "OCF Power module, specific to ATV312pD15p"
+      55: "SCF Power module or motor short-circuit, detected at power up"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  dp2_past_detected_fault_2:
+    name: "DP2 Past Detected Fault 2"
+    address: 7202
+    map:
+      0: "nOF No fault code saved"
+      3: "CFF Incorrect configuration (parameters)"
+      4: "CFI Invalid configuration (parameters)"
+      5: "SLF Modbus communication interruption"
+      6: "ILF Internal communication interruption"
+      7: "CnF Communication option card fault"
+      8: "EPF External fault"
+      9: "OCF Overcurrent"
+      10: "CrF Capacitor pre-charge fault"
+      13: "LFF 4 - 20 mA loss"
+      16: "OHF Drive overheating"
+      17: "OLF Motor overload"
+      18: "ObF DC bus overvoltage"
+      19: "OSF Line supply overvoltage"
+      20: "OPF Motor phase loss"
+      21: "PHF Line phase loss"
+      22: "USF Line supply undervoltage"
+      23: "OCF Phase-to-phase short-circuit"
+      24: "SOF Motor overspeed"
+      25: "tnF Auto-tuning was unsuccessful"
+      26: "IF1 Unknown rating"
+      27: "IF2 MMI card"
+      28: "IF3 MMI communication interruption"
+      29: "IF4 Industrial EEPROM fault"
+      30: "EEF EEPROM memory fault"
+      31: "OCF impeding short-circuit"
+      32: "SCF Motor short-circuit (to ground)"
+      33: "OPF Motor phase loss - 3 phases"
+      34: "COF Communication interuption, fault line 2 (CANopen)"
+      35: "bLF Brake control fault"
+      36: "OCF Power module, specific to ATV312pD15p"
+      55: "SCF Power module or motor short-circuit, detected at power up"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  dp3_past_detected_fault_3:
+    name: "DP3 Past Detected Fault 3"
+    address: 7203
+    map:
+      0: "nOF No fault code saved"
+      3: "CFF Incorrect configuration (parameters)"
+      4: "CFI Invalid configuration (parameters)"
+      5: "SLF Modbus communication interruption"
+      6: "ILF Internal communication interruption"
+      7: "CnF Communication option card fault"
+      8: "EPF External fault"
+      9: "OCF Overcurrent"
+      10: "CrF Capacitor pre-charge fault"
+      13: "LFF 4 - 20 mA loss"
+      16: "OHF Drive overheating"
+      17: "OLF Motor overload"
+      18: "ObF DC bus overvoltage"
+      19: "OSF Line supply overvoltage"
+      20: "OPF Motor phase loss"
+      21: "PHF Line phase loss"
+      22: "USF Line supply undervoltage"
+      23: "OCF Phase-to-phase short-circuit"
+      24: "SOF Motor overspeed"
+      25: "tnF Auto-tuning was unsuccessful"
+      26: "IF1 Unknown rating"
+      27: "IF2 MMI card"
+      28: "IF3 MMI communication interruption"
+      29: "IF4 Industrial EEPROM fault"
+      30: "EEF EEPROM memory fault"
+      31: "OCF impeding short-circuit"
+      32: "SCF Motor short-circuit (to ground)"
+      33: "OPF Motor phase loss - 3 phases"
+      34: "COF Communication interuption, fault line 2 (CANopen)"
+      35: "bLF Brake control fault"
+      36: "OCF Power module, specific to ATV312pD15p"
+      55: "SCF Power module or motor short-circuit, detected at power up"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  dp4_past_detected_fault_4:
+    name: "DP4 Past Detected Fault 4"
+    address: 7204
+    map:
+      0: "nOF No fault code saved"
+      3: "CFF Incorrect configuration (parameters)"
+      4: "CFI Invalid configuration (parameters)"
+      5: "SLF Modbus communication interruption"
+      6: "ILF Internal communication interruption"
+      7: "CnF Communication option card fault"
+      8: "EPF External fault"
+      9: "OCF Overcurrent"
+      10: "CrF Capacitor pre-charge fault"
+      13: "LFF  4 - 20 mA loss"
+      16: "OHF Drive overheating"
+      17: "OLF Motor overload"
+      18: "ObF DC bus overvoltage"
+      19: "OSF Line supply overvoltage"
+      20: "OPF Motor phase loss"
+      21: "PHF Line phase loss"
+      22: "USF Line supply undervoltage"
+      23: "OCF Phase-to-phase short-circuit"
+      24: "SOF Motor overspeed"
+      25: "tnF Auto-tuning was unsuccessful"
+      26: "IF1 Unknown rating"
+      27: "IF2 MMI card"
+      28: "IF3 MMI communication interruption"
+      29: "IF4 Industrial EEPROM fault"
+      30: "EEF EEPROM memory fault"
+      31: "OCF impeding short-circuit"
+      32: "SCF Motor short-circuit (to ground)"
+      33: "OPF Motor phase loss - 3 phases"
+      34: "COF Communication interuption, fault line 2 (CANopen)"
+      35: "bLF Brake control fault"
+      36: "OCF Power module, specific to ATV312pD15p"
+      55: "SCF Power module or motor short-circuit, detected at power up"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ep1_past_fault_status_1:
+    name: "EP1 Past Fault Status 1"
+    address: 7211
+    flags:
+      1: "Drive ready"
+      2: "No emergency stop"
+      3: "Switch on disabled"
+      5: "Reverse rotation"
+      6: "Motor running"
+      7: "DC injection active"
+      8: "Motor thermal overload alarm"
+      10: "Drive accelerating"
+      11: "Drive decelerating"
+      12: "Current limit alarm"
+      16: "Reverse rotation requested"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ep2_past_fault_status_2:
+    name: "EP2 Past Fault Status 2"
+    address: 7212
+    flags:
+      1: "Drive ready"
+      2: "No emergency stop"
+      3: "Switch on disabled"
+      5: "Reverse rotation"
+      6: "Motor running"
+      7: "DC injection active"
+      8: "Motor thermal overload alarm"
+      10: "Drive accelerating"
+      11: "Drive decelerating"
+      12: "Current limit alarm"
+      16: "Reverse rotation requested"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ep3_past_fault_status_3:
+    name: "EP3 Past Fault Status 3"
+    address: 7213
+    flags:
+      1: "Drive ready"
+      2: "No emergency stop"
+      3: "Switch on disabled"
+      5: "Reverse rotation"
+      6: "Motor running"
+      7: "DC injection active"
+      8: "Motor thermal overload alarm"
+      10: "Drive accelerating"
+      11: "Drive decelerating"
+      12: "Current limit alarm"
+      16: "Reverse rotation requested"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
+
+  ep4_past_fault_status_4:
+    name: "EP4 Past Fault Status 4"
+    address: 7214
+    flags:
+      1: "Drive ready"
+      2: "No emergency stop"
+      3: "Switch on disabled"
+      5: "Reverse rotation"
+      6: "Motor running"
+      7: "DC injection active"
+      8: "Motor thermal overload alarm"
+      10: "Drive accelerating"
+      11: "Drive decelerating"
+      12: "Current limit alarm"
+      16: "Reverse rotation requested"
+    entity_category: diagnostic
+    entity_registry_enabled_default: False
