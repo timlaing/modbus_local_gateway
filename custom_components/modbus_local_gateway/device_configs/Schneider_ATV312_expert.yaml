@@ -1,7 +1,7 @@
 # Schneider Electric Altivar ATV312 expert profile
 # Source: ATV312 communication variables manual BBV51701 06/2009
 # This file exposes additional low-level diagnostics and communication settings that are
-# intentionally excluded from the standard pool-pump profile. Keep every expert entity
+# intentionally excluded from the standard motor profile. Keep every expert entity
 # disabled by default and change these values only during supervised maintenance.
 
 device:
@@ -98,51 +98,6 @@ read_write_word:
 
   # Expert-only logic I/O diagnostics.
   # Use these to inspect relay state, including the UV relay if wired to R1 or R2.
-  iolr_logic_io_state:
-    name: "IOLR Logic IO State"
-    address: 5240
-    flags:
-      1: "LI1 active"
-      2: "LI2 active"
-      3: "LI3 active"
-      4: "LI4 active"
-      5: "LI5 active"
-      6: "LI6 active"
-      8: "Keypad present"
-      9: "R1 output active"
-      10: "R2 output active"
-      11: "LO output active"
-      15: "AOC/AOV analog output mode"
-    entity_category: diagnostic
-    entity_registry_enabled_default: False
-
-  relay_r1_output_active:
-    name: "Relay R1 Output Active"
-    address: 5240
-    bits: 1
-    shift_bits: 8
-    control: binary_sensor
-    entity_category: diagnostic
-    entity_registry_enabled_default: False
-
-  relay_r2_output_active:
-    name: "Relay R2 Output Active"
-    address: 5240
-    bits: 1
-    shift_bits: 9
-    control: binary_sensor
-    entity_category: diagnostic
-    entity_registry_enabled_default: False
-
-  logic_output_active:
-    name: "Logic Output Active"
-    address: 5240
-    bits: 1
-    shift_bits: 10
-    control: binary_sensor
-    entity_category: diagnostic
-    entity_registry_enabled_default: False
-
   keypad_present:
     name: "Keypad Present"
     address: 5240
