@@ -105,15 +105,15 @@ Related tests also cover:
 - `tests/test_select.py`
 - `tests/test_switch.py`
 
-## 4. Pool Pump + UV Lamp Use Case
+## 4. Motor + UV Lamp Use Case ( example )
 
 Real operating context:
 
-- ATV312 drives a 3-phase pool pump from a single-phase supply
+- ATV312 drives a 3-phase motor from a single-phase supply
 - minimum usable speed: `18 Hz`
 - normal filtration: `30-40 Hz`
 - temporary boost only: `60 Hz`
-- UV lamp is switched by a relay output only when the pump has reached cruise speed
+- UV lamp is switched by a relay output only when the motor has reached cruise speed
 
 Design goals for the standard profile:
 
@@ -152,7 +152,7 @@ Why `CMD` is not exposed as a standard Home Assistant switch:
 
 ### Standard read-only monitoring and diagnostics
 
-Core pump monitoring:
+Core motor monitoring:
 
 - `ETA`
 - `rFr`
@@ -174,7 +174,7 @@ State and fault entities:
 - `Drive Fault Active`
 - `Drive Alarm Present`
 - `Reference Reached`
-- `Pump Running`
+- `Motor Running`
 - `Relay R1 Output Active`
 - `Relay R2 Output Active`
 - `Drive Accelerating`
@@ -226,7 +226,7 @@ Recommended to surface in dashboards or automations:
 - `sensor.errd_active_fault_code`
 - `sensor.lft_last_detected_fault`
 - `binary_sensor.drive_fault_active`
-- `binary_sensor.pump_running`
+- `binary_sensor.motor_running`
 - `binary_sensor.frequency_threshold_reached`
 - `binary_sensor.relay_r1_output_active`
 - `binary_sensor.relay_r2_output_active`
@@ -245,15 +245,15 @@ Recommended but usually left hidden unless tuning is needed:
 
 ## 8. Recommended Automations
 
-- UV `ON` only when the pump is running and actual frequency is stable at or above cruise speed
-- UV `OFF` if the pump stops, a drive fault appears, actual frequency drops below the cruise threshold, or Modbus communication is lost
+- UV `ON` only when the motor is running and actual frequency is stable at or above cruise speed
+- UV `OFF` if the motor stops, a drive fault appears, actual frequency drops below the cruise threshold, or Modbus communication is lost
 - `60 Hz` boost should always be wrapped in a timer or script that returns to the normal filtration band
 - generate alerts on overload, overheat, undervoltage, overcurrent or persistent current-limit alarms
 
 Practical signals for those automations:
 
 - `rFr` for actual frequency
-- `Pump Running`
+- `Motor Running`
 - `Drive Fault Active`
 - `Drive Alarm Present`
 - `Frequency Threshold Reached`
@@ -289,7 +289,7 @@ Expert profile safety posture:
 Excluded with reason:
 
 - `CMI`, `CMI1`, `CMI2` in standard
-  - low-level control-word internals, not needed for normal pump operation
+  - low-level control-word internals, not needed for normal motor operation
 - `SCS`, `FCS`
   - save/restore/factory settings
 - `rP`, `rSF`
@@ -299,7 +299,7 @@ Excluded with reason:
 - `tCC`, `tCt`, `rrS`
   - control wiring and logic behavior
 - `AO1R` in standard
-  - kept in the expert profile only; it is not needed for normal pool-pump control
+  - kept in the expert profile only; it is not needed for normal motor control
 - write access to `IOLR`
   - standard profile exposes `IOLR` read-only only, with no write path
 - `9601` to `9609`
@@ -333,7 +333,4 @@ pytest
 
 Validation status in this workspace:
 
-- the YAML syntax validation command was executed locally
-- `pytest tests/test_modbus_device_info.py -k test_devices_yaml` failed with `pytest: command not found`
-- `pytest` failed with `pytest: command not found`
-- `python3 -m pytest tests/test_modbus_device_info.py -k test_devices_yaml` failed with `No module named pytest`
+Validation commands could not be executed because `pytest` is not installed in the current environment (`pytest: command not found`).
