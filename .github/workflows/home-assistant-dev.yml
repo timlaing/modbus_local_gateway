@@ -52,9 +52,8 @@ jobs:
                       pytest_hacc_spec = stripped
                       continue
                   if not stripped:
-                      out.write("\n")
-                  else:
-                      out.write(f"{stripped}\n")
+                      continue
+                  out.write(f"{stripped}\n")
 
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
               output.write(f"pytest_hacc_spec={pytest_hacc_spec}\n")
@@ -70,6 +69,7 @@ jobs:
           echo "Installed Home Assistant from dev commit: ${{ steps.hass.outputs.latest }}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run smoke imports
+        id: smoke
         run: |
           python - <<'PY'
           import importlib
@@ -84,6 +84,7 @@ jobs:
           PY
 
       - name: Run lint checks
+        id: lint
         run: |
           isort --check-only --diff .
           ruff format --check .
@@ -107,9 +108,11 @@ jobs:
           import os
           from pathlib import Path
 
-          exit_code = int("${{ steps.pytest.outputs.exit_code || '1' }}")
+          pytest_outcome = "${{ steps.pytest.outcome }}"
+          raw_exit_code = "${{ steps.pytest.outputs.exit_code }}"
+          exit_code = int(raw_exit_code) if raw_exit_code.strip() else -1
           log_path = Path("pytest.log")
-          log_text = log_path.read_text(encoding="utf-8", errors="ignore").lower() if log_path.exists() else ""
+          log_text = log_path.read_text(encoding="utf-8", errors="replace").lower() if log_path.exists() else ""
 
           tooling_markers = (
               "pytest_homeassistant_custom_component",
@@ -121,7 +124,15 @@ jobs:
               "no module named 'pytest_homeassistant_custom_component'",
           )
 
-          if exit_code == 0:
+          if pytest_outcome == "skipped":
+              category = "validation_failure"
+              blocked = "false"
+              summary = "Pytest did not run because an earlier validation step failed."
+          elif exit_code == -1:
+              category = "validation_failure"
+              blocked = "false"
+              summary = "Pytest exit code was unavailable, so compatibility could not be determined."
+          elif exit_code == 0:
               category = "passed"
               blocked = "false"
               summary = "Pytest passed against Home Assistant dev."
@@ -153,10 +164,12 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate with hassfest
+        id: hassfest
         if: always()
         uses: home-assistant/actions/hassfest@master
 
       - name: Validate with HACS
+        id: hacs
         if: always()
         uses: hacs/action@main
         with:
@@ -164,7 +177,14 @@ jobs:
           ignore: wheels
 
       - name: Open or update failure issue
-        if: always() && (failure() || steps.classify.outputs.category == 'tooling_lag')
+        if: >-
+          always() && (
+            steps.classify.outputs.category != 'passed' ||
+            steps.smoke.outcome == 'failure' ||
+            steps.lint.outcome == 'failure' ||
+            steps.hassfest.outcome == 'failure' ||
+            steps.hacs.outcome == 'failure'
+          )
         uses: actions/github-script@v9
         with:
           script: |
@@ -176,6 +196,11 @@ jobs:
             const latest = "${{ steps.hass.outputs.latest }}";
             const category = "${{ steps.classify.outputs.category }}";
             const blocked = "${{ steps.classify.outputs.blocked_by_pytest_extension }}";
+            const marker = blocked === "true"
+              ? "blocked-by-pytest-homeassistant-custom-component"
+              : category === "integration_incompatibility"
+                ? "integration-incompatibility"
+                : "validation-failure";
 
             const { data: labels } = await github.rest.issues.listLabelsOnRepo({ owner, repo, per_page: 100 });
             if (!labels.some((item) => item.name === label)) {
@@ -204,9 +229,8 @@ jobs:
               `- Workflow run: ${runUrl}`,
               `- Classification: ${category}`,
               `- Blocked by pytest extension lag: ${blocked}`,
-              blocked === "true"
-                ? "- Marker: blocked-by-pytest-homeassistant-custom-component"
-                : "- Marker: integration-incompatibility-or-other-failure",
+              `- Marker: ${marker}`,
+              "- Marker is machine-readable for downstream automation.",
               "",
               "Please review the failed checks and update the integration or test tooling as needed.",
             ].join("\n");
@@ -231,7 +255,13 @@ jobs:
             }
 
       - name: Close failure issue on recovery
-        if: always() && success() && steps.classify.outputs.category == 'passed'
+        if: >-
+          always() &&
+          steps.classify.outputs.category == 'passed' &&
+          steps.smoke.outcome != 'failure' &&
+          steps.lint.outcome != 'failure' &&
+          steps.hassfest.outcome != 'failure' &&
+          steps.hacs.outcome != 'failure'
         uses: actions/github-script@v9
         with:
           script: |
