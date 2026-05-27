@@ -32,8 +32,8 @@ exclude = [
 line-length = 88
 indent-width = 4
 
-# Assume Python 3.14
-target-version = "py314"
+# Assume Python 3.13
+target-version = "py313"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -57,7 +57,7 @@ profile = "black"
 
 [tool.tox]
 requires = ["tox>=4.24.1"]
-env_list = ["lint", "3.14"]
+env_list = ["lint", "3.13", "3.14"]
 
 [tool.tox.env_run_base]
 description = "Run test under {base_python}"
@@ -66,6 +66,7 @@ deps = ["-r requirements_dev.txt"]
 
 [tool.tox.gh-actions]
 python = '''
+    3.13: 3.13
     3.14: 3.14, lint
 '''
 
@@ -79,7 +80,7 @@ build-backend = "setuptools.build_meta"
 name = "modbus_local_gateway"
 dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
 description = "Modbus Local Gateway is a module which allows integration with Modbus devices in Home Assistant."
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 license = "MIT"
 license-files = ["LICENSE.md"]
 authors = [
@@ -92,6 +93,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries"
 ]
