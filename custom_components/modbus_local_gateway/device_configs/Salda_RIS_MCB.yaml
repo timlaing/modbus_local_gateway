@@ -51,11 +51,11 @@ read_only_word: # Input registers (FC 0x04)
     icon: mdi:fan
     entity_category: diagnostic
 
-  # Current air flow (%)
+  # Current air flow mode
   current_air_flow:
-    name: Current Air Flow
+    name: Current Air Flow Mode
     address: 15
-    unit_of_measurement: "%"
+    unit_of_measurement: ""
     state_class: measurement
     icon: mdi:air-filter
 
