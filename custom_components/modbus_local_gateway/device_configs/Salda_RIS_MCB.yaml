@@ -1,0 +1,109 @@
+device:
+  manufacturer: Salda
+  model: RIS / RIRS (MCB)
+  # Addressing is 0-based (Modbus PDU = XLS address - 1).
+  # Control (confirmed): write speed -> HR 0, write set temperature -> HR 1 (1:1, whole deg C).
+  # Live temperatures are exposed at a custom layout (input regs 0/3/6/9), NOT at the
+  # documented T1..T4 locations (those read 0). Humidity is not exposed over Modbus.
+  max_register_read: 16
+
+
+read_write_word: # Holding registers (FC 0x03 / 0x06)
+
+  # Fan speed / system mode (0..3). Writing 0..3 here sets the speed.
+  fan_speed_select:
+    name: Fan Speed
+    address: 0
+    control: select
+    options:
+      0: "0 - Off (Stand-by)"
+      1: "1 - Speed 1 (Building protection)"
+      2: "2 - Speed 2 (Economy)"
+      3: "3 - Speed 3 (Comfort)"
+    icon: mdi:fan
+
+  temperature_setpoint_number:
+    name: Temperature Set Point
+    address: 1
+    control: number
+    number:
+      min: 5
+      max: 30
+      step: 1
+      mode: box
+    unit_of_measurement: "°C"
+    device_class: temperature
+    icon: mdi:thermometer
+
+
+read_only_word: # Input registers (FC 0x04)
+
+  # Current system mode (read-back of the active speed/mode)
+  current_system_mode:
+    name: Current Mode
+    address: 14
+    map:
+      0: Stand-by
+      1: Building protection
+      2: Economy
+      3: Comfort
+      4: Emergency
+    icon: mdi:fan
+    entity_category: diagnostic
+
+  # Current air flow (%)
+  current_air_flow:
+    name: Current Air Flow
+    address: 15
+    unit_of_measurement: "%"
+    state_class: measurement
+    icon: mdi:air-filter
+
+  # Outside / outdoor air temperature
+  outside_temperature:
+    name: Outside Temperature
+    address: 9
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  # Inside / extract (room) air temperature
+  inside_temperature:
+    name: Inside Temperature
+    address: 0
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:home-thermometer
+
+  # Supply air temperature
+  supply_air_temperature:
+    name: Supply Air Temperature
+    address: 3
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+
+  # Exhaust air temperature
+  exhaust_air_temperature:
+    name: Exhaust Air Temperature
+    address: 6
+    signed: true
+    multiplier: 0.1
+    precision: 1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+    icon: mdi:thermometer
+    entity_category: diagnostic
