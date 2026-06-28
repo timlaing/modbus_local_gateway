@@ -74,7 +74,7 @@ read_only_word: # Input registers (FC 0x04)
   # Inside / extract (room) air temperature
   inside_temperature:
     name: Inside Temperature
-    address: 0
+    address: 6
     signed: true
     multiplier: 0.1
     precision: 1
@@ -98,7 +98,7 @@ read_only_word: # Input registers (FC 0x04)
   # Exhaust air temperature
   exhaust_air_temperature:
     name: Exhaust Air Temperature
-    address: 6
+    address: 0
     signed: true
     multiplier: 0.1
     precision: 1
