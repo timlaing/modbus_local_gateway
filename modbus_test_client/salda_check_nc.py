@@ -1,4 +1,4 @@
-```Salda RIS ModBus test suite```
+"""Salda RIS ModBus test suite"""
 import struct
 import subprocess
 import sys
