@@ -27,7 +27,7 @@ read_write_word: # Holding registers (FC 0x03 / 0x06)
     address: 1
     control: number
     number:
-      min: 5
+      min: 15
       max: 30
       step: 1
       mode: box
