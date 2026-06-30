@@ -1,5 +1,5 @@
 
-coverage>=7.6.12
+coverage>=7.14.3
 fuzzywuzzy>=0.18.0
 homeassistant
 isort>=8.0.1
