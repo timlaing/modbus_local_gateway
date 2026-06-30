@@ -31,45 +31,160 @@ jobs:
           python-version: "3.14"
 
       - name: Install dependencies against Home Assistant dev
+        id: deps
         run: |
           python -m pip install --upgrade pip
           python - <<'PY'
+          import os
           from pathlib import Path
 
           source = Path("requirements_dev.txt")
-          target = Path("requirements_dev_ha_dev.txt")
-          latest = "${{ steps.hass.outputs.latest }}"
+          target = Path("requirements_dev_ha_dev_base.txt")
+          pytest_hacc_spec = ""
 
           lines = source.read_text(encoding="utf-8").splitlines()
           with target.open("w", encoding="utf-8") as out:
               for line in lines:
-                  if line.strip().startswith("homeassistant=="):
-                      out.write(f"git+https://github.com/home-assistant/core.git@{latest}\n")
-                  else:
-                      out.write(f"{line}\n")
+                  stripped = line.strip()
+                  if stripped.startswith("homeassistant=="):
+                      continue
+                  if stripped.startswith("pytest-homeassistant-custom-component"):
+                      pytest_hacc_spec = stripped
+                      continue
+                  if not stripped:
+                      continue
+                  out.write(f"{stripped}\n")
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"pytest_hacc_spec={pytest_hacc_spec}\n")
           PY
-          pip install -r requirements.txt -r requirements_dev_ha_dev.txt
+          pip install -r requirements.txt -r requirements_dev_ha_dev_base.txt
+          pip install "git+https://github.com/home-assistant/core.git@${{ steps.hass.outputs.latest }}"
+          if [ -n "${{ steps.deps.outputs.pytest_hacc_spec }}" ]; then
+            pip install --no-deps "${{ steps.deps.outputs.pytest_hacc_spec }}"
+            echo "Installed pytest extension without dependency resolution: ${{ steps.deps.outputs.pytest_hacc_spec }}" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No pytest-homeassistant-custom-component spec found in requirements_dev.txt" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "Installed Home Assistant from dev commit: ${{ steps.hass.outputs.latest }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run smoke imports
+        id: smoke
+        run: |
+          python - <<'PY'
+          import importlib
+
+          modules = (
+              "homeassistant",
+              "custom_components.modbus_local_gateway",
+          )
+          for module in modules:
+              importlib.import_module(module)
+          print("Smoke import checks passed")
+          PY
 
       - name: Run lint checks
+        id: lint
         run: |
           isort --check-only --diff .
           ruff format --check .
           ruff check .
 
       - name: Run unit tests
-        run: pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml
+        id: pytest
+        continue-on-error: true
+        run: |
+          set +e
+          pytest --cov=. --cov-config=.coveragerc --cov-report xml:coverage.xml 2>&1 | tee pytest.log
+          exit_code=${PIPESTATUS[0]}
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Classify pytest result
+        id: classify
+        if: always()
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          pytest_outcome = "${{ steps.pytest.outcome }}"
+          raw_exit_code = "${{ steps.pytest.outputs.exit_code }}"
+          exit_code = int(raw_exit_code) if raw_exit_code.strip() else -1
+          log_path = Path("pytest.log")
+          log_text = log_path.read_text(encoding="utf-8", errors="replace").lower() if log_path.exists() else ""
+
+          tooling_markers = (
+              "pytest_homeassistant_custom_component",
+              "pytest-homeassistant-custom-component",
+              "fixture 'hass' not found",
+              'fixture "hass" not found',
+              "fixture 'enable_custom_integrations' not found",
+              'fixture "enable_custom_integrations" not found',
+              "no module named 'pytest_homeassistant_custom_component'",
+          )
+
+          if pytest_outcome == "skipped":
+              category = "validation_failure"
+              blocked = "false"
+              summary = "Pytest did not run because an earlier validation step failed."
+          elif exit_code == -1:
+              category = "validation_failure"
+              blocked = "false"
+              summary = "Pytest exit code was unavailable, so compatibility could not be determined."
+          elif exit_code == 0:
+              category = "passed"
+              blocked = "false"
+              summary = "Pytest passed against Home Assistant dev."
+          elif any(marker in log_text for marker in tooling_markers):
+              category = "tooling_lag"
+              blocked = "true"
+              summary = "Pytest failed due to pytest-homeassistant-custom-component compatibility lag."
+          else:
+              category = "integration_incompatibility"
+              blocked = "false"
+              summary = "Pytest failed and appears to be an integration incompatibility with Home Assistant dev."
+
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"category={category}\n")
+              output.write(f"blocked_by_pytest_extension={blocked}\n")
+              output.write(f"summary={summary}\n")
+          PY
+
+      - name: Publish compatibility classification
+        if: always()
+        run: |
+          {
+            echo "## Home Assistant dev compatibility result"
+            echo ""
+            echo "- Home Assistant dev commit: ${{ steps.hass.outputs.latest }}"
+            echo "- Classification: ${{ steps.classify.outputs.category }}"
+            echo "- Blocked by pytest extension lag: ${{ steps.classify.outputs.blocked_by_pytest_extension }}"
+            echo "- Details: ${{ steps.classify.outputs.summary }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate with hassfest
+        id: hassfest
+        if: always()
         uses: home-assistant/actions/hassfest@master
 
       - name: Validate with HACS
+        id: hacs
+        if: always()
         uses: hacs/action@main
         with:
           category: integration
           ignore: wheels
 
       - name: Open or update failure issue
-        if: failure()
+        if: >-
+          always() && (
+            steps.classify.outputs.category != 'passed' ||
+            steps.smoke.outcome == 'failure' ||
+            steps.lint.outcome == 'failure' ||
+            steps.hassfest.outcome == 'failure' ||
+            steps.hacs.outcome == 'failure'
+          )
         uses: actions/github-script@v9
         with:
           script: |
@@ -79,6 +194,13 @@ jobs:
             const label = "ha-dev-validation";
             const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
             const latest = "${{ steps.hass.outputs.latest }}";
+            const category = "${{ steps.classify.outputs.category }}";
+            const blocked = "${{ steps.classify.outputs.blocked_by_pytest_extension }}";
+            const marker = blocked === "true"
+              ? "blocked-by-pytest-homeassistant-custom-component"
+              : category === "integration_incompatibility"
+                ? "integration-incompatibility"
+                : "validation-failure";
 
             const { data: labels } = await github.rest.issues.listLabelsOnRepo({ owner, repo, per_page: 100 });
             if (!labels.some((item) => item.name === label)) {
@@ -101,12 +223,16 @@ jobs:
 
             const issue = existing.find((item) => item.title === title);
             const body = [
-              "Nightly validation against Home Assistant dev failed.",
+              "Nightly validation against Home Assistant dev reported a compatibility problem.",
               "",
               `- Home Assistant dev commit: ${latest}`,
               `- Workflow run: ${runUrl}`,
+              `- Classification: ${category}`,
+              `- Blocked by pytest extension lag: ${blocked}`,
+              `- Marker: ${marker}`,
+              "- Marker is machine-readable for downstream automation.",
               "",
-              "Please review the failed checks and update the integration if needed.",
+              "Please review the failed checks and update the integration or test tooling as needed.",
             ].join("\n");
 
             if (issue) {
@@ -129,7 +255,13 @@ jobs:
             }
 
       - name: Close failure issue on recovery
-        if: success()
+        if: >-
+          always() &&
+          steps.classify.outputs.category == 'passed' &&
+          steps.smoke.outcome != 'failure' &&
+          steps.lint.outcome != 'failure' &&
+          steps.hassfest.outcome != 'failure' &&
+          steps.hacs.outcome != 'failure'
         uses: actions/github-script@v9
         with:
           script: |
@@ -168,3 +300,9 @@ jobs:
             });
 
             core.info(`Closed issue #${issue.number}`);
+
+      - name: Fail workflow for integration incompatibility
+        if: always() && steps.classify.outputs.category == 'integration_incompatibility'
+        run: |
+          echo "Failing because integration is incompatible with current Home Assistant dev."
+          exit 1
