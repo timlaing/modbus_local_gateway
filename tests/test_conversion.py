@@ -4,15 +4,21 @@
 import pytest
 from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
-from pymodbus.pdu.register_message import ReadInputRegistersResponse
+from pymodbus.pdu.register_message import (
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersResponse,
+)
 
 from custom_components.modbus_local_gateway.conversion import (
     Conversion,
     InvalidDataTypeError,
+    NotSupportedError,
 )
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusDataType,
+    ModbusNumberEntityDescription,
     ModbusSensorEntityDescription,
+    ModbusSwitchEntityDescription,
 )
 from custom_components.modbus_local_gateway.entity_management.const import SwapType
 from custom_components.modbus_local_gateway.tcp_client import AsyncModbusTcpClient
@@ -667,3 +673,159 @@ def test_get_float_type(size: int, expected: ModbusClientMixin.DATATYPE) -> None
     else:
         result: ModbusClientMixin.DATATYPE = conversion._get_float_data_type(desc)
         assert result == expected
+
+
+def _switch_desc(**kwargs) -> ModbusSwitchEntityDescription:
+    """A writable bit-field switch description."""
+    return ModbusSwitchEntityDescription(
+        register_address=1,
+        key="test",
+        control_type="switch",
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        **kwargs,
+    )
+
+
+def _number_desc(**kwargs) -> ModbusNumberEntityDescription:
+    """A writable bit-field number description."""
+    return ModbusNumberEntityDescription(
+        register_address=1,
+        key="test",
+        control_type="number",
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        min=0,
+        max=255,
+        **kwargs,
+    )
+
+
+@pytest.mark.parametrize(
+    ("current", "value", "expected"),
+    [
+        (0b0000_0000_0001_0011, 1, 0b0000_0000_0001_0011),  # already set, no change
+        (0b0000_0000_0000_0011, 1, 0b0000_0000_0001_0011),  # set, neighbours kept
+        (0b1111_1111_1111_1111, 0, 0b1111_1111_1110_1111),  # clear, neighbours kept
+        (0b0000_0000_0001_0000, 0, 0b0000_0000_0000_0000),  # clear the only bit
+    ],
+)
+def test_merge_single_bit(current: int, value: int, expected: int) -> None:
+    """Setting or clearing one bit must leave every other bit untouched."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _switch_desc(conv_bits=1, conv_shift_bits=4, on=1, off=0)
+
+    assert conversion.merge_into_registers(desc, value, [current]) == [expected]
+
+
+def test_merge_low_byte_preserves_high_byte() -> None:
+    """The packed-zone case: writing zone1 must not zero zone2.
+
+    A register holding 30 in the high byte and 6 in the low byte; writing 45
+    to the low byte must leave the high byte at 30.
+    """
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(conv_bits=8, conv_shift_bits=0)
+
+    result = conversion.merge_into_registers(desc, 45, [(30 << 8) | 6])
+
+    assert result == [(30 << 8) | 45]
+    assert result[0] >> 8 == 30
+
+
+def test_merge_high_byte_preserves_low_byte() -> None:
+    """The mirror case: writing the high byte must not disturb the low byte."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(conv_bits=8, conv_shift_bits=8)
+
+    result = conversion.merge_into_registers(desc, 30, [(12 << 8) | 45])
+
+    assert result == [(30 << 8) | 45]
+    assert result[0] & 0xFF == 45
+
+
+def test_merge_across_two_registers() -> None:
+    """A field spanning the 32-bit boundary of a two-register entity."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(register_count=2, conv_bits=8, conv_shift_bits=12)
+
+    current = AsyncModbusTcpClient.convert_to_registers(
+        0xABCD_1234, data_type=AsyncModbusTcpClient.DATATYPE.UINT32
+    )
+    result = conversion.merge_into_registers(desc, 0xFF, current)
+
+    merged = AsyncModbusTcpClient.convert_from_registers(
+        result, data_type=AsyncModbusTcpClient.DATATYPE.UINT32
+    )
+    assert merged == 0xABCF_F234
+
+
+@pytest.mark.parametrize(
+    "swap", [None, SwapType.BYTE, SwapType.WORD, SwapType.WORD_BYTE]
+)
+def test_merge_round_trips_through_swap(swap) -> None:
+    """Merging then reading back must return the value that was written.
+
+    `_swap_registers` is its own inverse, which is what lets the merge use the
+    same call to un-swap and re-swap.
+    """
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(
+        register_count=2, conv_bits=8, conv_shift_bits=8, conv_swap=swap
+    )
+
+    current = AsyncModbusTcpClient.convert_to_registers(
+        0x0000_0000, data_type=AsyncModbusTcpClient.DATATYPE.UINT32
+    )
+    merged = conversion.merge_into_registers(desc, 0x5A, current)
+
+    read_back = conversion.convert_from_response(
+        desc=desc,
+        response=ReadHoldingRegistersResponse(registers=merged),
+    )
+    assert read_back == 0x5A
+
+
+def test_merge_applies_multiplier_and_offset() -> None:
+    """A scaled bit field descales before it is packed."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(conv_bits=8, conv_shift_bits=0, conv_multiplier=0.5)
+
+    # 21.5 degrees / 0.5 == 43 raw, merged into the low byte
+    assert conversion.merge_into_registers(desc, 21.5, [0xFF00]) == [0xFF00 | 43]
+
+
+@pytest.mark.parametrize("value", [256, -1])
+def test_merge_rejects_value_that_does_not_fit(value: int) -> None:
+    """Overflowing the field would corrupt the neighbouring controls."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(conv_bits=8, conv_shift_bits=0)
+
+    with pytest.raises(ValueError, match="does not fit"):
+        conversion.merge_into_registers(desc, value, [0x1234])
+
+
+def test_merge_width_defaults_to_top_of_register() -> None:
+    """With `shift_bits` but no `bits`, the field runs to the top of the span."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(conv_shift_bits=12)
+
+    assert conversion.field_geometry(desc) == (12, 0xF)
+    assert conversion.merge_into_registers(desc, 0xA, [0x5678]) == [0xA678]
+
+
+def test_convert_to_registers_still_refuses_bit_fields() -> None:
+    """The plain (non read-modify-write) path must not silently zero a field."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(conv_bits=8, conv_shift_bits=0)
+
+    with pytest.raises(NotSupportedError, match="merge_into_registers"):
+        conversion.convert_to_registers(desc, 5)
+
+
+def test_merge_refuses_sum_scale() -> None:
+    """`sum_scale` has no inverse. Validation rejects it at load, but
+    merge_into_registers is public, so it guards too."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = _number_desc(conv_bits=8, conv_sum_scale=[1.0, 0.1])
+
+    with pytest.raises(NotSupportedError, match="scaled sums"):
+        conversion.merge_into_registers(desc, 5, [0x1234])

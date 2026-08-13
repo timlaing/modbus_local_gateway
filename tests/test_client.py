@@ -934,3 +934,131 @@ async def test_write_data_invalid_coil_value_type() -> None:
         pytest.raises(TypeError, match="Value for COIL must be boolean, got int"),
     ):
         await client.write_data(entity, value=123)
+
+
+def _bitfield_entity() -> ModbusContext:
+    """A switch on bit 4 of a holding register."""
+    return ModbusContext(
+        device_id=1,
+        desc=ModbusSwitchEntityDescription(
+            key="bitfield",
+            register_address=1,
+            register_count=1,
+            control_type="switch",
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            conv_bits=1,
+            conv_shift_bits=4,
+            on=1,
+            off=0,
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_write_data_bitfield_read_modify_write() -> None:
+    """Writing a bit field reads the register and merges into it."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: False
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "read_data",
+            AsyncMock(
+                return_value=ReadHoldingRegistersResponse(registers=[0b0000_0011])
+            ),
+        ),
+    ):
+        await client.write_data(_bitfield_entity(), value=1)
+
+        # bit 4 set, the two bits already on are untouched
+        client.write_register.assert_called_once_with(
+            address=1,
+            value=0b0001_0011,
+            device_id=1,
+        )
+
+
+@pytest.mark.asyncio
+async def test_write_data_bitfield_read_failure_aborts_write() -> None:
+    """A failed read must abort - merging onto a guess would clear the field's
+    neighbours, which is worse than not writing at all."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway, "read_data", AsyncMock(return_value=None)
+        ),
+        pytest.raises(ModbusException, match="aborting bit field write"),
+    ):
+        await client.write_data(_bitfield_entity(), value=1)
+
+    client.write_register.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_data_bitfield_error_response_aborts_write() -> None:
+    """An error PDU from the read is a failed read, not a value of zero."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+
+    error_response = ReadHoldingRegistersResponse(registers=[0])
+    error_response.isError = lambda: True  # type: ignore[method-assign]
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "read_data",
+            AsyncMock(return_value=error_response),
+        ),
+        pytest.raises(ModbusException, match="aborting bit field write"),
+    ):
+        await client.write_data(_bitfield_entity(), value=1)
+
+    client.write_register.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_data_non_bitfield_does_not_read_first() -> None:
+    """Plain registers keep the single-transaction write they always had."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: False
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusEntityDescription(
+            key="plain",
+            register_address=1,
+            register_count=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway, "read_data", AsyncMock()
+        ) as read_data,
+    ):
+        await client.write_data(entity, value=123)
+
+        read_data.assert_not_called()
+        client.write_register.assert_called_once()

@@ -200,26 +200,94 @@ class Conversion:
 
         return num
 
-    def _convert_from_decimal(
-        self, num: float, desc: ModbusEntityDescription
-    ) -> list[int]:
-        """Convert from a decimal to registers"""
+    def _descale(self, num: float, desc: ModbusEntityDescription) -> int:
+        """Reverse multiplier/offset and round to the raw register value.
+
+        The inverse of `_apply_conversion_operations`.
+        """
         if desc.conv_offset:
             num -= desc.conv_offset
         if desc.conv_multiplier is not None:
             num = num / desc.conv_multiplier
-        if desc.conv_bits:
-            raise NotSupportedError("Setting of bit fields is not supported")
-        if desc.conv_shift_bits:
-            raise NotSupportedError("Setting of bit fields is not supported")
+        return int(round(num))
+
+    def field_geometry(self, desc: ModbusEntityDescription) -> tuple[int, int]:
+        """Return (shift, mask) for a bit field.
+
+        When `bits` is omitted the field is taken to run from `shift_bits` up to
+        the top of the register span, which matches how the read path behaves.
+        """
+        shift: int = desc.conv_shift_bits or 0
+        width: int = desc.conv_bits or (16 * (desc.register_count or 1) - shift)
+        return shift, (1 << width) - 1
+
+    def _convert_from_decimal(
+        self, num: float, desc: ModbusEntityDescription
+    ) -> list[int]:
+        """Convert from a decimal to registers"""
+        if desc.conv_bits or desc.conv_shift_bits:
+            raise NotSupportedError(
+                "Bit fields must be written with merge_into_registers"
+            )
         if desc.conv_sum_scale:
             raise NotSupportedError("Setting of scaled sums is not supported")
 
         registers: list[int] = self.client.convert_to_registers(
-            int(round(num)),
+            self._descale(num, desc),
             data_type=self._get_number_data_type(desc),
         )
         return registers
+
+    def merge_into_registers(
+        self,
+        desc: ModbusEntityDescription,
+        value: float,
+        current_registers: list[int],
+    ) -> list[int]:
+        """Merge a bit-field value into the register(s) currently on the device.
+
+        Modbus cannot write individual bits of a holding register, so writing a
+        field declared with `bits` / `shift_bits` means reading the whole
+        register, replacing just that field, and writing it back. The caller is
+        responsible for doing the read and the write under the client lock so
+        the pair is atomic.
+
+        `_swap_registers` is its own inverse for every supported swap type, so
+        the same call un-swaps on the way in and re-swaps on the way out.
+        """
+        if desc.conv_sum_scale:
+            raise NotSupportedError("Setting of scaled sums is not supported")
+
+        data_type = self._get_number_data_type(desc)
+        raw = self.client.convert_from_registers(
+            self._swap_registers(current_registers, desc), data_type=data_type
+        )
+        if not isinstance(raw, int):
+            raise InvalidDataTypeError(
+                f"Invalid data type for bit field merge: {type(raw).__name__}"
+            )
+
+        shift, mask = self.field_geometry(desc)
+        field: int = self._descale(value, desc)
+        if not 0 <= field <= mask:
+            raise ValueError(
+                f"Value {value} maps to {field}, which does not fit the "
+                f"{mask.bit_length()}-bit field at shift {shift} of {desc.key}"
+            )
+
+        merged: int = (raw & ~(mask << shift)) | (field << shift)
+        _LOGGER.debug(
+            "Merging %s into %s: 0x%04X -> 0x%04X (mask 0x%X << %d)",
+            field,
+            desc.key,
+            raw,
+            merged,
+            mask,
+            shift,
+        )
+        return self._swap_registers(
+            self.client.convert_to_registers(merged, data_type=data_type), desc
+        )
 
     def convert_from_response(
         self, desc: ModbusEntityDescription, response: ModbusPDU
