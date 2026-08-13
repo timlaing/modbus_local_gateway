@@ -104,7 +104,11 @@ class ModbusEntityDescription(
             return False
         if not self._validate_scan_interval():
             return False
-        return self._validate_unavailable_values()
+if not self._validate_unavailable_values():
+            return False
+        if not self._validate_bitfield():
+            return False
+        return True
 
     def _validate_unavailable_values(self) -> bool:
         """`unavailable_values` must be a list of whole numbers.
@@ -122,6 +126,47 @@ class ModbusEntityDescription(
                 "Unable to create entity for %s: %s must be a list of integers",
                 self.key,
                 CONV_UNAVAILABLE_VALUES,
+            )
+            return False
+        return True
+
+    def _validate_bitfield(self) -> bool:
+        """Check constraints for writable bit fields.
+
+        Writing a `bits` / `shift_bits` field is a read-modify-write, which
+        merges the field into the register currently on the device. That
+        arithmetic assumes an unsigned value and a single register span.
+
+        Deliberately limited to the writable control types: applying it to
+        sensors would stop already-working entities from being created.
+        """
+        if not (self.conv_bits or self.conv_shift_bits):
+            return True
+        if self.control_type not in (
+            ControlType.NUMBER,
+            ControlType.SWITCH,
+            ControlType.SELECT,
+        ):
+            return True
+
+        if self.is_signed:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be combined with "
+                "%s or %s on a writable entity",
+                self.key,
+                IS_SIGNED,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
+            )
+            return False
+        if self.conv_sum_scale:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be combined with "
+                "%s or %s on a writable entity",
+                self.key,
+                CONV_SUM_SCALE,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
             )
             return False
         return True

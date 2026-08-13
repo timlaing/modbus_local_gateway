@@ -32,14 +32,15 @@ read_write_word:
     name: Read-Write Entity
     address: 1
 
-  entity_invalid_bits:
-    name: Entity Invalid Bits
+  entity_bitfield_switch:
+    name: Entity Bitfield Switch
     address: 2
     control: switch
     bits: 1
+    shift_bits: 4
 
-  entity_invalid_shift:
-    name: Entity Invalid Shift
+  entity_shifted_switch:
+    name: Entity Shifted Switch
     address: 3
     control: switch
     shift_bits: 1
@@ -78,9 +79,17 @@ read_only_boolean:
         device = ModbusDeviceInfo("test.yaml")
 
         entities = device.entity_descriptions
-        assert len(entities) == 5
+        assert len(entities) == 7
         assert device.model == "Model"
         assert device.manufacturer == "Manufacturer"
+        # A switch on a bit field is valid: writing it is a read-modify-write.
+        assert any(
+            e.key == "entity_bitfield_switch"
+            and e.conv_bits == 1
+            and e.conv_shift_bits == 4
+            for e in entities
+        )
+        assert any(e.key == "entity_shifted_switch" for e in entities)
         assert any(
             e.key == "entity_rw" and e.data_type == ModbusDataType.HOLDING_REGISTER
             for e in entities
