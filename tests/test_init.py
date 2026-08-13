@@ -1,7 +1,7 @@
 """Sensor tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import (
@@ -57,8 +57,13 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
 
 @pytest.mark.asyncio
 async def test_async_unload_entry(hass: HomeAssistant) -> None:
-    """Test the unload entry function."""
-    hass.data = {"modbus_local_gateway": {"test-localhost:123:1": "coordinator"}}  # type: ignore[assignment]
+    """Unloading the last entry on a gateway must close its client.
+
+    Leaving it open keeps the socket - and pymodbus' retries - alive after the
+    entry is gone, so a disabled entry carries on talking to the device.
+    """
+    coordinator = MagicMock()
+    hass.data = {"modbus_local_gateway": {"test-localhost:123:1": coordinator}}  # type: ignore[assignment]
 
     mock_config_entry = MockConfigEntry(
         domain=DOMAIN,
@@ -76,8 +81,57 @@ async def test_async_unload_entry(hass: HomeAssistant) -> None:
         patch.object(
             hass.config_entries, "async_unload_platforms", AsyncMock()
         ) as unload_patch,
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusTcpClientGateway.close_client_connection"
+        ) as close_patch,
     ):
         result: bool = await async_unload_entry(hass, mock_config_entry)
         assert result is True
         unload_patch.assert_awaited_once()
-        assert "localhost:123:1" not in hass.data["modbus_local_gateway"]
+        assert "test-localhost:123:1" not in hass.data["modbus_local_gateway"]
+        close_patch.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_unload_entry_keeps_shared_client(hass: HomeAssistant) -> None:
+    """A client shared with another entry on the same gateway must stay open.
+
+    One client is cached per host/port/framer, so two entries differing only by
+    slave id share it. Closing it on the first unload would kill the second.
+    """
+    shared_client = MagicMock()
+    leaving = MagicMock()
+    leaving.client = shared_client
+    staying = MagicMock()
+    staying.client = shared_client
+    hass.data = {  # type: ignore[assignment]
+        "modbus_local_gateway": {
+            "test-localhost:123:1": leaving,
+            "test-localhost:123:2": staying,
+        }
+    }
+
+    mock_config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "host": "localhost",
+            "port": 123,
+            CONF_DEVICE_ID: 1,
+            "prefix": "test",
+            "filename": "test.yaml",
+            "name": "simple config",
+        },
+    )
+
+    with (
+        patch.object(hass.config_entries, "async_unload_platforms", AsyncMock()),
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusTcpClientGateway.close_client_connection"
+        ) as close_patch,
+    ):
+        assert await async_unload_entry(hass, mock_config_entry) is True
+        assert "test-localhost:123:1" not in hass.data["modbus_local_gateway"]
+        assert "test-localhost:123:2" in hass.data["modbus_local_gateway"]
+        close_patch.assert_not_called()
