@@ -125,21 +125,24 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     async def _custom_write_registers(
         self, address: int, values: List[int], device_id: int
-    ) -> None:
+    ) -> ModbusPDU | None:
         """Write values to Modbus registers. Try write_registers first, and
-        fall back to individual write_register calls if it fails."""
+        fall back to individual write_register calls if it fails.
+
+        Returns the last PDU received so the caller can detect an error
+        response; None only when there was nothing to write.
+        """
         if not values:
             _LOGGER.debug("No values to write, skipping.")
-            return
+            return None
 
         if len(values) == 1:
-            await self._write_single_register(address, values[0], device_id)
-        else:
-            await self._write_multiple_registers(address, values, device_id)
+            return await self._write_single_register(address, values[0], device_id)
+        return await self._write_multiple_registers(address, values, device_id)
 
     async def _write_single_register(
         self, address: int, value: int, device_id: int
-    ) -> None:
+    ) -> ModbusPDU:
         """Write a single value to a Modbus register."""
         _LOGGER.debug(
             "Writing single value %d to register at address %d, device_id %d",
@@ -161,10 +164,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             )
         else:
             _LOGGER.debug("Writing successful")
+        return result
 
     async def _write_multiple_registers(
         self, address: int, values: List[int], device_id: int
-    ) -> None:
+    ) -> ModbusPDU:
         """Write multiple values to Modbus registers."""
         _LOGGER.debug(
             "Attempting to write multiple values %s starting at address %d, "
@@ -184,14 +188,21 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 "Falling back to old method (individual write_register calls).",
                 result,
             )
-            await self._write_registers_individually(address, values, device_id)
-        else:
-            _LOGGER.debug("Writing multiple values using write_registers successful")
+            fallback: ModbusPDU | None = await self._write_registers_individually(
+                address, values, device_id
+            )
+            return fallback if fallback is not None else result
+        _LOGGER.debug("Writing multiple values using write_registers successful")
+        return result
 
     async def _write_registers_individually(
         self, address: int, values: List[int], device_id: int
-    ) -> None:
-        """Fallback method to write multiple values to Modbus registers individually."""
+    ) -> ModbusPDU | None:
+        """Fallback method to write multiple values to Modbus registers individually.
+
+        Returns the first error PDU encountered, or the last successful one.
+        """
+        result: ModbusPDU | None = None
         for i, value in enumerate(values):
             current_address = address + i
             _LOGGER.debug(
@@ -200,7 +211,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 current_address,
                 device_id,
             )
-            result: ModbusPDU = await self.write_register(
+            result = await self.write_register(
                 address=current_address, value=value, device_id=device_id
             )
             if result.isError():
@@ -210,8 +221,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     current_address,
                     result,
                 )
-                return
+                return result
         _LOGGER.debug("All individual writes successful using fallback")
+        return result
 
     async def write_data(self, entity: ModbusContext, value: Any) -> ModbusPDU | None:
         """Writes data to Holding Registers or Coils"""
@@ -273,6 +285,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     entity.desc.key,
                     entity.desc.data_type,
                     pdu,
+                )
+                raise ModbusException(
+                    f"Error writing data to {entity.desc.key} "
+                    f"({entity.desc.data_type}): {pdu}"
                 )
 
             return pdu
