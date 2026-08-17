@@ -212,10 +212,12 @@ class Conversion:
         return int(round(num))
 
     def field_geometry(self, desc: ModbusEntityDescription) -> tuple[int, int]:
-        """Return (shift, mask) for a bit field.
+        """Return (shift, mask) for the bit field described by `desc`.
 
-        When `bits` is omitted the field is taken to run from `shift_bits` up to
-        the top of the register span, which matches how the read path behaves.
+        The geometry comes from `desc.conv_shift_bits` and `desc.conv_bits` -
+        the `shift_bits` and `bits` keys of a device YAML. With no `conv_bits`
+        the field runs from the shift to the top of the register span, which is
+        how the read path already treats it.
         """
         shift: int = desc.conv_shift_bits or 0
         width: int = desc.conv_bits or (16 * (desc.register_count or 1) - shift)
@@ -246,19 +248,20 @@ class Conversion:
     ) -> list[int]:
         """Merge a bit-field value into the register(s) currently on the device.
 
-        Modbus cannot write individual bits of a holding register, so writing a
-        field declared with `bits` / `shift_bits` means reading the whole
-        register, replacing just that field, and writing it back. The caller is
-        responsible for doing the read and the write under the client lock so
-        the pair is atomic.
+        Writing a field declared with `bits` / `shift_bits` means reading the
+        whole register, replacing that field and writing it back. FC 0x16 (Mask
+        Write Register) would do this on the device, but it is optional and
+        cannot span a multi-register field.
 
-        `_swap_registers` is its own inverse for every supported swap type, so
-        the same call un-swaps on the way in and re-swaps on the way out.
+        The caller must hold the client lock across the read and the write.
         """
         if desc.conv_sum_scale:
             raise NotSupportedError("Setting of scaled sums is not supported")
 
         data_type = self._get_number_data_type(desc)
+        # Same _swap_registers call is used here and on the return: it is its own
+        # inverse, so it un-swaps into native order here and re-swaps back into
+        # device order below.
         raw = self.client.convert_from_registers(
             self._swap_registers(current_registers, desc), data_type=data_type
         )

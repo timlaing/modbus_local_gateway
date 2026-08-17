@@ -216,16 +216,13 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     async def _read_current_registers(self, entity: ModbusContext) -> list[int]:
         """Read the register(s) backing a bit field, for a read-modify-write.
 
-        Must be called with the client lock held so the read and the following
-        write cannot be interleaved with a poll.
+        Must be called with the client lock held, so the read and the write it
+        feeds cannot be interleaved with a poll.
 
-        The whole span is read in a single transaction (`max_read_size` is the
-        field's own size) rather than honouring the device's `max_register_read`
-        chunking: a field split across two reads could tear if the device
-        changed in between. `register_count` is at most 4 and the default chunk
-        is 8, so this only differs for a gateway that cannot read the field in
-        one go - and there it fails loudly and aborts the write, which is the
-        safe outcome.
+        The span is read in one transaction rather than in `max_register_read`
+        chunks: a field split across two reads could tear if the device changed
+        in between. A failed read raises, abandoning the write - merging onto a
+        guess would clear the field's neighbours.
         """
         response: ModbusPDU | None = await self.read_data(
             func=self.read_holding_registers,
@@ -267,10 +264,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             if entity.desc.data_type == ModbusDataType.HOLDING_REGISTER:
                 conversion = Conversion(type(self))
                 if entity.desc.conv_bits or entity.desc.conv_shift_bits:
-                    # Modbus has no bit write for holding registers: read the
-                    # whole register, replace just this field, write it back.
-                    # Still inside `self.lock`, so no poll or other write can
-                    # land between the read and the write.
+                    # No dependable device-side bit write (FC 0x16 is optional):
+                    # read the register, replace this field, write it back. Still
+                    # inside `self.lock`, so nothing lands in between.
                     registers = conversion.merge_into_registers(
                         entity.desc,
                         value,

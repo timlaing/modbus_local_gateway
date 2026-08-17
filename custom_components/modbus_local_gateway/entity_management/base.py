@@ -108,11 +108,10 @@ class ModbusEntityDescription(
     def _validate_bitfield(self) -> bool:
         """Check constraints for writable bit fields.
 
-        Writing a `bits` / `shift_bits` field is a read-modify-write, which
-        merges the field into the register currently on the device. That
-        arithmetic assumes an unsigned value and a single register span.
+        The merge assumes an unsigned value: a signed field has no well-defined
+        representation once masked into part of a register.
 
-        Deliberately limited to the writable control types: applying it to
+        Limited to the number, switch and select controls - applying it to
         sensors would stop already-working entities from being created.
         """
         if not (self.conv_bits or self.conv_shift_bits):

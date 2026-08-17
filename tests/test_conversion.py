@@ -717,7 +717,7 @@ def test_merge_single_bit(current: int, value: int, expected: int) -> None:
 
 
 def test_merge_low_byte_preserves_high_byte() -> None:
-    """The packed-zone case: writing zone1 must not zero zone2.
+    """Two 8-bit fields in one register: writing the low byte must not zero the high byte.
 
     A register holding 30 in the high byte and 6 in the low byte; writing 45
     to the low byte must leave the high byte at 30.
@@ -743,7 +743,7 @@ def test_merge_high_byte_preserves_low_byte() -> None:
 
 
 def test_merge_across_two_registers() -> None:
-    """A field spanning the 32-bit boundary of a two-register entity."""
+    """A field straddling the boundary between the two registers of a 32-bit entity."""
     conversion = Conversion(client=AsyncModbusTcpClient)
     desc = _number_desc(register_count=2, conv_bits=8, conv_shift_bits=12)
 
