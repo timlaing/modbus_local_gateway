@@ -282,10 +282,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         entities = [ctx for ctx in entities if ctx.desc.scan_interval is None]
         if not entities:
             # Every entity has its own scan_interval and polls on its own timer,
-            # so there is nothing for the shared refresh to fetch. That is not a
-            # failure: raising here would set last_update_success False and mark
-            # every entity unavailable, including the ones polling perfectly well
-            # on their own. Keep whatever those timers have already stored.
+            # so there is nothing for the shared refresh to fetch.
             _LOGGER.debug("No entities to refresh for %s", self.name)
             return self.data or {}
         data: dict[str, Any] = await self._update_device(entities=entities)
