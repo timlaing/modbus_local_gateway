@@ -219,8 +219,9 @@ class Conversion:
         the field runs from the shift to the top of the register span, which is
         how the read path already treats it.
         """
+        span: int = 16 * (desc.register_count or 1)
         shift: int = desc.conv_shift_bits or 0
-        width: int = desc.conv_bits or (16 * (desc.register_count or 1) - shift)
+        width: int = desc.conv_bits if desc.conv_bits is not None else span - shift
         return shift, (1 << width) - 1
 
     def _convert_from_decimal(
