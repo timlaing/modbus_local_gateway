@@ -166,6 +166,27 @@ For all entity definitions:
     - E.g., `sum_scale: [1, 10000]` for two registers starting at `address: 5` uses r1=5, r2=6, calculating r1 * 1 + r2 * 10000.
   - `shift_bits`: Bit shift right (integer).
   - `bits`: Bit mask length (integer).
+    - On a **writable** entity (`control: number`, `control: select` or `control: switch`),
+      `bits` and `shift_bits` make the entity address a *bit field*: the write becomes a
+      read-modify-write, so the other bits of the register keep their values. The read and the
+      write are issued under the client lock, so a poll cannot interleave between them.
+    - This lets several independent controls share one register. E.g. two switches in register 0,
+      one on bit 1 and one on bit 2, where toggling either leaves the other untouched:
+      ```yaml
+      heating:
+        address: 0
+        bits: 1
+        shift_bits: 1
+        control: switch
+      hot_water:
+        address: 0
+        bits: 1
+        shift_bits: 2
+        control: switch
+      ```
+    - `signed` and `sum_scale` are rejected on a *writable* bit field — neither has a meaningful
+      inverse when merging a value back into part of a register. They remain valid on read-only
+      entities.
   - `multiplier`: Scaling factor (float).
   - `offset`: Adds an offset (float).
 - **Display**:
