@@ -135,3 +135,44 @@ async def test_async_unload_entry_keeps_shared_client(hass: HomeAssistant) -> No
         assert "test-localhost:123:1" not in hass.data["modbus_local_gateway"]
         assert "test-localhost:123:2" in hass.data["modbus_local_gateway"]
         close_patch.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_async_unload_entry_keeps_state_when_platforms_fail(
+    hass: HomeAssistant,
+) -> None:
+    """A failed platform unload must leave the entry intact.
+
+    Entities are still loaded at that point, so closing the shared client would
+    strand them on a dead connection - and returning True would tell Home
+    Assistant the entry had gone.
+    """
+    coordinator = MagicMock()
+    hass.data = {"modbus_local_gateway": {"test-localhost:123:1": coordinator}}  # type: ignore[assignment]
+
+    mock_config_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "host": "localhost",
+            "port": 123,
+            CONF_DEVICE_ID: 1,
+            "prefix": "test",
+            "filename": "test.yaml",
+            "name": "simple config",
+        },
+    )
+
+    with (
+        patch.object(
+            hass.config_entries,
+            "async_unload_platforms",
+            AsyncMock(return_value=False),
+        ),
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusTcpClientGateway.close_client_connection"
+        ) as close_patch,
+    ):
+        assert await async_unload_entry(hass, mock_config_entry) is False
+        assert "test-localhost:123:1" in hass.data["modbus_local_gateway"]
+        close_patch.assert_not_called()

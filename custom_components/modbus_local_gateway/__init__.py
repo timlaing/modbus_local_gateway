@@ -91,7 +91,11 @@ async def async_setup_entry(
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        # Entities are still loaded. Closing the client below would pull the
+        # connection out from under them, so leave everything in place.
+        return False
+
     gateway_key: str = get_gateway_key(entry=entry, with_device=True)
     coordinator: ModbusCoordinator | None = hass.data[DOMAIN].pop(gateway_key, None)
 
