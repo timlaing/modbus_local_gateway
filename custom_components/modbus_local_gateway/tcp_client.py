@@ -213,6 +213,32 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 return
         _LOGGER.debug("All individual writes successful using fallback")
 
+    async def _read_current_registers(self, entity: ModbusContext) -> list[int]:
+        """Read the register(s) backing a bit field, for a read-modify-write.
+
+        Must be called with the client lock held, so the read and the write it
+        feeds cannot be interleaved with a poll.
+
+        The span is read in one transaction rather than in `max_register_read`
+        chunks: a field split across two reads could tear if the device changed
+        in between. A failed read raises, abandoning the write - merging onto a
+        guess would clear the field's neighbours.
+        """
+        response: ModbusPDU | None = await self.read_data(
+            func=self.read_holding_registers,
+            address=entity.desc.register_address,
+            count=entity.desc.register_count,
+            device_id=entity.device_id,
+            max_read_size=entity.desc.register_count,
+        )
+        if response is None or response.isError():
+            raise ModbusException(
+                "Unable to read current value of "
+                f"{entity.desc.key} at {entity.desc.register_address} - "
+                "aborting bit field write"
+            )
+        return response.registers
+
     async def write_data(self, entity: ModbusContext, value: Any) -> ModbusPDU | None:
         """Writes data to Holding Registers or Coils"""
         pdu: ModbusPDU | None = None
@@ -236,9 +262,18 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             )
 
             if entity.desc.data_type == ModbusDataType.HOLDING_REGISTER:
-                registers = Conversion(type(self)).convert_to_registers(
-                    entity.desc, value
-                )
+                conversion = Conversion(type(self))
+                if entity.desc.conv_bits or entity.desc.conv_shift_bits:
+                    # No dependable device-side bit write (FC 0x16 is optional):
+                    # read the register, replace this field, write it back. Still
+                    # inside `self.lock`, so nothing lands in between.
+                    registers = conversion.merge_into_registers(
+                        entity.desc,
+                        value,
+                        await self._read_current_registers(entity),
+                    )
+                else:
+                    registers = conversion.convert_to_registers(entity.desc, value)
                 _LOGGER.debug(
                     "Raw value after conversion to registers: %s (type: %s)",
                     registers,

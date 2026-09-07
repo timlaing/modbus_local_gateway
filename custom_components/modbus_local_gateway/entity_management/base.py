@@ -101,6 +101,80 @@ class ModbusEntityDescription(
             return False
         if not self._validate_scan_interval():
             return False
+        if not self._validate_bitfield():
+            return False
+        return True
+
+    def _validate_bitfield(self) -> bool:
+        """Check constraints for writable bit fields.
+
+        The merge assumes an unsigned value: a signed field has no well-defined
+        representation once masked into part of a register.
+
+        The geometry must also fit the register span, and a coil is already a
+        single bit so the options mean nothing there.
+
+        Limited to the number, switch and select controls - applying it to
+        sensors would stop already-working entities from being created.
+        """
+        if self.conv_bits is None and self.conv_shift_bits is None:
+            return True
+        if self.control_type not in (
+            ControlType.NUMBER,
+            ControlType.SWITCH,
+            ControlType.SELECT,
+        ):
+            return True
+
+        if self.is_signed:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be combined with "
+                "%s or %s on a writable entity",
+                self.key,
+                IS_SIGNED,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
+            )
+            return False
+        if self.conv_sum_scale:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be combined with "
+                "%s or %s on a writable entity",
+                self.key,
+                CONV_SUM_SCALE,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
+            )
+            return False
+        return self._validate_bitfield_geometry()
+
+    def _validate_bitfield_geometry(self) -> bool:
+        """The field must be a real run of bits inside the registers it names."""
+        if self.data_type == ModbusDataType.COIL:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s and %s have no meaning on a "
+                "coil, which is already a single bit",
+                self.key,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
+            )
+            return False
+
+        span: int = 16 * (self.register_count or 1)
+        shift: int = self.conv_shift_bits or 0
+        width: int = self.conv_bits if self.conv_bits is not None else span - shift
+        if shift < 0 or width <= 0 or shift + width > span:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s %s / %s %s does not fit the "
+                "%s bits it addresses",
+                self.key,
+                CONV_SHIFT_BITS,
+                shift,
+                CONV_BITS,
+                width,
+                span,
+            )
+            return False
         return True
 
     def _validate_scan_interval(self) -> bool:
