@@ -1,0 +1,718 @@
+# author: ndrinta
+# date: 19-Aug-2026
+# version: 1.0.4
+# notes: >
+# - Should be compatible with the entire LAE lineup (certainly the newer AC2-27).
+# - AI was used to generate some sensors more efficiently.
+# - Can't make the following bit based configuration registers work in write mode:
+#   "Cfg_1" (Address 231) and "Cfg_2" (Address 239)
+#   I'm looking for a solution (https://github.com/timlaing/modbus_local_gateway/issues/273)
+
+# Pinout Data I/O Port (RJ45) on device:
+# A:    3
+# B:    4
+# GND:  8
+
+device:
+  manufacturer: LAE
+  model: AC1-27
+
+read_write_word:
+  # Measured Temperature
+  T1:
+    address: 0
+    name: Air Probe (T1)
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    size: 1
+    signed: true
+    scan_interval: 5
+    device_class: temperature
+    state_class: measurement
+
+  # Status Flags (Register 100)
+  status_flag_100_0:
+    address: 100
+    name: "Alarm"
+    bits: 1
+    shift_bits: 0
+    scan_interval: 5
+    device_class: problem
+    control: binary_sensor
+    entity_category: diagnostic
+
+  # Alarm Flags (Register 101)
+  alarm_flag_101_0:
+    address: 101
+    name: "Probe failure (T1)"
+    bits: 1
+    shift_bits: 0
+    device_class: problem
+    control: binary_sensor
+    entity_category: diagnostic
+  alarm_flag_101_1:
+    address: 101
+    name: "High Temperature Alarm"
+    bits: 1
+    shift_bits: 1
+    device_class: problem
+    control: binary_sensor
+    entity_category: diagnostic
+  alarm_flag_101_2:
+    address: 101
+    name: "Low Temperature Alarm"
+    bits: 1
+    shift_bits: 2
+    device_class: problem
+    control: binary_sensor
+    entity_category: diagnostic
+
+  # Output Flags (Register 102)
+  output_flag_102_0:
+    address: 102
+    name: "OUT1 Status"
+    bits: 1
+    shift_bits: 0
+    scan_interval: 5
+    device_class: power
+    control: binary_sensor
+  output_flag_102_1:
+    address: 102
+    name: "OUT2 Status"
+    bits: 1
+    shift_bits: 1
+    device_class: power
+    control: binary_sensor
+
+  # Parameter Configuration (200 - 237)
+  SCL:
+    address: 200
+    name: "Reading scale (SCL)"
+    scan_interval: 600
+    control: select
+    options:
+      0: "1°C"
+      1: "2°C"
+      2: "°F"
+    entity_category: config
+
+  SPL:
+    address: 201
+    name: "Minimum temperature set point (SPL)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -19.9
+      max: 99.9
+      step: 0.1
+      mode: box
+    device_class: temperature
+    entity_category: config
+
+  SPH:
+    address: 202
+    name: "Maximum temperature set point (SPH)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -19.9
+      max: 99.9
+      step: 0.1
+      mode: box
+    device_class: temperature
+    entity_category: config
+
+  SP1:
+    address: 203
+    name: "Set Point Ch1 (1SP)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    control: number
+    number:
+      min: -19.9
+      max: 99.9
+      step: 0.1
+      mode: box
+    scan_interval: 5
+    device_class: temperature
+    state_class: measurement
+
+  1HY:
+    address: 204
+    name: "Change-over hysteresis channel 1 (1HY)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0.0
+      max: 19.9
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  1T0:
+    address: 205
+    name: "Minimum time in OFF channel 1 (1T0)"
+    unit_of_measurement: "min"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 30
+      step: 1
+      mode: box
+    entity_category: config
+
+  1T1:
+    address: 206
+    name: "Minimum time in ON channel 1 (1T1)"
+    unit_of_measurement: "min"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 30
+      step: 1
+      mode: box
+    entity_category: config
+
+  1PB:
+    address: 207
+    name: "Proportional band channel 1 (1PB)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0.0
+      max: 19.9
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  1IT:
+    address: 208
+    name: "Integral action time channel 1 (1IT)"
+    unit_of_measurement: "s"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 999
+      step: 1
+      mode: box
+    entity_category: config
+
+  1DT:
+    address: 209
+    name: "Derivative action time channel 1 (1DT)"
+    unit_of_measurement: "s"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 999
+      step: 1
+      mode: box
+    entity_category: config
+
+  1AR:
+    address: 210
+    name: "Reset of integral action referred to Pb1 (1AR)"
+    unit_of_measurement: "%"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 100
+      step: 1
+      mode: box
+    entity_category: config
+
+  1CT:
+    address: 211
+    name: "Cycle time channel 1 (1CT)"
+    unit_of_measurement: "s"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 1
+      max: 255
+      step: 1
+      mode: box
+    entity_category: config
+
+  OAU:
+    address: 212
+    name: "Control mode for channel 2 (OAU)"
+    scan_interval: 600
+    control: select
+    options:
+      25: "NON"
+      26: "THR"
+      27: "AL0"
+      28: "AL1"
+    entity_category: config
+
+  SP2:
+    address: 213
+    name: "Set Point Ch2 (2SP)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 60
+    control: number
+    number:
+      min: -19.9
+      max: 99.9
+      step: 0.1
+      mode: box
+    device_class: temperature
+    state_class: measurement
+
+  2DF:
+    address: 214
+    name: "Differential setpoint referred to 1SP (2DF)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -19.9
+      max: 19.9
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  2HY:
+    address: 215
+    name: "Change-over hysteresis channel 2 (2HY)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0.0
+      max: 19.9
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  2T0:
+    address: 216
+    name: "Minimum time in OFF channel 2 (2T0)"
+    unit_of_measurement: "min"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 30
+      step: 1
+      mode: box
+    entity_category: config
+
+  2T1:
+    address: 217
+    name: "Minimum time in ON channel 2 (2T1)"
+    unit_of_measurement: "min"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 30
+      step: 1
+      mode: box
+    entity_category: config
+
+  ATM:
+    address: 218
+    name: "Alarm threshold management (ATM)"
+    scan_interval: 600
+    control: select
+    options:
+      22: "NON"
+      23: "ABS"
+      24: "REL"
+    entity_category: config
+
+  ALA:
+    address: 219
+    name: "Low temperature alarm ABS (ALA)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -50.0
+      max: 120.0
+      step: 0.1
+      mode: box
+    device_class: temperature
+    entity_category: config
+
+  AHA:
+    address: 220
+    name: "High temperature alarm ABS (AHA)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -50.0
+      max: 120.0
+      step: 0.1
+      mode: box
+    device_class: temperature
+    entity_category: config
+
+  ALR:
+    address: 221
+    name: "Low temperature alarm differential (ALR)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -12.0
+      max: 0.0
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  AHR:
+    address: 222
+    name: "High temperature alarm differential (AHR)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: 0.0
+      max: 12.0
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  ATD:
+    address: 223
+    name: "Temperature alarm delay (ATD)"
+    unit_of_measurement: "min"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 120
+      step: 1
+      mode: box
+    entity_category: config
+
+  INP:
+    address: 224
+    name: "Probe type selection (INP)"
+    icon: mdi:thermometer-probe
+    scan_interval: 600
+    control: select
+    options:
+      3: "T1"
+      4: "T2"
+      5: "PT100"
+      6: "ST1"
+      7: "SN4"
+      8: "0mA"
+      9: "4mA"
+      10: "0-1V"
+    entity_category: config
+
+  RLO:
+    address: 225
+    name: "Probe Low reference (RLO)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -19.9
+      max: 99.9
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  RHI:
+    address: 226
+    name: "Probe High reference (RHI)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -19.9
+      max: 99.9
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  OS1:
+    address: 227
+    name: "Probe 1 offset (OS1)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    signed: true
+    scan_interval: 600
+    control: number
+    number:
+      min: -12.0
+      max: 12.0
+      step: 0.1
+      mode: box
+    entity_category: config
+
+  TLD:
+    address: 228
+    name: "Logging temp. delay (TLD)"
+    unit_of_measurement: "min"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 1
+      max: 30
+      step: 1
+      mode: box
+    entity_category: config
+
+  SIM:
+    address: 229
+    name: "Display slowdown (SIM)"
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 0
+      max: 100
+      step: 1
+      mode: box
+    entity_category: config
+
+  ADR:
+    address: 230
+    name: "Unit address (ADR)"
+    icon: mdi:identifier
+    precision: 0
+    signed: false
+    scan_interval: 600
+    control: number
+    number:
+      min: 1
+      max: 255
+      step: 1
+      mode: box
+    entity_category: config
+
+  # Configuration Register "Cfg_1" (Address 231)
+  cfg1_bit0:
+    address: 231
+    name: "Control mode channel 1 (1CM)"
+    bits: 1
+    shift_bits: 0
+    scan_interval: 600
+    control: select
+    options:
+      0: "HY"
+      1: "PID"
+    entity_category: config
+
+  cfg1_bit1:
+    address: 231
+    name: "Channel 1 mode (1CH)"
+    bits: 1
+    shift_bits: 1
+    scan_interval: 600
+    control: select
+    options:
+      0: "Cool"
+      1: "Heat"
+    entity_category: config
+
+  cfg1_bit2:
+    address: 231
+    name: "Channel 2 mode (2CH)"
+    bits: 1
+    shift_bits: 2
+    scan_interval: 600
+    control: select
+    options:
+      0: "Cool"
+      1: "Heat"
+    entity_category: config
+
+  cfg1_bit3:
+    address: 231
+    name: "Set point 2 mode (2SM)"
+    bits: 1
+    shift_bits: 3
+    scan_interval: 600
+    control: select
+    options:
+      0: "Absolute"
+      1: "Relative"
+    entity_category: config
+
+  cfg1_bit4:
+    address: 231
+    name: "Output 1 probe failure state (1PF)"
+    bits: 1
+    shift_bits: 4
+    scan_interval: 600
+    control: select
+    options:
+      0: "OFF"
+      1: "ON"
+    entity_category: config
+
+  cfg1_bit5:
+    address: 231
+    name: "Output 2 probe failure state (2PF)"
+    bits: 1
+    shift_bits: 5
+    scan_interval: 600
+    control: select
+    options:
+      0: "OFF"
+      1: "ON"
+    entity_category: config
+
+  cfg1_bit6:
+    address: 231
+    name: "Device Status"
+    bits: 1
+    shift_bits: 6
+    control: select
+    options:
+      0: "Operational (ON)"
+      1: "Disabled (OFF)"
+
+  cfg1_bit7:
+    address: 231
+    name: "Standby button enable (SB)"
+    bits: 1
+    shift_bits: 7
+    scan_interval: 600
+    control: select
+    options:
+      0: "Disabled"
+      1: "Enabled"
+    entity_category: config
+
+  # Configuration Register "Cfg_2" (Address 239)
+  # Exception: Because there's a single bit in this register, to control these
+  # registers, we operate on the full 16-bit register value using integer option
+  # keys representing the combined bit states.
+  cfg2_int16:
+    address: 239
+    name: "Lock Keyboard"
+    icon: mdi:account-lock
+    #bits: 1
+    #shift_bits: 0
+    control: select
+    options:
+      0: "Unlocked"
+      1: "Locked"
+
+  THI:
+    address: 236
+    name: "Max. stored temp. (THI)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    size: 1
+    signed: true
+    scan_interval: 600
+    device_class: temperature
+    state_class: measurement
+    entity_category: diagnostic
+
+  TLO:
+    address: 237
+    name: "Min. stored temp. (TLO)"
+    unit_of_measurement: "°C"
+    precision: 1
+    multiplier: 0.1
+    size: 1
+    signed: true
+    scan_interval: 600
+    device_class: temperature
+    state_class: measurement
+    entity_category: diagnostic
+
+  MDL:
+    address: 238
+    name: "Device Model (MDL)"
+    icon: mdi:information
+    scan_interval: 600
+    entity_category: diagnostic
+    map:
+      0: "A"
+      1: "I"
+      2: "J"
+      3: "P"
+      4: "T"
+
+read_only_word:
+
+read_write_boolean:
+
+read_only_boolean:
