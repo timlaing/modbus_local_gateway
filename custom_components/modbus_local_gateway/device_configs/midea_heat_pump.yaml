@@ -51,28 +51,33 @@ read_write_word:
       max: 75
       step: 1
 
-  # Registers 7, 8 and 9 share one value set: 0 = normal, 1 = forced on, 2 = forced off.
-  # These switches write only 1 and 0 - `off` hands control back to the unit rather than
-  # forbidding the function outright.
+  # Registers 7, 8 and 9 share one value set: 0 = Invalid (no command), 1 = forced on,
+  # 2 = forced off. `off` must write 2. Writing 0 is a silent no-op - accepted with no Modbus
+  # error while the register keeps its previous value - so the switch appears to do nothing.
+  # After a 2 the unit self-clears the register to 0, so `on: 1` still reads back correctly.
+  #
+  # Fast DHW heats the tank to the DHW upper limit (register 207), not to the DHW setpoint
+  # (register 4).
   fast_dhw:
     name: Fast DHW
     address: 7
     control: switch
     switch:
       'on': 1
-      'off': 0
+      'off': 2
     scan_interval: 10
 
   # Engages the electric backup heater. It is a REQUEST: the unit honours it only while a
   # heat demand is active, so with the unit idle it reads back 0 with no Modbus error.
   # Confirm real engagement with the ibh1 load bit (129.0), not this switch.
+  # `off` writes 2, for the same reason as register 7 above.
   forced_ibh1:
     name: Force IBH1
     address: 9
     control: switch
     switch:
       'on': 1
-      'off': 0
+      'off': 2
     scan_interval: 10
 
   curve_water_temp_upper:
@@ -584,6 +589,9 @@ read_write_word:
     state_class: measurement
     scan_interval: 30
 
+  # Reads 255 (0x00FF) when the climate curve is OFF - an invalid marker, not a temperature
+  # (a transient 0 also occurs). With `state_class` set these enter long-term statistics, so
+  # range-guard anything that consumes it.
   curve_calculated_water_setpoint:
     name: Curve Calculated Water Setpoint
     address: 136
@@ -718,6 +726,9 @@ read_write_word:
     device_class: running
     scan_interval: 30
 
+  # This bit did not track faults on the reference unit: it stayed off through repeated E8
+  # (water flow failure) episodes that register 124 reported correctly. Use register 124 for
+  # fault detection and do not build alerting on this bit.
   alarm:
     name: Alarm
     address: 129
@@ -948,6 +959,7 @@ read_write_word:
     entity_category: diagnostic
     entity_registry_enabled_default: false
 
+  # Same 255-when-curve-off caveat as register 136.
   curve_calculated_water_setpoint_zone2:
     name: Curve Calculated Water Setpoint Zone2
     address: 137
