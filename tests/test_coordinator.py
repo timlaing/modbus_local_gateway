@@ -7,8 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from custom_components.modbus_local_gateway.context import ModbusContext
+from custom_components.modbus_local_gateway.conversion import ValueUnavailable
 from custom_components.modbus_local_gateway.coordinator import (
     ModbusCoordinator,
     ModbusCoordinatorEntity,
@@ -658,3 +660,94 @@ async def test_async_update_entity(mock_config_entry: ConfigEntry) -> None:
     coordinator._update_device.return_value = {"test2": "value3"}
     await coordinator.async_update_entity(ctx2)
     assert coordinator.data == {"test1": "value1", "test2": "value3"}
+
+
+def _coordinator(mock_config_entry: ConfigEntry) -> ModbusCoordinator:
+    """Build a coordinator with everything around it mocked."""
+    return ModbusCoordinator(
+        hass=MagicMock(),
+        config_entry=mock_config_entry,
+        gateway_device=MagicMock(),
+        client=MagicMock(),
+        gateway="Test",
+    )
+
+
+def test_is_unavailable_defaults_false(mock_config_entry: ConfigEntry) -> None:
+    """An entity nothing has been said about is not unavailable."""
+    coordinator = _coordinator(mock_config_entry)
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test_key",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+
+    assert coordinator.is_unavailable(ctx) is False
+
+
+@pytest.mark.asyncio
+async def test_unavailable_value_marks_entity_and_clears_again(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """A rejected read marks the entity unavailable; a good read clears it.
+
+    The key is also kept OUT of `data`, so every platform's existing
+    `if value is not None` guard skips the update rather than publishing the
+    sentinel as if it were a reading.
+    """
+    coordinator = _coordinator(mock_config_entry)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test_key",
+        conv_unavailable_values=[255],
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    ctx = ModbusContext(1, desc)
+
+    future = asyncio.Future()
+    future.set_result({"test_key": MagicMock()})
+    coordinator.client.update_device.return_value = future
+
+    with patch(
+        "custom_components.modbus_local_gateway.conversion.Conversion.convert_from_response",
+        side_effect=ValueUnavailable(desc, 255, "declared in `unavailable_values`"),
+    ):
+        data = await coordinator._update_device([ctx])
+    assert coordinator.is_unavailable(ctx) is True
+    assert "test_key" not in data
+
+    future = asyncio.Future()
+    future.set_result({"test_key": MagicMock()})
+    coordinator.client.update_device.return_value = future
+    with patch(
+        "custom_components.modbus_local_gateway.conversion.Conversion.convert_from_response",
+        return_value=42,
+    ):
+        data = await coordinator._update_device([ctx])
+    assert coordinator.is_unavailable(ctx) is False
+    assert data["test_key"] == 42
+
+
+def test_entity_unavailable_for_declared_value(mock_config_entry: ConfigEntry) -> None:
+    """The availability override covers every platform from the shared base."""
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.last_update_success = True
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test_key",
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    ctx = ModbusContext(1, desc)
+    entity = ModbusCoordinatorEntity(coordinator, ctx, DeviceInfo(identifiers=set()))
+    entity._attr_available = True
+
+    assert entity.available is True
+
+    coordinator._unavailable_keys.add("test_key")
+    assert entity.available is False
+
+    coordinator._unavailable_keys.discard("test_key")
+    assert entity.available is True
