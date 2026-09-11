@@ -387,6 +387,31 @@ async def test_unavailable_values_matches_after_masking() -> None:
 
 
 @pytest.mark.asyncio
+async def test_unavailable_values_on_a_float_entity() -> None:
+    """`is_float` is a separate conversion path and honours the key too."""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        is_float=True,
+        register_count=2,
+        conv_unavailable_values=[0],
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+
+    with pytest.raises(ValueUnavailable):
+        conversion.convert_from_response(
+            response=ReadInputRegistersResponse(
+                registers=client.convert_to_registers(
+                    0.0, data_type=client.DATATYPE.FLOAT32
+                )
+            ),
+            desc=desc,
+        )
+
+
+@pytest.mark.asyncio
 async def test_enum_bitshift() -> None:
     """Test enum conversion"""
     client = AsyncModbusTcpClient

@@ -130,6 +130,7 @@ class Conversion:
             data_type=self._get_float_data_type(desc),
         )
         if isinstance(value, float):
+            self._reject_unavailable_value(value, desc)
             value = self._apply_conversion_operations(value, desc)
             return value
         raise InvalidDataTypeError()

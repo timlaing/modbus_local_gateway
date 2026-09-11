@@ -291,18 +291,20 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             self.async_contexts(), key=lambda x: x.device_id
         )
         entities = [ctx for ctx in entities if ctx.desc.scan_interval is None]
-        data: dict[str, Any] = await self._update_device(entities=entities)
-        if data:
-            return data
-        raise UpdateFailed()
+        return await self._update_device(entities=entities)
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
-        """Update data for a list of entities"""
+        """Update data for a list of entities.
+
+        Raises `UpdateFailed` when the poll was unsound - the device did not
+        reply, or a conversion failed unexpectedly and left nothing usable.
+        """
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
         resp: dict[str, ModbusPDU] = await self.client.update_device(
             entities, max_read_size=self._max_read_size
         )
         data: dict[str, Any] = {}
+        failed = False
         conversion: Conversion = Conversion(type(self.client))
 
         for entity in entities:
@@ -329,6 +331,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                     )
                     self._unavailable_keys.add(entity.desc.key)
                 except Exception:  # pylint: disable=broad-exception-caught
+                    failed = True
                     _LOGGER.debug(
                         "Data not available for key: %s (%d)",
                         entity.desc.key,
@@ -336,11 +339,16 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                         exc_info=True,
                     )
 
+        if not data and (not resp or failed):
+            raise UpdateFailed()
         return data
 
     async def async_update_entity(self, ctx: ModbusContext) -> None:
         """Update cached data for a specific entity."""
-        data: dict[str, Any] = await self._update_device(entities=[ctx])
+        try:
+            data = await self._update_device(entities=[ctx])
+        except UpdateFailed:
+            return None
         if data:
             if self.data is None:
                 self.data = {}

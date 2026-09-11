@@ -689,6 +689,29 @@ def test_is_unavailable_defaults_false(mock_config_entry: ConfigEntry) -> None:
 
 
 @pytest.mark.asyncio
+async def test_async_update_entity_swallows_a_failed_poll(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """A self-polling entity keeps its cached value when its own read fails."""
+    coordinator = _coordinator(mock_config_entry)
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test_key",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    coordinator.data = {"test_key": 42}
+
+    future = asyncio.Future()
+    future.set_result({})  # the device said nothing at all
+    coordinator.client.update_device.return_value = future
+
+    assert await coordinator.async_update_entity(ctx) is None
+    assert coordinator.data == {"test_key": 42}
+
+@pytest.mark.asyncio
 async def test_unavailable_value_marks_entity_and_clears_again(
     mock_config_entry: ConfigEntry,
 ) -> None:
@@ -729,6 +752,40 @@ async def test_unavailable_value_marks_entity_and_clears_again(
         data = await coordinator._update_device([ctx])
     assert coordinator.is_unavailable(ctx) is False
     assert data["test_key"] == 42
+
+
+@pytest.mark.asyncio
+async def test_all_unavailable_is_not_a_failed_refresh(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """Every value being a declared sentinel is a sound poll, not a failure."""
+    coordinator = _coordinator(mock_config_entry)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test_key",
+        conv_unavailable_values=[255],
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    ctx = ModbusContext(1, desc)
+
+    future = asyncio.Future()
+    future.set_result({"test_key": MagicMock()})
+    coordinator.client.update_device.return_value = future
+
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.coordinator"
+            ".ModbusCoordinator.async_contexts",
+            return_value=[ctx],
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.conversion"
+            ".Conversion.convert_from_response",
+            side_effect=ValueUnavailable(desc, 255, "declared in `unavailable_values`"),
+        ),
+    ):
+        assert await coordinator.async_update() == {}
+    assert coordinator.is_unavailable(ctx) is True
 
 
 def test_entity_unavailable_for_declared_value(mock_config_entry: ConfigEntry) -> None:
