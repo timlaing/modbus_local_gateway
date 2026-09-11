@@ -170,7 +170,8 @@ For all entity definitions:
   - `offset`: Adds an offset (float).
 - **Display**:
   - `precision`: Decimal places (integer). Only valid for `sensor` or `control: number` entities.
-  - `map`: Enum mapping.
+  - `map`: Enum mapping. A value with no entry falls back to the raw number, so the state is
+    either a label or a bare number.
     - E.g.
       ```yaml
       map:
