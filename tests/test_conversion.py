@@ -9,6 +9,7 @@ from pymodbus.pdu.register_message import ReadInputRegistersResponse
 from custom_components.modbus_local_gateway.conversion import (
     Conversion,
     InvalidDataTypeError,
+    ValueUnavailable,
 )
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusDataType,
@@ -301,6 +302,113 @@ async def test_enum_missing() -> None:
     )
 
     assert value is None
+
+
+@pytest.mark.parametrize(
+    ("raw", "unavailable", "expected"),
+    [
+        (255, [255], True),
+        (0, [255, 0], True),
+        (45, [255, 0], False),
+        (255, None, False),
+    ],
+)
+@pytest.mark.asyncio
+async def test_unavailable_values(
+    raw: int, unavailable: list[int] | None, expected: bool
+) -> None:
+    """`unavailable_values` rejects the listed raw values and passes everything else."""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        conv_unavailable_values=unavailable,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    response = ReadInputRegistersResponse(
+        registers=client.convert_to_registers(raw, data_type=client.DATATYPE.UINT16)
+    )
+
+    if expected:
+        with pytest.raises(ValueUnavailable):
+            conversion.convert_from_response(response=response, desc=desc)
+    else:
+        assert conversion.convert_from_response(response=response, desc=desc) == raw
+
+
+@pytest.mark.asyncio
+async def test_unavailable_values_matches_before_multiplier() -> None:
+    """The match is against the raw register, not the scaled reading."""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        conv_unavailable_values=[255],
+        conv_multiplier=0.1,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+
+    with pytest.raises(ValueUnavailable):
+        conversion.convert_from_response(
+            response=ReadInputRegistersResponse(
+                registers=client.convert_to_registers(
+                    255, data_type=client.DATATYPE.UINT16
+                )
+            ),
+            desc=desc,
+        )
+
+
+@pytest.mark.asyncio
+async def test_unavailable_values_matches_after_masking() -> None:
+    """The match is against the masked field, not the whole register."""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        conv_bits=8,
+        conv_shift_bits=0,
+        conv_unavailable_values=[255],
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+
+    with pytest.raises(ValueUnavailable):
+        conversion.convert_from_response(
+            response=ReadInputRegistersResponse(
+                registers=client.convert_to_registers(
+                    (30 << 8) | 255, data_type=client.DATATYPE.UINT16
+                )
+            ),
+            desc=desc,
+        )
+
+
+@pytest.mark.asyncio
+async def test_unavailable_values_on_a_float_entity() -> None:
+    """`is_float` is a separate conversion path and honours the key too."""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        is_float=True,
+        register_count=2,
+        conv_unavailable_values=[0],
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+
+    with pytest.raises(ValueUnavailable):
+        conversion.convert_from_response(
+            response=ReadInputRegistersResponse(
+                registers=client.convert_to_registers(
+                    0.0, data_type=client.DATATYPE.FLOAT32
+                )
+            ),
+            desc=desc,
+        )
 
 
 @pytest.mark.asyncio

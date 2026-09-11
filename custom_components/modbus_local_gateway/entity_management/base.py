@@ -15,6 +15,7 @@ from homeassistant.helpers.entity import EntityDescription
 
 from .const import (
     CONV_BITS,
+    CONV_UNAVAILABLE_VALUES,
     CONV_MULTIPLIER,
     CONV_OFFSET,
     CONV_SHIFT_BITS,
@@ -46,6 +47,7 @@ class UnusedKeysMixin:
     shift_bits: int | None = None  # conv_shift_bits
     bits: int | None = None  # conv_bits
     map: dict[int, str] | None = None  # conv_map
+    unavailable_values: list[int] | None = None  # conv_unavailable_values
     flags: dict[int, str] | None = None  # conv_flags
     string: bool | None = False  # is_string
     float: bool | None = False  # is_float
@@ -77,6 +79,7 @@ class ModbusEntityDescription(
     conv_shift_bits: int | None = None
     conv_bits: int | None = None
     conv_map: dict[int, str] | None = None
+    conv_unavailable_values: list[int] | None = None
     conv_flags: dict[int, str] | None = None
     is_signed: bool | None = False
     is_string: bool | None = False
@@ -100,6 +103,28 @@ class ModbusEntityDescription(
         if not self._validate_max_change():
             return False
         if not self._validate_scan_interval():
+            return False
+        if not self._validate_unavailable_values():
+            return False
+        return True
+
+    def _validate_unavailable_values(self) -> bool:
+        """`unavailable_values` must be a list of whole numbers.
+
+        They are matched against the raw register value - after any `bits` /
+        `shift_bits` masking, but before `multiplier` and `offset`.
+        """
+        if self.conv_unavailable_values is None:
+            return True
+        if not isinstance(self.conv_unavailable_values, list) or not all(
+            isinstance(value, int) and not isinstance(value, bool)
+            for value in self.conv_unavailable_values
+        ):
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s must be a list of integers",
+                self.key,
+                CONV_UNAVAILABLE_VALUES,
+            )
             return False
         return True
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
@@ -24,7 +24,7 @@ from pymodbus.pdu.pdu import ModbusPDU
 
 from .const import CONF_PREFIX
 from .context import ModbusContext
-from .conversion import Conversion
+from .conversion import Conversion, ValueUnavailable
 from .entity_management.base import ModbusEntityDescription
 from .tcp_client import AsyncModbusTcpClientGateway
 
@@ -221,6 +221,15 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         self._async_cancel_future_pending_update()
 
     @property
+    def available(self) -> bool:
+        """Unavailable while the device is reporting a non-value for this entity."""
+        if not super().available:
+            return False
+        return not cast(ModbusCoordinator, self.coordinator).is_unavailable(
+            self.coordinator_context
+        )
+
+    @property
     def entity_description(self) -> ModbusEntityDescription:
         """Return the entity description."""
         return self.coordinator_context.desc
@@ -243,6 +252,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self._gateway: str = gateway
         self._max_read_size: int = 1
         self._gateway_device: dr.DeviceEntry | None = gateway_device
+        # Entities whose most recent read was not a usable value.
+        self._unavailable_keys: set[str] = set()
 
         super().__init__(
             hass,
@@ -280,18 +291,20 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             self.async_contexts(), key=lambda x: x.device_id
         )
         entities = [ctx for ctx in entities if ctx.desc.scan_interval is None]
-        data: dict[str, Any] = await self._update_device(entities=entities)
-        if data:
-            return data
-        raise UpdateFailed()
+        return await self._update_device(entities=entities)
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
-        """Update data for a list of entities"""
+        """Update data for a list of entities.
+
+        Raises `UpdateFailed` when the poll was unsound - the device did not
+        reply, or a conversion failed unexpectedly and left nothing usable.
+        """
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
         resp: dict[str, ModbusPDU] = await self.client.update_device(
             entities, max_read_size=self._max_read_size
         )
         data: dict[str, Any] = {}
+        failed = False
         conversion: Conversion = Conversion(type(self.client))
 
         for entity in entities:
@@ -304,8 +317,21 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                         )
                     )
                     data[entity.desc.key] = value
+                    self._unavailable_keys.discard(entity.desc.key)
                     _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
+                except ValueUnavailable as err:
+                    # Deliberately not added to `data`: the platforms' "is not None"
+                    # guard then skips the update, and availability comes from
+                    # ModbusCoordinatorEntity.available.
+                    _LOGGER.debug(
+                        "%s is unavailable: %s (%s)",
+                        entity.desc.key,
+                        err.reason,
+                        err.value,
+                    )
+                    self._unavailable_keys.add(entity.desc.key)
                 except Exception:  # pylint: disable=broad-exception-caught
+                    failed = True
                     _LOGGER.debug(
                         "Data not available for key: %s (%d)",
                         entity.desc.key,
@@ -313,16 +339,25 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                         exc_info=True,
                     )
 
+        if not data and (not resp or failed):
+            raise UpdateFailed()
         return data
 
     async def async_update_entity(self, ctx: ModbusContext) -> None:
         """Update cached data for a specific entity."""
-        data: dict[str, Any] = await self._update_device(entities=[ctx])
+        try:
+            data = await self._update_device(entities=[ctx])
+        except UpdateFailed:
+            return None
         if data:
             if self.data is None:
                 self.data = {}
             self.data[ctx.desc.key] = data[ctx.desc.key]
         return None
+
+    def is_unavailable(self, ctx: ModbusContext) -> bool:
+        """Whether this entity's last read was a declared non-value."""
+        return ctx.desc.key in self._unavailable_keys
 
     def get_data(self, ctx: ModbusContext) -> str | int | bool | None:
         """Retrieve cached data for a specific entity"""
