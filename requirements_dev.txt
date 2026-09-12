@@ -2,8 +2,8 @@
 coverage>=7.6.8
 fuzzywuzzy>=0.18.0
 homeassistant
-isort>=8.0.1
 levenshtein>=0.27.3
+mypy
 prek>=0.4.5
 pylint>=4.0.6
 pytest>=8.3.4
