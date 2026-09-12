@@ -775,7 +775,65 @@ async def test_write_data_holding_registers_success() -> None:
         mock_logger.debug.assert_called_with(
             "Writing multiple values using write_registers successful"
         )
-        assert result is None
+        # The write helpers return the PDU so write_data can detect an error
+        # response; before this was fixed they always returned None, which made
+        # the isError() check in write_data dead code.
+        assert result is not None
+
+
+@pytest.mark.asyncio
+async def test_write_data_holding_registers_error_raises() -> None:
+    """An error response to a register write must not be reported as success."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_register = AsyncMock(return_value=ModbusPDU())
+    client.write_register.return_value.isError = lambda: True
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusEntityDescription(
+            key="test",
+            register_address=1,
+            register_count=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(Conversion, "convert_to_registers", return_value=[123]),
+        pytest.raises(ModbusException, match="Error writing data to test"),
+    ):
+        await client.write_data(entity, value=123)
+
+
+@pytest.mark.asyncio
+async def test_write_data_coil_error_raises() -> None:
+    """An error response to a coil write must not be reported as success."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    client.connect = AsyncMock()
+    client.write_coil = AsyncMock(return_value=ModbusPDU())
+    client.write_coil.return_value.isError = lambda: True
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusEntityDescription(
+            key="test",
+            register_address=1,
+            register_count=1,
+            data_type=ModbusDataType.COIL,
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        pytest.raises(ModbusException, match="Error writing data to test"),
+    ):
+        await client.write_data(entity, value=True)
 
 
 @pytest.mark.asyncio

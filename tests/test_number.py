@@ -8,6 +8,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import CONF_DEVICE_ID, DOMAIN
 from custom_components.modbus_local_gateway.context import ModbusContext
+from custom_components.modbus_local_gateway.coordinator import ModbusCoordinator
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusDataType,
     ModbusNumberEntityDescription,
@@ -217,3 +218,39 @@ async def test_update_deviceupdate() -> None:
         debug.assert_called()
         warning.assert_not_called()
         write.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_set_native_value_reads_back() -> None:
+    """Setting a number must go through the entity's write_data.
+
+    number.py used to call client.write_data() directly, skipping the
+    re-read that switch/select/text all get, which left the matching
+    sensor stale for a full scan_interval after every write.
+    """
+    coordinator = MagicMock(spec=ModbusCoordinator)
+    coordinator.client = AsyncMock()
+    coordinator.config_entry = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusNumberEntityDescription(
+            key="number",
+            register_address=1,
+            control_type="number",
+            min=1,
+            max=100,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+        ),
+    )
+    entity = ModbusNumberEntity(
+        coordinator=coordinator, ctx=ctx, device=MagicMock()
+    )
+
+    with patch.object(coordinator.client, "write_data", AsyncMock()) as write_data:
+        await entity.async_set_native_value(42)
+
+        write_data.assert_called_once_with(entity.coordinator_context, 42)
+        # the readback is the point of routing through the entity
+        coordinator.async_update_entity.assert_awaited_once_with(
+            entity.coordinator_context
+        )
