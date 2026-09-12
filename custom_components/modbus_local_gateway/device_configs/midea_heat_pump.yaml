@@ -1,0 +1,980 @@
+# Midea air-to-water heat pump (Modbus RTU)
+#
+# Midea builds this platform for many brands and they share one register map. Mosibi's project
+# (below) lists Airwell, Artel, Ferroli, Kaisai, Inventor, Kaysun and YORK; Clivet and Rotenso units
+# are reported working too. The vendor documents the map as "Modbus mapping table KHA-KMK-KHC",
+# which are Kaisai's model lines.
+#
+# Thanks to Mosibi, whose ESPHome project for the same platform was used to check this implementation:
+# https://github.com/Mosibi/Midea-heat-pump-ESPHome (Apache-2.0)
+#
+# Compatibility follows the WIRED CONTROLLER rather than the badge on the outdoor unit, since the
+# controller owns the Modbus side. Developed against a Midea 171H120F ("Heat Pump Wi-Fi
+# Controller") driving a Kaisai KHC. If your unit has that controller, this config should fit
+# whatever the outdoor unit is branded. Register 131 reports the controller version and is exposed
+# below, so you can check what you have before trusting the rest.
+#
+# Bus: Modbus RTU, 9600 8N1, one slave.
+#
+# IMPORTANT: every register on this platform is a HOLDING register (function 03H). There are no
+# input registers, so everything belongs in `read_write_word`. Putting entities under
+# `read_only_word` (function 04H) makes every one of them Unknown, with no error to explain it.
+#
+# This config uses WRITABLE BIT FIELDS for the controls in registers 0, 2 and 5 - heating and DHW
+# enable, the climate-curve flag, and the zone-1 leaving-water setpoint. Each is one field inside a
+# register shared with other settings, so the write must be a read-modify-write; a plain write
+# would clear the neighbours. On register 2 that would zero the second zone's setpoint.
+#
+# Entities for optional hardware (room sensor, tank booster heater TBH, solar kit, buffer tank
+# sensors, second zone) are `entity_registry_enabled_default: false` - a typical install has none of
+# them, and an absent sensor reports a fixed sentinel rather than an error, so it looks plausible.
+# Enable the ones your unit has. Registers 210/211 report what is actually fitted.
+
+device:
+  manufacturer: Midea
+  model: Air-to-water heat pump (171H120F controller)
+  max_register_read: 8
+
+read_write_word:
+
+  # Protocol range is 20-75 C. Your unit is commissioned to something narrower - read it
+  # from dhw_upper_limit / dhw_lower_limit (registers 207/208) and narrow this to match.
+  dhw_setpoint:
+    name: DHW Setpoint
+    address: 4
+    precision: 0
+    unit_of_measurement: °C
+    entity_category: config
+    control: number
+    number:
+      min: 20
+      max: 75
+      step: 1
+
+  # Registers 7, 8 and 9 share one value set: 0 = Invalid (no command), 1 = forced on,
+  # 2 = forced off. `off` must write 2. Writing 0 is a silent no-op - accepted with no Modbus
+  # error while the register keeps its previous value - so the switch appears to do nothing.
+  # After a 2 the unit self-clears the register to 0, so `on: 1` still reads back correctly.
+  #
+  # Fast DHW heats the tank to the DHW upper limit (register 207), not to the DHW setpoint
+  # (register 4).
+  fast_dhw:
+    name: Fast DHW
+    address: 7
+    control: switch
+    switch:
+      'on': 1
+      'off': 2
+    scan_interval: 10
+
+  # Engages the electric backup heater. It is a REQUEST: the unit honours it only while a
+  # heat demand is active, so with the unit idle it reads back 0 with no Modbus error.
+  # Confirm real engagement with the ibh1 load bit (129.0), not this switch.
+  # `off` writes 2, for the same reason as register 7 above.
+  forced_ibh1:
+    name: Force IBH1
+    address: 9
+    control: switch
+    switch:
+      'on': 1
+      'off': 2
+    scan_interval: 10
+
+  curve_water_temp_upper:
+    name: Curve 9 Upper Water Temp
+    address: 265
+    precision: 0
+    unit_of_measurement: °C
+    entity_category: config
+    control: number
+    number:
+      min: 25
+      max: 65
+      step: 1
+
+  curve_water_temp_lower:
+    name: Curve 9 Lower Water Temp
+    address: 266
+    precision: 0
+    unit_of_measurement: °C
+    entity_category: config
+    control: number
+    number:
+      min: 25
+      max: 65
+      step: 1
+
+  curve_outdoor_temp_upper:
+    name: Curve 9 Upper Outdoor Temp
+    address: 267
+    signed: true
+    precision: 0
+    unit_of_measurement: °C
+    entity_category: config
+    control: number
+    number:
+      min: -25
+      max: 30
+      step: 1
+
+  curve_outdoor_temp_lower:
+    name: Curve 9 Lower Outdoor Temp
+    address: 268
+    signed: true
+    precision: 0
+    unit_of_measurement: °C
+    entity_category: config
+    control: number
+    number:
+      min: -25
+      max: 30
+      step: 1
+
+  # Registers 0 and 5 pack independent controls into single bits, so these use bit-field
+  # writes - the integration reads the register, replaces the bit and writes it back under
+  # the client lock, leaving the neighbouring bits alone.
+  heating:
+    name: Heating
+    address: 0
+    bits: 1
+    shift_bits: 1
+    control: switch
+    switch:
+      'on': 1
+      'off': 0
+    scan_interval: 10
+
+  dhw:
+    name: DHW
+    address: 0
+    bits: 1
+    shift_bits: 2
+    control: switch
+    switch:
+      'on': 1
+      'off': 0
+    scan_interval: 10
+
+  climate_curve:
+    name: Climate Curve
+    address: 5
+    bits: 1
+    shift_bits: 12
+    control: switch
+    switch:
+      'on': 1
+      'off': 0
+    scan_interval: 10
+
+  disinfect:
+    name: Disinfection Active
+    address: 5
+    bits: 1
+    shift_bits: 4
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+
+  disinfect_temperature:
+    name: Disinfect Temperature
+    address: 220
+    precision: 0
+    unit_of_measurement: °C
+    device_class: temperature
+    entity_category: config
+    control: number
+    number:
+      min: 60
+      max: 70
+      step: 1
+
+  # Register 2 is PACKED: zone 1 in the low byte, zone 2 in the high byte. The bit field
+  # writes only zone 1's byte; a plain whole-register write would zero zone 2.
+  # Range is the protocol's; your unit's own limits are heating_upper/lower_limit (203/204).
+  heating_water_setpoint:
+    name: Heating Water Setpoint
+    address: 2
+    bits: 8
+    shift_bits: 0
+    control: number
+    number:
+      min: 22
+      max: 70
+      step: 1
+    precision: 0
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 10
+
+  control_flags:
+    name: Control Flags
+    address: 0
+    scan_interval: 30
+    entity_category: diagnostic
+
+  mode_set:
+    name: Mode Set
+    address: 1
+    scan_interval: 30
+    entity_category: diagnostic
+    map:
+      1: Auto
+      2: Cool
+      3: Heat
+
+  # Identifies the wired controller, which is what actually determines whether this register map
+  # applies. Worth checking before assuming the rest of this config fits your unit.
+  wired_controller_version:
+    name: Wired Controller Version
+    address: 131
+    precision: 0
+    scan_interval: 600
+    entity_category: diagnostic
+
+  heating_water_setpoint_raw:
+    name: Heating Water Setpoint Raw
+    address: 2
+    precision: 0
+    scan_interval: 30
+    entity_category: diagnostic
+
+  function_setting:
+    name: Function Setting
+    address: 5
+    scan_interval: 30
+    entity_category: diagnostic
+
+  curve_selection:
+    name: Curve Selection
+    address: 6
+    bits: 8
+    shift_bits: 0
+    scan_interval: 30
+    entity_category: diagnostic
+
+  sg_max:
+    name: SG Max Duration
+    address: 10
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    scan_interval: 300
+    entity_category: diagnostic
+
+  dhw_upper_limit:
+    name: DHW Upper Limit
+    address: 207
+    precision: 0
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+
+  dhw_lower_limit:
+    name: DHW Lower Limit
+    address: 208
+    precision: 0
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+
+  # The unit's own commissioned setpoint limits - the authoritative source for narrowing
+  # the setpoint controls above. They differ between installations.
+  heating_upper_limit:
+    name: Heating Upper Limit
+    address: 203
+    bits: 8
+    shift_bits: 0
+    precision: 0
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+
+  heating_lower_limit:
+    name: Heating Lower Limit
+    address: 204
+    bits: 8
+    shift_bits: 0
+    precision: 0
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+
+  # Capability bitfields, raw. 210 bit 13 = disinfection enabled, bit 14 = TBH fitted,
+  # bit 4 = room sensor Ta fitted; 211 bit 1 = buffer tank sensor, bit 6 = T1B, bit 9 = solar.
+  # Decode these before assuming an unfitted sensor's reading is real.
+  parameter_setting_1:
+    name: Parameter Setting 1 Raw
+    address: 210
+    precision: 0
+    scan_interval: 600
+    entity_category: diagnostic
+
+  parameter_setting_2:
+    name: Parameter Setting 2 Raw
+    address: 211
+    precision: 0
+    scan_interval: 600
+    entity_category: diagnostic
+
+  disinfect_max_duration:
+    name: Disinfect Max Duration
+    address: 221
+    precision: 0
+    unit_of_measurement: min
+    device_class: duration
+    scan_interval: 600
+    entity_category: diagnostic
+
+  disinfect_hold_time:
+    name: Disinfect Hold Time
+    address: 222
+    precision: 0
+    unit_of_measurement: min
+    device_class: duration
+    scan_interval: 600
+    entity_category: diagnostic
+
+  heating_outdoor_temp_max:
+    name: Heating Outdoor Temp Max
+    address: 231
+    precision: 0
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+
+  operating_frequency:
+    name: Operating Frequency
+    address: 100
+    unit_of_measurement: Hz
+    device_class: frequency
+    state_class: measurement
+    scan_interval: 30
+
+  # Reports the COMMANDED mode, not current activity: it can read Heat continuously while
+  # the unit is actually making hot water. For real activity use the RUN bit (129.13),
+  # the compressor frequency (100) and the DHW diverter valve (129.4).
+  operating_mode:
+    name: Operating Mode
+    address: 101
+    scan_interval: 30
+    map:
+      0: 'Off'
+      2: Cool
+      3: Heat
+      5: DHW Heating
+
+  fan_speed:
+    name: Fan Speed
+    address: 102
+    unit_of_measurement: r/min
+    state_class: measurement
+    scan_interval: 30
+
+  water_inlet_temperature:
+    name: Water Inlet Temperature
+    address: 104
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+
+  water_outlet_temperature:
+    name: Water Outlet Temperature
+    address: 105
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+
+  outdoor_temperature:
+    name: Outdoor Temperature
+    address: 107
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+
+  total_water_outlet_temperature:
+    name: Total Water Outlet Temperature
+    address: 110
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+
+  # T1B. Reads a constant 25 C when the sensor is not fitted - check register 211 bit 6
+  # before trusting it. The room sensor Ta (114) uses the same sentinel.
+  water_outlet_after_backup_heater_temperature:
+    name: Water Outlet After Backup Heater Temperature
+    address: 111
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_registry_enabled_default: false
+
+  discharge_temperature:
+    name: Discharge Temperature
+    address: 108
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_category: diagnostic
+
+  return_air_temperature:
+    name: Return Air Temperature
+    address: 109
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_category: diagnostic
+
+  refrigerant_liquid_temperature:
+    name: Refrigerant Liquid Temperature
+    address: 112
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_category: diagnostic
+
+  refrigerant_gas_temperature:
+    name: Refrigerant Gas Temperature
+    address: 113
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_category: diagnostic
+
+  fault_history_1:
+    name: Fault History 1
+    address: 125
+    precision: 0
+    scan_interval: 300
+    entity_category: diagnostic
+
+  fault_history_2:
+    name: Fault History 2
+    address: 126
+    precision: 0
+    scan_interval: 300
+    entity_category: diagnostic
+
+  fault_history_3:
+    name: Fault History 3
+    address: 127
+    precision: 0
+    scan_interval: 300
+    entity_category: diagnostic
+
+  unit_capacity:
+    name: Unit Capacity
+    address: 123
+    precision: 0
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  water_tank_temperature:
+    name: Water Tank Temperature
+    address: 115
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+
+  buffer_tank_upper_temperature:
+    name: Buffer Tank Upper Temperature
+    address: 120
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_registry_enabled_default: false
+
+  buffer_tank_lower_temperature:
+    name: Buffer Tank Lower Temperature
+    address: 121
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_registry_enabled_default: false
+
+  high_pressure:
+    name: High Pressure
+    address: 116
+    unit_of_measurement: kPa
+    device_class: pressure
+    state_class: measurement
+
+  # Reads a constant 100 kPa on units with no low-side transducer.
+  low_pressure:
+    name: Low Pressure
+    address: 117
+    unit_of_measurement: kPa
+    device_class: pressure
+    state_class: measurement
+    entity_registry_enabled_default: false
+
+  outdoor_current:
+    name: Outdoor Unit Current
+    address: 118
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+
+  outdoor_voltage:
+    name: Outdoor Unit Voltage
+    address: 119
+    unit_of_measurement: V
+    device_class: voltage
+    state_class: measurement
+
+  pmv_openness:
+    name: PMV Openness
+    address: 103
+    precision: 0
+    unit_of_measurement: steps
+    state_class: measurement
+    scan_interval: 30
+    entity_category: diagnostic
+
+  dc_bus_current:
+    name: DC Bus Current
+    address: 133
+    unit_of_measurement: A
+    device_class: current
+    state_class: measurement
+    scan_interval: 30
+    entity_category: diagnostic
+
+  dc_bus_voltage:
+    name: DC Bus Voltage
+    address: 134
+    multiplier: 10
+    precision: 0
+    unit_of_measurement: V
+    device_class: voltage
+    state_class: measurement
+    scan_interval: 30
+    entity_category: diagnostic
+
+  inverter_module_temperature:
+    name: Inverter Module Temperature
+    address: 135
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+
+  # Reads 255 (0x00FF) when the climate curve is OFF - an invalid marker, not a temperature
+  # (a transient 0 also occurs). With `state_class` set these enter long-term statistics, so
+  # range-guard anything that consumes it.
+  curve_calculated_water_setpoint:
+    name: Curve Calculated Water Setpoint
+    address: 136
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+
+  water_flow:
+    name: Water Flow
+    address: 138
+    multiplier: 0.01
+    precision: 2
+    unit_of_measurement: m³/h
+    device_class: volume_flow_rate
+    state_class: measurement
+    scan_interval: 30
+
+  hydraulic_power:
+    name: Hydraulic Power
+    address: 140
+    multiplier: 0.01
+    precision: 2
+    unit_of_measurement: kW
+    device_class: power
+    state_class: measurement
+
+  electricity_consumption:
+    name: Electricity Consumption
+    address: 143
+    size: 2
+    unit_of_measurement: kWh
+    device_class: energy
+    state_class: total_increasing
+    never_resets: true
+
+  energy_output:
+    name: Energy Output
+    address: 145
+    size: 2
+    unit_of_measurement: kWh
+    device_class: energy
+    state_class: total_increasing
+    never_resets: true
+
+  compressor_runtime:
+    name: Compressor Runtime
+    address: 122
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    scan_interval: 300
+    entity_registry_enabled_default: false
+
+  # Fault codes are left numeric on purpose. A `map:` that misses a value makes the entity
+  # keep its previous state silently, and this platform has 50+ codes.
+  current_fault:
+    name: Current Fault Code
+    address: 124
+    scan_interval: 30
+    entity_category: diagnostic
+
+  condenser_temperature:
+    name: Condenser Temperature
+    address: 106
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 30
+    entity_registry_enabled_default: false
+
+  target_frequency:
+    name: Target Frequency
+    address: 132
+    unit_of_measurement: Hz
+    device_class: frequency
+    state_class: measurement
+    scan_interval: 30
+    entity_registry_enabled_default: false
+
+  heating_enabled:
+    name: Heating Enabled
+    address: 0
+    bits: 1
+    shift_bits: 1
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+
+  dhw_enabled:
+    name: DHW Enabled
+    address: 0
+    bits: 1
+    shift_bits: 2
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+
+  curve_active:
+    name: Climate Curve Active
+    address: 5
+    bits: 1
+    shift_bits: 12
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+
+  eco_mode:
+    name: ECO Mode
+    address: 5
+    bits: 1
+    shift_bits: 10
+    control: binary_sensor
+    entity_category: diagnostic
+
+  defrosting:
+    name: Defrosting
+    address: 128
+    bits: 1
+    shift_bits: 1
+    control: binary_sensor
+    scan_interval: 30
+
+  unit_running:
+    name: Unit Running
+    address: 129
+    bits: 1
+    shift_bits: 13
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+
+  # This bit did not track faults on the reference unit: it stayed off through repeated E8
+  # (water flow failure) episodes that register 124 reported correctly. Use register 124 for
+  # fault detection and do not build alerting on this bit.
+  alarm:
+    name: Alarm
+    address: 129
+    bits: 1
+    shift_bits: 12
+    control: binary_sensor
+    device_class: problem
+    scan_interval: 30
+
+  anti_freezing:
+    name: Anti-freezing
+    address: 128
+    bits: 1
+    shift_bits: 2
+    control: binary_sensor
+    device_class: problem
+    scan_interval: 30
+    entity_category: diagnostic
+
+  oil_return:
+    name: Oil Return
+    address: 128
+    bits: 1
+    shift_bits: 3
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+    entity_category: diagnostic
+
+  remote_on_off_active:
+    name: Remote On/Off Active
+    address: 128
+    bits: 1
+    shift_bits: 4
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+
+  thermostat_heat_call:
+    name: Thermostat Heat Call
+    address: 128
+    bits: 1
+    shift_bits: 6
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+
+  thermostat_cool_call:
+    name: Thermostat Cool Call
+    address: 128
+    bits: 1
+    shift_bits: 7
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+
+  tank_anti_freezing:
+    name: Tank Anti-freezing
+    address: 128
+    bits: 1
+    shift_bits: 9
+    control: binary_sensor
+    device_class: problem
+    scan_interval: 30
+    entity_category: diagnostic
+
+  sg_signal:
+    name: SG Signal Normal
+    address: 128
+    bits: 1
+    shift_bits: 10
+    control: binary_sensor
+    scan_interval: 60
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  euv_signal:
+    name: EUV Free Electricity
+    address: 128
+    bits: 1
+    shift_bits: 11
+    control: binary_sensor
+    scan_interval: 60
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  ibh1:
+    name: Backup Heater IBH1
+    address: 129
+    bits: 1
+    shift_bits: 0
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+
+  ibh2:
+    name: Backup Heater IBH2
+    address: 129
+    bits: 1
+    shift_bits: 1
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+
+  tbh:
+    name: Tank Booster Heater TBH
+    address: 129
+    bits: 1
+    shift_bits: 2
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+    entity_registry_enabled_default: false
+
+  dhw_diverter_valve:
+    name: DHW Diverter Valve
+    address: 129
+    bits: 1
+    shift_bits: 4
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+
+  aux_heat_source:
+    name: Auxiliary Heat Source
+    address: 129
+    bits: 1
+    shift_bits: 14
+    control: binary_sensor
+    scan_interval: 30
+
+  room_air_setpoint_raw:
+    name: Room Air Setpoint Raw
+    address: 3
+    precision: 0
+    scan_interval: 300
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  room_temperature:
+    name: Room Temperature
+    address: 114
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 300
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  room_setpoint_limit_upper:
+    name: Room Setpoint Limit Upper
+    address: 205
+    multiplier: 0.5
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  room_setpoint_limit_lower:
+    name: Room Setpoint Limit Lower
+    address: 206
+    multiplier: 0.5
+    precision: 1
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  forced_tbh:
+    name: Forced TBH
+    address: 8
+    precision: 0
+    scan_interval: 300
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  tbh_delay:
+    name: TBH Delay
+    address: 217
+    unit_of_measurement: min
+    device_class: duration
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  tbh_off_delta:
+    name: TBH Off Delta
+    address: 218
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  tbh_on_outdoor_temp:
+    name: TBH On Outdoor Temp
+    address: 219
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  tbh_power:
+    name: TBH Power
+    address: 252
+    multiplier: 100
+    precision: 0
+    unit_of_measurement: W
+    device_class: power
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  solar_temperature:
+    name: Solar Temperature
+    address: 141
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 300
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  # Same 255-when-curve-off caveat as register 136.
+  curve_calculated_water_setpoint_zone2:
+    name: Curve Calculated Water Setpoint Zone2
+    address: 137
+    signed: true
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    scan_interval: 300
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  parallel_units_raw:
+    name: Parallel Units Raw
+    address: 142
+    precision: 0
+    scan_interval: 600
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
