@@ -117,7 +117,7 @@ class Conversion:
         )
         if isinstance(value, float):
             value = self._apply_conversion_operations(value, desc)
-            return value
+            return float(value)
         raise InvalidDataTypeError()
 
     def _convert_from_float(
@@ -188,7 +188,7 @@ class Conversion:
 
     def _apply_conversion_operations(
         self, num: int | float, desc: ModbusEntityDescription
-    ) -> float:
+    ) -> int | float:
         """Apply multiplier and offset to the number"""
         if isinstance(num, (int, float)):
             if desc.conv_multiplier is not None:
