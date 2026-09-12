@@ -91,7 +91,28 @@ async def async_setup_entry(
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        # Entities are still loaded. Closing the client below would pull the
+        # connection out from under them, so leave everything in place.
+        return False
+
     gateway_key: str = get_gateway_key(entry=entry, with_device=True)
-    del hass.data[DOMAIN][gateway_key]
+    coordinator: ModbusCoordinator | None = hass.data[DOMAIN].pop(gateway_key, None)
+
+    # The client is cached per host/port/framer and shared by every entry
+    # pointing at the same gateway, so it can only be closed once no remaining
+    # entry is using it. Leaving it open keeps the socket - and pymodbus'
+    # retries - alive after the entry is gone.
+    if coordinator is not None and not any(
+        getattr(other, "client", None) is coordinator.client
+        for other in hass.data[DOMAIN].values()
+    ):
+        AsyncModbusTcpClientGateway.close_client_connection(
+            host=entry.data[CONF_HOST],
+            port=entry.data[CONF_PORT],
+            connection_type=entry.data.get(
+                CONF_CONNECTION_TYPE, CONF_DEFAULT_CONNECTION_TYPE
+            ),
+        )
+
     return True

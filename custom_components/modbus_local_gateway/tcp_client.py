@@ -390,3 +390,24 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 retries=5,
             )
         return cls._CLIENT[key]
+
+    @classmethod
+    def close_client_connection(
+        cls, host: str, port: int, connection_type: str
+    ) -> None:
+        """Close a cached client and drop it from the cache.
+
+        Without this the connection to the gateway outlives the config entry:
+        the socket stays open and pymodbus keeps retrying on it, so a disabled
+        or reloaded entry is still talking to the device. On a gateway that
+        bridges TCP to a shared serial bus, that leaked session corrupts the
+        traffic of whoever is still connected.
+
+        Only call this once no loaded entry is still using the client - it is
+        shared by every entry with the same host, port and framer.
+        """
+        key: str = f"{host}:{port}:{connection_type}"
+        client: "AsyncModbusTcpClientGateway | None" = cls._CLIENT.pop(key, None)
+        if client is not None:
+            _LOGGER.debug("Closing connection to gateway %s", key)
+            client.close()
