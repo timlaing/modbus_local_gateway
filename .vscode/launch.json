@@ -1,56 +1,48 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: Current File",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "justMyCode": false
-        },
-        {
-            "name": "Python: Debug Tests",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${file}",
-            "purpose": [
-                "debug-test"
-            ],
-            "justMyCode": false
-        },
-        {
-            "name": "Home Assistant",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "homeassistant",
-            "justMyCode": false,
-            "args": [
-                "-v",
-                "-c",
-                "${workspaceFolder}/config"
-            ]
-        },
-        {
-            "name": "Test Server",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "modbus_test_server",
-            "justMyCode": true,
-            "args": [
-                "modbus_test_server/devices/${input:test-device-json}"
-            ]
-        }
-    ],
-    "inputs": [
-        {
-            "id": "test-device-json",
-            "type": "promptString",
-            "description": "Enter the test device JSON filename",
-            "default": "Husdata_H60.json"
-        }
-    ]
+  "configurations": [
+    {
+      "name": "Python Debugger: Current File",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Debug Tests",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "purpose": ["debug-test"],
+      "justMyCode": false
+    },
+    {
+      "name": "Home Assistant",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "homeassistant",
+      "justMyCode": false,
+      "args": ["-v", "-c", "${workspaceFolder}/config"]
+    },
+    {
+      "name": "Test Server",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "modbus_test_server",
+      "justMyCode": true,
+      "args": ["modbus_test_server/devices/${input:test-device-json}"]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "test-device-json",
+      "type": "promptString",
+      "description": "Enter the test device JSON filename",
+      "default": "Husdata_H60.json"
+    }
+  ],
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0"
 }

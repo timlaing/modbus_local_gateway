@@ -4,8 +4,8 @@
 from unittest.mock import patch
 
 import pytest
-import yaml
 from pytest import LogCaptureFixture
+import yaml
 
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSensorEntityDescription,

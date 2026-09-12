@@ -3,7 +3,6 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-import pytest
 from pymodbus.exceptions import ModbusException
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.pdu import ModbusPDU
@@ -11,6 +10,7 @@ from pymodbus.pdu.register_message import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
 )
+import pytest
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.conversion import Conversion
@@ -404,7 +404,7 @@ async def test_update_device_connected_no_entities() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_device_connected_sucess_device_single() -> None:
+async def test_update_device_connected_success_device_single() -> None:
     """Test the update device function"""
     lock = AsyncMock()
 
@@ -416,10 +416,8 @@ async def test_update_device_connected_sucess_device_single() -> None:
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
         ) as debug,
         patch(
-            (
-                "custom_components.modbus_local_gateway.tcp_client."
-                "AsyncModbusTcpClientGateway.read_data"
-            )
+            "custom_components.modbus_local_gateway.tcp_client."
+            "AsyncModbusTcpClientGateway.read_data"
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
@@ -461,7 +459,7 @@ async def test_update_device_connected_sucess_device_single() -> None:
 
 
 @pytest.mark.asyncio
-async def test_update_device_connected_sucess_device_multiple() -> None:
+async def test_update_device_connected_success_device_multiple() -> None:
     """Test the update device function"""
     lock = AsyncMock()
 
@@ -473,10 +471,8 @@ async def test_update_device_connected_sucess_device_multiple() -> None:
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
         ) as debug,
         patch(
-            (
-                "custom_components.modbus_local_gateway.tcp_client."
-                "AsyncModbusTcpClientGateway.read_data"
-            )
+            "custom_components.modbus_local_gateway.tcp_client."
+            "AsyncModbusTcpClientGateway.read_data"
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
@@ -550,10 +546,8 @@ async def test_update_device_connected_failed_device_single() -> None:
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
         ) as debug,
         patch(
-            (
-                "custom_components.modbus_local_gateway.tcp_client."
-                "AsyncModbusTcpClientGateway.read_data"
-            )
+            "custom_components.modbus_local_gateway.tcp_client."
+            "AsyncModbusTcpClientGateway.read_data"
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
@@ -601,10 +595,8 @@ async def test_update_device_connected_failed_device_multiple() -> None:
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
         ) as debug,
         patch(
-            (
-                "custom_components.modbus_local_gateway.tcp_client."
-                "AsyncModbusTcpClientGateway.read_data"
-            )
+            "custom_components.modbus_local_gateway.tcp_client."
+            "AsyncModbusTcpClientGateway.read_data"
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")

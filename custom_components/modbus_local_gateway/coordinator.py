@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
-import logging
+from collections.abc import Callable
 from datetime import timedelta
-from typing import Any, Callable
+import logging
+from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
@@ -99,7 +100,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     async def write_data(
         self,
-        value: str | int | float | bool | None,
+        value: str | float | bool | None,
     ) -> None:
         """Write data to the Modbus device"""
         try:
@@ -116,7 +117,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         """Update the entity state if not already in progress."""
         try:
             await self._async_update_write_state()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.debug("Update for entity %s is already in progress", self.name)
 
     @callback
@@ -327,7 +328,6 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             if self.data is None:
                 self.data = {}
             self.data[ctx.desc.key] = data[ctx.desc.key]
-        return None
 
     def get_data(self, ctx: ModbusContext) -> str | int | bool | None:
         """Retrieve cached data for a specific entity"""

@@ -30,24 +30,26 @@ jobs:
         run: |
           echo "::add-matcher::.github/workflows/matchers/pytest-slow.json"
 
-      - name: Create Python virtual environment
+      - name: Install dependencies
         run: |
-          python -m venv venv
-          . venv/bin/activate
-          python --version
-          python3 -m pip install uv
-          uv pip install -U "pip>=25.2"
-          uv pip install -r requirements_all.txt
-      - name: Run pytest
-        timeout-minutes: 60
-        id: pytest-full
-        env:
-          PYTHONDONTWRITEBYTECODE: 1
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r requirements_all.txt
+
+      - name: Run tests with coverage
         run: |
-          . venv/bin/activate
-          python --version
-          set -o pipefail
-          python3 -b -m pytest \
-            --cov="custom_components/modbus_local_gateway"\
-            --cov-report=xml \
-            --junitxml=junit.xml -o junit_family=legacy
+          .venv/bin/python -m pytest \
+            --cov=custom_components.modbus_local_gateway \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=90 \
+            --timeout=30
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: error
+          retention-days: 7

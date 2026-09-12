@@ -1,39 +1,39 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Device is already configured"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "unknown": "Unexpected error"
-        },
-        "step": {
-            "device_type": {
-                "data": {
-                    "filename": "Device"
-                },
-                "description": "Select the device type to configure"
-            },
-            "user": {
-                "data": {
-                    "host": "Host",
-                    "port": "Port",
-                    "device_id": "Device ID",
-                    "connection_type": "Connection Type",
-                    "prefix": "Prefix (optional)"
-                },
-                "description": "Configure the connection parameters"
-            }
-        }
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured"
     },
-    "options": {
-        "step": {
-            "init": {
-                "description": "Update device parameters",
-                "data": {
-                    "refresh": "Update frequency"
-                }
-            }
-        }
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "unknown": "Unexpected error"
+    },
+    "step": {
+      "device_type": {
+        "data": {
+          "filename": "Device"
+        },
+        "description": "Select the device type to configure"
+      },
+      "user": {
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "device_id": "Device ID",
+          "connection_type": "Connection Type",
+          "prefix": "Prefix (optional)"
+        },
+        "description": "Configure the connection parameters"
+      }
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Update device parameters",
+        "data": {
+          "refresh": "Update frequency"
+        }
+      }
+    }
+  }
 }

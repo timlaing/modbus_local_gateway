@@ -3,9 +3,9 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
+import pytest
 from pytest_homeassistant_custom_component.common import HomeAssistant, MockConfigEntry
 
 from custom_components.modbus_local_gateway.config_flow import (

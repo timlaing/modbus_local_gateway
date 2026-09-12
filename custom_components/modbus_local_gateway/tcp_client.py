@@ -1,8 +1,9 @@
 """TCP Client for Modbus Local Gateway"""
 
 import asyncio
+from collections.abc import Callable
 import logging
-from typing import Any, Callable, List
+from typing import Any
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
@@ -20,7 +21,7 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     """Custom Modbus TCP client with request batching based on device and locking."""
 
-    _CLIENT: dict[str, "AsyncModbusTcpClientGateway"] = {}
+    _CLIENT: dict[str, AsyncModbusTcpClientGateway] = {}
 
     def __init__(
         self,
@@ -124,7 +125,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         return response
 
     async def _custom_write_registers(
-        self, address: int, values: List[int], device_id: int
+        self, address: int, values: list[int], device_id: int
     ) -> ModbusPDU | None:
         """Write values to Modbus registers. Try write_registers first, and
         fall back to individual write_register calls if it fails.
@@ -167,7 +168,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         return result
 
     async def _write_multiple_registers(
-        self, address: int, values: List[int], device_id: int
+        self, address: int, values: list[int], device_id: int
     ) -> ModbusPDU:
         """Write multiple values to Modbus registers."""
         _LOGGER.debug(
@@ -196,7 +197,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         return result
 
     async def _write_registers_individually(
-        self, address: int, values: List[int], device_id: int
+        self, address: int, values: list[int], device_id: int
     ) -> ModbusPDU | None:
         """Fallback method to write multiple values to Modbus registers individually.
 
@@ -355,7 +356,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             else:
                 _LOGGER.debug("Error reading %s", entity.desc.key)
 
-        except (ModbusException, TimeoutError):
+        except ModbusException, TimeoutError:
             if idx == 0:
                 _LOGGER.warning(
                     "Device not available %s [%d]",
@@ -374,7 +375,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     @classmethod
     def async_get_client_connection(
         cls, host: str, port: int, connection_type: str
-    ) -> "AsyncModbusTcpClientGateway":
+    ) -> AsyncModbusTcpClientGateway:
         """Gets a modbus client object"""
         key: str = f"{host}:{port}:{connection_type}"
 

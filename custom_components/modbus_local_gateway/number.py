@@ -104,4 +104,4 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
             precision is None and multiplier is not None and multiplier % 1 != 0
         )
 
-        self._attr_native_value = value if keep_float else int(round(value))
+        self._attr_native_value = value if keep_float else round(value)

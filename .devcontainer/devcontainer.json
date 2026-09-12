@@ -1,103 +1,82 @@
 {
-	"name": "Modbus Local Dev",
-	"image": "mcr.microsoft.com/devcontainers/python:3-3-trixie",
-	"containerEnv": {
-		"WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}",
-		"DEVCONTAINER": "1"
-	},
-	"postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && scripts/setup.sh",
-	"postStartCommand": "scripts/startup.sh",
-	"appPort": [
-		"9123:8123"
-	],
-	"forwardPorts": [
-		9123
-	],
-	"portsAttributes": {
-		"9123": {
-			"label": "Home Assistant",
-			"onAutoForward": "openBrowserOnce"
-		},
-		"5020": {
-			"label": "Modbus Test Server",
-			"onAutoForward": "ignore"
-		}
-	},
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"ms-python.vscode-pylance",
-				"redhat.vscode-yaml",
-				"esbenp.prettier-vscode",
-				"GitHub.vscode-pull-request-github",
-				"ms-python.pylint",
-				"ms-python.isort",
-				"ms-python.python",
-				"ryanluker.vscode-coverage-gutters",
-				"donjayamanne.git-extension-pack",
-				"github.vscode-github-actions",
-				"elagil.pre-commit-helper",
-				"sonarsource.sonarlint-vscode",
-				"charliermarsh.ruff",
-				"ms-azuretools.vscode-docker",
-				"coderabbit.coderabbit-vscode",
-				"GitHub.copilot",
-				"foxundermoon.shell-format"
-			],
-			"settings": {
-				"editor.formatOnPaste": true,
-				"editor.formatOnSave": true,
-				"editor.formatOnType": false,
-				"files.eol": "\n",
-				"editor.tabSize": 4,
-				"files.trimTrailingWhitespace": true,
-				"terminal.integrated.profiles.linux": {
-					"zsh": {
-						"path": "/usr/bin/zsh",
-						"args": [
-							"-l"
-						]
-					}
-				},
-				"terminal.integrated.defaultProfile.linux": "zsh",
-				"yaml.customTags": [
-					"!input scalar",
-					"!secret scalar",
-					"!include_dir_named scalar",
-					"!include_dir_list scalar",
-					"!include_dir_merge_list scalar",
-					"!include_dir_merge_named scalar"
-				],
-				"sonarlint.ls.javaHome": "/usr/local/sdkman/candidates/java/current",
-				"python.analysis.typeCheckingMode": "basic",
-				"python.analysis.autoImportCompletions": true,
-				"python.defaultInterpreterPath": "/workspaces/modbus_local_gateway/.venv/bin/python"
-			}
-		}
-	},
-	"remoteUser": "vscode",
-	"features": {
-		"ghcr.io/devcontainers-extra/features/apt-packages:1": {
-			"packages": [
-				"ffmpeg",
-				"libturbojpeg0",
-				"libpcap-dev"
-			]
-		},
-		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers/features/java:1": {
-			"jdkDistro": "open",
-			"gradleVersion": "latest",
-			"mavenVersion": "latest",
-			"antVersion": "latest",
-			"groovyVersion": "latest"
-		},
-		"ghcr.io/devcontainers/features/node:2": {
-			"version": "lts",
-			"pnpmVersion": "latest",
-			"nvmVersion": "latest"
-		},
-		"ghcr.io/devcontainers-extra/features/uv": {},
-		"ghcr.io/devcontainers-extra/features/pre-commit:2": {}
-	}
+  "appPort": ["9123:8123"],
+  "containerEnv": {
+    "WORKSPACE_DIRECTORY": "${containerWorkspaceFolder}",
+    "DEVCONTAINER": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "donjayamanne.git-extension-pack",
+        "donjayamanne.python-extension-pack",
+        "esbenp.prettier-vscode",
+        "foxundermoon.shell-format",
+        "github.vscode-github-actions",
+        "ms-python.mypy-type-checker",
+        "ms-python.pylint",
+        "ms-python.python",
+        "redhat.vscode-yaml",
+        "ryanluker.vscode-coverage-gutters",
+        "streetsidesoftware.code-spell-checker",
+        "SonarSource.sonarlint-vscode",
+        "sst-dev.opencode"
+      ],
+      "settings": {
+        "editor.tabSize": 4,
+        "sonarlint.ls.javaHome": "/usr/local/sdkman/candidates/java/current",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/usr/bin/zsh",
+            "args": ["-l"]
+          }
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "yaml.customTags": [
+          "!input scalar",
+          "!secret scalar",
+          "!include_dir_named scalar",
+          "!include_dir_list scalar",
+          "!include_dir_merge_list scalar",
+          "!include_dir_merge_named scalar"
+        ]
+      }
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers-extra/features/apt-packages:1": {
+      "packages": ["ffmpeg", "libturbojpeg0", "libpcap-dev"]
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/java:1": {
+      "jdkDistro": "open",
+      "gradleVersion": "latest",
+      "mavenVersion": "latest",
+      "antVersion": "latest",
+      "groovyVersion": "latest"
+    },
+    "ghcr.io/devcontainers/features/node:2": {
+      "version": "lts",
+      "pnpmVersion": "latest",
+      "nvmVersion": "latest"
+    },
+    "ghcr.io/dhoeric/features/act": {},
+    "ghcr.io/devcontainers-extra/features/uv": {}
+  },
+  "forwardPorts": [9123],
+  "image": "mcr.microsoft.com/devcontainers/python:3-3-trixie",
+  "name": "Modbus Local Dev",
+  "portsAttributes": {
+    "9123": {
+      "label": "Home Assistant",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "5020": {
+      "label": "Modbus Test Server",
+      "onAutoForward": "ignore"
+    }
+  },
+  "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && scripts/setup.sh",
+  "postStartCommand": "scripts/startup.sh",
+  "remoteUser": "vscode"
 }

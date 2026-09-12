@@ -174,3 +174,6 @@ config/*
 !config/configuration.yaml
 uv.lock
 .python-version
+.opencode
+node_modules/
+devcontainer-lock.json

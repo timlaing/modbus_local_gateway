@@ -242,9 +242,7 @@ async def test_async_set_native_value_reads_back() -> None:
             data_type=ModbusDataType.HOLDING_REGISTER,
         ),
     )
-    entity = ModbusNumberEntity(
-        coordinator=coordinator, ctx=ctx, device=MagicMock()
-    )
+    entity = ModbusNumberEntity(coordinator=coordinator, ctx=ctx, device=MagicMock())
 
     with patch.object(coordinator.client, "write_data", AsyncMock()) as write_data:
         await entity.async_set_native_value(42)

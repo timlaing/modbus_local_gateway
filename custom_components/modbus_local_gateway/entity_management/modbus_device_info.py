@@ -226,33 +226,31 @@ class ModbusDeviceInfo:
     ) -> dict[str, Any]:
         """Initialize parameters for the description"""
         params: dict[str, Any] = _data.copy()
-        params.update(
-            {
-                "key": entity,
-                "name": "".join(["", _data.get(NAME, entity)]),
-                "data_type": data_type,
-                "control_type": control_type,
-                "register_address": _data.get(REGISTER_ADDRESS),
-                "register_count": _data.get(REGISTER_COUNT, 1),
-                "conv_bits": _data.get(CONV_BITS),
-                "conv_flags": _data.get(CONV_FLAGS),
-                "conv_map": _data.get(CONV_MAP),
-                "conv_multiplier": _data.get(CONV_MULTIPLIER),
-                "conv_offset": _data.get(CONV_OFFSET),
-                "conv_shift_bits": _data.get(CONV_SHIFT_BITS),
-                "conv_sum_scale": _data.get(CONV_SUM_SCALE),
-                "conv_swap": _data.get(CONV_SWAP),
-                "is_float": _data.get(IS_FLOAT, False),
-                "is_string": _data.get(IS_STRING, False),
-                "is_signed": _data.get(IS_SIGNED, False),
-                "never_resets": _data.get(NEVER_RESETS, False),
-                "native_unit_of_measurement": uom["native_unit_of_measurement"],
-                "device_class": uom["device_class"],
-                "state_class": uom["state_class"],
-                "max_change": _data.get(MAX_CHANGE),
-                "scan_interval": _data.get(CONF_SCAN_INTERVAL),
-            }
-        )
+        params.update({
+            "key": entity,
+            "name": "".join(["", _data.get(NAME, entity)]),
+            "data_type": data_type,
+            "control_type": control_type,
+            "register_address": _data.get(REGISTER_ADDRESS),
+            "register_count": _data.get(REGISTER_COUNT, 1),
+            "conv_bits": _data.get(CONV_BITS),
+            "conv_flags": _data.get(CONV_FLAGS),
+            "conv_map": _data.get(CONV_MAP),
+            "conv_multiplier": _data.get(CONV_MULTIPLIER),
+            "conv_offset": _data.get(CONV_OFFSET),
+            "conv_shift_bits": _data.get(CONV_SHIFT_BITS),
+            "conv_sum_scale": _data.get(CONV_SUM_SCALE),
+            "conv_swap": _data.get(CONV_SWAP),
+            "is_float": _data.get(IS_FLOAT, False),
+            "is_string": _data.get(IS_STRING, False),
+            "is_signed": _data.get(IS_SIGNED, False),
+            "never_resets": _data.get(NEVER_RESETS, False),
+            "native_unit_of_measurement": uom["native_unit_of_measurement"],
+            "device_class": uom["device_class"],
+            "state_class": uom["state_class"],
+            "max_change": _data.get(MAX_CHANGE),
+            "scan_interval": _data.get(CONF_SCAN_INTERVAL),
+        })
         return params
 
     def _handle_entity_category(self, params, entity) -> None:
@@ -401,9 +399,9 @@ class ModbusDeviceInfo:
     ) -> DESCRIPTION_TYPE | None:
         """Create an instance of the description class"""
         try:
-            desc: DESCRIPTION_TYPE = desc_cls(
-                **{k: v for k, v in params.items() if v is not None}
-            )
+            desc: DESCRIPTION_TYPE = desc_cls(**{
+                k: v for k, v in params.items() if v is not None
+            })
             if desc.validate():
                 return desc
         except TypeError as err:

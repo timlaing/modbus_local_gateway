@@ -1,7 +1,7 @@
 """TCP Client for Modbus Local Gateway"""
 
-import contextlib
 from asyncio import InvalidStateError
+import contextlib
 
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.pdu.pdu import ModbusPDU

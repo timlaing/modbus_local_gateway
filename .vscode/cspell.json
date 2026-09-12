@@ -1,0 +1,62 @@
+{
+  "allowCompoundWords": true,
+  "dictionaries": [
+    "typescript",
+    "node",
+    "html",
+    "css",
+    "python",
+    "django",
+    "json",
+    "markdown",
+    "lorem"
+  ],
+  "dictionaryDefinitions": [],
+  "enableFiletypes": [
+    "Dockerfile",
+    "django-html",
+    "django-txt",
+    "dockercompose",
+    "jinja"
+  ],
+  "ignorePaths": [
+    "custom_components/modbus_local_gateway/device_configs/",
+    ".gitignore"
+  ],
+  "ignoreWords": [
+    "chcf",
+    "dhoeric",
+    "dimplex",
+    "dsonar",
+    "errd",
+    "esbenp",
+    "hostid",
+    "iolr",
+    "ipnodots",
+    "kvarh",
+    "libpcap",
+    "pisp",
+    "rekall",
+    "ryanluker",
+    "vcal",
+    "wärmepumpe"
+  ],
+  "import": [],
+  "language": "en,en-GB,lorem",
+  "useGitignore": true,
+  "words": [
+    "coveragerc",
+    "hacc",
+    "hacs",
+    "hass",
+    "hassfest",
+    "nabu",
+    "norecursedirs",
+    "prek",
+    "pymodbus",
+    "pypackages",
+    "pytype",
+    "pyupgrade",
+    "sonarqube"
+  ]
+}

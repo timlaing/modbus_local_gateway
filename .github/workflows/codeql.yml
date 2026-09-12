@@ -2,35 +2,35 @@ name: "CodeQL"
 
 # yamllint disable-line rule:truthy
 on:
-    push:
-    pull_request:
-    schedule:
-        - cron: "30 18 * * 4"
+  push:
+  pull_request:
+  schedule:
+    - cron: "30 18 * * 4"
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    analyze:
-        name: Analyze
-        runs-on: ubuntu-latest
-        timeout-minutes: 360
-        permissions:
-            actions: read
-            contents: read
-            security-events: write
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
-        steps:
-            - name: Check out code from GitHub
-              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+    steps:
+      - name: Check out code from GitHub
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-            - name: Initialize CodeQL
-              uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
-              with:
-                  languages: python
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        with:
+          languages: python
 
-            - name: Perform CodeQL Analysis
-              uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
-              with:
-                  category: "/language:python"
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        with:
+          category: "/language:python"

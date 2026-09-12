@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import date, datetime
 from decimal import Decimal
+import logging
 from typing import cast
 
 from homeassistant.components.sensor import RestoreSensor, SensorExtraStoredData
@@ -41,9 +41,7 @@ async def async_setup_entry(
 class SameValue(Exception):
     """Exception raised when the value is the same as the previous value."""
 
-    def __init__(
-        self, desc: ModbusSensorEntityDescription, value: str | int | float
-    ) -> None:
+    def __init__(self, desc: ModbusSensorEntityDescription, value: str | float) -> None:
         """Initialize the exception."""
         super().__init__("Ignoring device value - same as previous value.")
         self.desc: ModbusSensorEntityDescription = desc
@@ -56,8 +54,8 @@ class MaxChangeExceeded(Exception):
     def __init__(
         self,
         desc: ModbusSensorEntityDescription,
-        value: int | float,
-        prev_value: int | float,
+        value: float,
+        prev_value: float,
     ) -> None:
         """Initialize the exception."""
         super().__init__("Change in value exceeds maximum allowed change.")
@@ -122,7 +120,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
 
         super()._handle_coordinator_update()
 
-    def _validate_and_update_value(self, value: str | int | float) -> None:
+    def _validate_and_update_value(self, value: str | float) -> None:
         """Validate the value and update the state."""
         if self._attr_native_value == value:
             raise SameValue(self.entity_description, value)
@@ -167,7 +165,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
             value,
         )
 
-    def _update_device_versions(self, value: str | int | float) -> None:
+    def _update_device_versions(self, value: str | float) -> None:
         """Update device registry for version keys."""
         if (
             self._attr_device_info
@@ -194,7 +192,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
                         sw_version=str(value),
                     )
 
-    def _round_value(self, value: float | int) -> float | int:
+    def _round_value(self, value: float) -> float | int:
         """Round the value based on the entity description precision."""
         if (
             isinstance(self.entity_description, ModbusSensorEntityDescription)

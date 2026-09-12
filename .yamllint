@@ -1,0 +1,18 @@
+extends: default
+
+rules:
+  document-start: disable
+  new-line-at-end-of-file: disable
+  line-length: disable
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+    ignore:
+      - cloud-config.yml
+  comments:
+    min-spaces-from-content: 1
+    ignore:
+      - cloud-config.yml
+
+ignore-from-file: .gitignore

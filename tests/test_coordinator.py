@@ -5,8 +5,8 @@ import asyncio
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from homeassistant.config_entries import ConfigEntry
+import pytest
 
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.coordinator import (
@@ -51,19 +51,21 @@ async def test_update_single(mock_config_entry: ConfigEntry) -> None:
     future = asyncio.Future()
     future.set_result(response)
     client.update_device.return_value = future
-    with patch(
-        "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
-        return_value=entities,
-    ):
-        with patch(
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
+            return_value=entities,
+        ),
+        patch(
             "custom_components.modbus_local_gateway"
             ".conversion.Conversion.convert_from_response"
-        ) as convert:
-            convert.return_value = "Result"
-            await coordinator._async_update_data()
-            convert.assert_called_once_with(
-                desc=entities[0].desc, response=response["test"]
-            )
+        ) as convert,
+    ):
+        convert.return_value = "Result"
+        await coordinator._async_update_data()
+        convert.assert_called_once_with(
+            desc=entities[0].desc, response=response["test"]
+        )
 
 
 @pytest.mark.asyncio
@@ -105,17 +107,19 @@ async def test_update_multiple(mock_config_entry: ConfigEntry) -> None:
     future = asyncio.Future()
     future.set_result(response)
     client.update_device.return_value = future
-    with patch(
-        "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
-        return_value=entities,
-    ):
-        with patch(
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
+            return_value=entities,
+        ),
+        patch(
             "custom_components.modbus_local_gateway"
             ".conversion.Conversion.convert_from_response"
-        ) as convert:
-            convert.return_value = "Result"
-            await coordinator._async_update_data()
-            assert convert.call_count == 2
+        ) as convert,
+    ):
+        convert.return_value = "Result"
+        await coordinator._async_update_data()
+        assert convert.call_count == 2
 
 
 @pytest.mark.asyncio
