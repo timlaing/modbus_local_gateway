@@ -101,7 +101,7 @@ Do **not** include personal configuration (IP addresses, passwords, live device 
 
 ## Code Style
 
-The repository uses `ruff`, `isort`, `prettier`, and `prek`.
+The repository uses `ruff` (lint, formatting, and isort-style import ordering), `prettier`, and `prek`.
 
 ```bash
 # Python lint (ruff)
@@ -110,9 +110,6 @@ uv run ruff check .
 # Python formatting (black-compatible, 88-char lines)
 uv run ruff format .
 
-# Import ordering (isort, profile black)
-uv run isort --check-only --diff .
-
 # Full check set (yamllint, check-yaml, cspell, prettier, EOF) on changed files
 uv run prek run --files <paths>
 
@@ -120,7 +117,7 @@ uv run prek run --files <paths>
 uv run prek run --all-files
 ```
 
-Code should be black-compatible (88-character lines) and pass `ruff`, `isort`, and the `prek` checks without issues. When you change code, also add or update tests.
+Code should be black-compatible (88-character lines) and pass the `ruff` and `prek` checks without issues. When you change code, also add or update tests.
 
 ## Testing
 
