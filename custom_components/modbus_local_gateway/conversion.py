@@ -187,7 +187,7 @@ class Conversion:
         )
 
     def _apply_conversion_operations(
-        self, num: float, desc: ModbusEntityDescription
+        self, num: int | float, desc: ModbusEntityDescription
     ) -> float:
         """Apply multiplier and offset to the number"""
         if isinstance(num, (int, float)):
