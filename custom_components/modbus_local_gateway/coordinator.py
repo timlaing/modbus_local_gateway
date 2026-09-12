@@ -280,6 +280,11 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             self.async_contexts(), key=lambda x: x.device_id
         )
         entities = [ctx for ctx in entities if ctx.desc.scan_interval is None]
+        if not entities:
+            # Every entity has its own scan_interval and polls on its own timer,
+            # so there is nothing for the shared refresh to fetch.
+            _LOGGER.debug("No entities to refresh for %s", self.name)
+            return self.data or {}
         data: dict[str, Any] = await self._update_device(entities=entities)
         if data:
             return data

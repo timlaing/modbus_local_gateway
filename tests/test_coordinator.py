@@ -658,3 +658,48 @@ async def test_async_update_entity(mock_config_entry: ConfigEntry) -> None:
     coordinator._update_device.return_value = {"test2": "value3"}
     await coordinator.async_update_entity(ctx2)
     assert coordinator.data == {"test1": "value1", "test2": "value3"}
+
+
+@pytest.mark.asyncio
+async def test_async_update_with_no_coordinator_entities(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """A device config where EVERY entity sets scan_interval must not fail.
+
+    async_update only polls entities without a scan_interval. If a config gives
+    one to all of them that list is empty, and raising here would set
+    last_update_success False and mark every entity unavailable - including the
+    ones their own timers are polling perfectly well.
+    """
+    client = MagicMock()
+    coordinator = ModbusCoordinator(
+        hass=MagicMock(),
+        config_entry=mock_config_entry,
+        gateway_device=MagicMock(),
+        client=client,
+        gateway="Test",
+    )
+
+    entities: list[ModbusContext] = [
+        ModbusContext(
+            1,
+            ModbusSensorEntityDescription(
+                register_address=1,
+                key="own_timer",
+                data_type=ModbusDataType.HOLDING_REGISTER,
+                scan_interval=10,
+            ),
+        )
+    ]
+    # what the entity's own timer already stored, via async_update_entity
+    coordinator.data = {"own_timer": 42}
+
+    with patch(
+        "custom_components.modbus_local_gateway.coordinator."
+        "ModbusCoordinator.async_contexts",
+        return_value=entities,
+    ):
+        result = await coordinator.async_update()
+
+    assert result == {"own_timer": 42}  # existing data preserved, not wiped
+    client.update_device.assert_not_called()  # nothing was polled
