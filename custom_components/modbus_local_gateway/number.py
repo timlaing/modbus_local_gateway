@@ -92,7 +92,7 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
     async def async_set_native_value(self, value: float) -> None:
         """Set new value."""
         if isinstance(self.coordinator, ModbusCoordinator):
-            await self.coordinator.client.write_data(self.coordinator_context, value)
+            await self.write_data(value)
 
     def _set_state(self, value: float) -> None:
         """Sets the underlying state of the entity,
