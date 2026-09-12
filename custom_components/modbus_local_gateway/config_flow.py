@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import datetime
 import logging
-from collections.abc import Mapping
 from typing import Any
 
-import voluptuous as vol
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -16,6 +15,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
+import voluptuous as vol
 
 from .const import (
     CONF_CONNECTION_TYPE,
@@ -59,16 +59,14 @@ class OptionsFlowHandler(OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        OPTIONS_REFRESH,
-                        default=self.config_entry.options.get(
-                            OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
-                        ),
-                    ): int
-                }
-            ),
+            data_schema=vol.Schema({
+                vol.Required(
+                    OPTIONS_REFRESH,
+                    default=self.config_entry.options.get(
+                        OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
+                    ),
+                ): int
+            }),
         )
 
 
@@ -124,17 +122,15 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_HOST, None, **host_opts): str,
-                    vol.Required(CONF_PORT, None, **port_opts): int,
-                    vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
-                    vol.Required(
-                        CONF_CONNECTION_TYPE, None, **connection_type_opts
-                    ): vol.In(CONF_CONNECTION_TYPES),
-                    vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
-                }
-            ),
+            data_schema=vol.Schema({
+                vol.Required(CONF_HOST, None, **host_opts): str,
+                vol.Required(CONF_PORT, None, **port_opts): int,
+                vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
+                vol.Required(
+                    CONF_CONNECTION_TYPE, None, **connection_type_opts
+                ): vol.In(CONF_CONNECTION_TYPES),
+                vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
+            }),
             errors=errors,
         )
 
@@ -152,8 +148,9 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             item[0]: f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}"
             for item in sorted(
                 devices.items(),
-                key=lambda item: f"{item[1].manufacturer or 'Unknown'}"
-                f" {item[1].model or 'Unknown'}",
+                key=lambda item: (
+                    f"{item[1].manufacturer or 'Unknown'} {item[1].model or 'Unknown'}"
+                ),
             )
         }
 
@@ -170,17 +167,15 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         )
 
         # This title is shown in the main devices list under the Modbus Local Gateway integration
-        title: str = " ".join(
-            [
-                part
-                for part in [
-                    self.data.get(CONF_PREFIX),
-                    device_info.manufacturer,
-                    device_info.model,
-                ]
-                if part
+        title: str = " ".join([
+            part
+            for part in [
+                self.data.get(CONF_PREFIX),
+                device_info.manufacturer,
+                device_info.model,
             ]
-        )
+            if part
+        ])
         return self.async_create_entry(title=title, data=self.data)
 
     def async_abort(

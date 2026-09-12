@@ -38,7 +38,7 @@ read_only_word:
   Apparent Power:
     address: 2546
     name: Apparent Power
-    unit_of_measurement: VoltAmps  # Note: Corrected from "VoltsA" to "VoltAmps"
+    unit_of_measurement: VoltAmps # Note: Corrected from "VoltsA" to "VoltAmps"
     precision: 2
     float: True
     device_class: apparent_power

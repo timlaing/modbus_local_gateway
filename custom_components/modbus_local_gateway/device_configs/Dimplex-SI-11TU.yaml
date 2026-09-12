@@ -3,9 +3,7 @@ device:
   model: Sole/Wasser-Wärmepumpe SI 11TU
   max_register_read: 8
 
-
 read_write_word:
-
   operating_mode:
     name: Betriebsmodus
     address: 5015
@@ -184,7 +182,6 @@ read_write_word:
     entity_registry_enabled_default: False
 
 read_only_word:
-
   # Betriebsdaten / Operating Data
 
   outside_temp:
@@ -451,7 +448,6 @@ read_only_word:
 read_write_boolean:
 
 read_only_boolean:
-
   ## Eingänge
 
   hot_water_thermostat:

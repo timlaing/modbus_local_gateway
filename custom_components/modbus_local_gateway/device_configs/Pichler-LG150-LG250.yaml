@@ -3,9 +3,7 @@ device:
   model: Lüftungsgerät LG 150 - LG 250
   max_register_read: 100
 
-
 read_write_word: # Holding registers
-
   # Selects
 
   betriebsmodus_sommer_winter_select:
@@ -385,9 +383,7 @@ read_write_word: # Holding registers
   #   entity_category: diagnostic
   #   entity_registry_enabled_default: False
 
-
 read_only_word: # Input registers
-
   # Sensors
 
   temperatur_raum_display:
@@ -620,8 +616,6 @@ read_only_word: # Input registers
     icon: mdi:water
     entity_registry_enabled_default: False
 
-
 read_write_boolean: # Coils
-
 
 read_only_boolean: # Discrete inputs

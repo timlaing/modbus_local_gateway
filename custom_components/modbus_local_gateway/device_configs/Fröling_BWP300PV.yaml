@@ -7,7 +7,6 @@ device:
 # Input Registers (3x) read-only
 # =========================
 read_only_word:
-
   di1_pressostat:
     name: "Kontakt 1: Pressostat"
     icon: mdi:gauge
@@ -184,7 +183,6 @@ read_only_word:
 # Holding Registers (4x) read/write
 # =========================
 read_write_word:
-
   # --- Temperaturen / Setpoints ---
   t_setpoint_set:
     name: "Temperatur: T Soll"
@@ -568,4 +566,4 @@ read_write_word:
       min: 3
       max: 14
     entity_category: config
-    entity_registry_enabled_default: true  # Icons ergänzt
+    entity_registry_enabled_default: true # Icons ergänzt

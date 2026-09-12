@@ -4,8 +4,8 @@
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from homeassistant.core import HomeAssistant
+import pytest
 
 from custom_components.modbus_local_gateway.const import DOMAIN
 from custom_components.modbus_local_gateway.entity_management.device_loader import (

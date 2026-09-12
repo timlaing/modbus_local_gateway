@@ -1,29 +1,29 @@
 {
-  "editor.formatOnPaste": false,
-  "editor.formatOnSave": true,
-  "editor.formatOnType": true,
-  "files.eol": "\n",
-  "files.trimTrailingWhitespace": true,
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    }
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "mypy-type-checker.importStrategy": "fromEnvironment",
+  "pylint.importStrategy": "fromEnvironment",
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "python.testing.pytestArgs": ["tests"],
   "python.testing.pytestEnabled": true,
-  "python.analysis.inlayHints.pytestParameters": true,
-  "isort.check": true,
-  "isort.importStrategy": "fromEnvironment",
-  "python.analysis.autoFormatStrings": true,
-  "python.analysis.autoImportCompletions": true,
-  "python.analysis.completeFunctionParens": true,
-  "python.createEnvironment.contentButton": "show",
-  "python.terminal.focusAfterLaunch": true,
+  "ruff.importStrategy": "fromEnvironment",
   "sonarlint.connectedMode.project": {
     "connectionId": "timlaing",
     "projectKey": "timlaing_modbus_local_gateway"
-  },
-  "python.terminal.activateEnvInCurrentTerminal": true,
-  "python.defaultInterpreterPath": "./.venv/bin/python",
-  "git.autofetch": true,
-  "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
-  },
-  "[dockerfile]": {
-    "editor.defaultFormatter": "ms-azuretools.vscode-docker"
   }
 }

@@ -4,9 +4,9 @@
 from asyncio import InvalidStateError
 from unittest.mock import MagicMock, patch
 
-import pytest
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.pdu.pdu import ModbusPDU
+import pytest
 
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,

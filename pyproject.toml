@@ -1,3 +1,52 @@
+[build-system]
+requires = ["setuptools >= 82.0.1,< 82.1", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "modbus_local_gateway"
+dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
+description = "Modbus Local Gateway is a module which allows integration with Modbus devices in Home Assistant."
+requires-python = ">=3.14"
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [
+    {name = "Tim Laing"}
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries"
+]
+keywords = ["modbus", "local", "gateway", "homeassistant", "integration"]
+
+
+[project.urls]
+homepage = "https://github.com/timlaing/modbus_local_gateway"
+download = "https://github.com/timlaing/modbus_local_gateway/releases/latest"
+bug_tracker = "https://github.com/timlaing/modbus_local_gateway/issues"
+repository = "https://github.com/timlaing/modbus_local_gateway"
+
+[tool.setuptools_scm]
+
+[tool.setuptools]
+packages = [
+    "custom_components.modbus_local_gateway",
+    "custom_components.modbus_local_gateway.devices",
+    "custom_components.modbus_local_gateway.device_configs",
+    "custom_components.modbus_local_gateway.entity_management",
+    "custom_components.modbus_local_gateway.sensor_types",
+]
+
+[tool.setuptools.dynamic]
+readme = {file = "README.md", content-type = "text/markdown"}
+dependencies = {file = ["requirements.txt"]}
+optional-dependencies = {dev = {file = ["requirements_dev.txt"]}}
+
 [tool.ruff]
 exclude = [
     ".bzr",
@@ -35,12 +84,74 @@ indent-width = 4
 # Assume Python 3.14
 target-version = "py314"
 
+[tool.ruff.analyze]
+preview=true
+
+[tool.ruff.format]
+preview=true
+
+[tool.ruff.lint]
+preview=true
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "UP007",  # use X | Y for union types (HA uses Optional in some places)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components"]
+force-sort-within-sections=true
+
+
+[tool.mypy]
+python_version = "3.14"
+explicit_package_bases = true
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+check_untyped_defs = true
+exclude_gitignore = true
+strict = true
+show_error_codes = true
+pretty = true
+
+[tool.pylint.main]
+jobs = 0
+
+[tool.pylint."messages control"]
+disable = [
+    "C0103",  # invalid-name (HA uses short names for entity descriptions)
+    "R0801",  # duplicate-code (structural patterns repeated across entity platforms)
+    "R0902",  # too-many-instance-attributes (entity classes naturally have many attrs)
+    "R0903",  # too-few-public-methods (entity classes are naturally small)
+    "R0904",  # too-many-public-methods
+    "R0913",  # too-many-arguments (HA callbacks have many args)
+    "R0917",  # too-many-positional-arguments
+    "W0613",  # unused-argument (HA callback signatures)
+    "E1101",  # no-member (dynamic HA attributes)
+]
+
+[tool.pylint.format]
+max-line-length = 88
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+norecursedirs = [".git", ".tox", "build", "lib"]
+addopts = ["--disable-socket", "--allow-unix-socket", "--timeout=2"]
 
 [tool.coverage.run]
 branch = true
+relative_files = true
+source = ["custom_components/modbus_local_gateway"]
 omit = [
     "modbus_test_*/*",
     "conftest.py",
@@ -52,8 +163,8 @@ source = [
     "tests/"
 ]
 
-[tool.isort]
-profile = "black"
+[tool.pyright]
+typeCheckingMode = "off"
 
 [tool.tox]
 requires = ["tox>=4.24.1"]
@@ -68,52 +179,3 @@ deps = ["-r requirements_dev.txt"]
 python = '''
     3.14: 3.14, lint
 '''
-
-[tool.setuptools_scm]
-
-[build-system]
-requires = ["setuptools >= 82.0.1,< 82.1", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "modbus_local_gateway"
-dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
-description = "Modbus Local Gateway is a module which allows integration with Modbus devices in Home Assistant."
-requires-python = ">=3.14"
-license = "MIT"
-license-files = ["LICENSE.md"]
-authors = [
-    {name = "Tim Laing"}
-]
-classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.14",
-    "Topic :: Software Development :: Libraries"
-]
-keywords = ["modbus", "local", "gateway", "homeassistant", "integration"]
-
-
-[project.urls]
-homepage = "https://github.com/timlaing/modbus_local_gateway"
-download = "https://github.com/timlaing/modbus_local_gateway/releases/latest"
-bug_tracker = "https://github.com/timlaing/modbus_local_gateway/issues"
-repository = "https://github.com/timlaing/modbus_local_gateway"
-
-[tool.setuptools]
-packages = [
-    "custom_components.modbus_local_gateway",
-    "custom_components.modbus_local_gateway.devices",
-    "custom_components.modbus_local_gateway.device_configs",
-    "custom_components.modbus_local_gateway.entity_management",
-    "custom_components.modbus_local_gateway.sensor_types",
-]
-
-[tool.setuptools.dynamic]
-readme = {file = "README.md", content-type = "text/markdown"}
-dependencies = {file = ["requirements.txt"]}
-optional-dependencies = {dev = {file = ["requirements_dev.txt"]}}

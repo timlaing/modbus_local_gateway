@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
+import logging
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
 from homeassistant.components.number import NumberEntityDescription, NumberMode
@@ -99,9 +99,7 @@ class ModbusEntityDescription(
             return False
         if not self._validate_max_change():
             return False
-        if not self._validate_scan_interval():
-            return False
-        return True
+        return self._validate_scan_interval()
 
     def _validate_scan_interval(self) -> bool:
         """Validate scan_interval is positive if set."""

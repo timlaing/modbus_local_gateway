@@ -1,10 +1,10 @@
 """Conversion Tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
-import pytest
 from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.register_message import ReadInputRegistersResponse
+import pytest
 
 from custom_components.modbus_local_gateway.conversion import (
     Conversion,
@@ -35,7 +35,7 @@ async def test_int16() -> None:
         ),
     )
 
-    assert 1 == value
+    assert value == 1
 
 
 @pytest.mark.asyncio
@@ -78,7 +78,7 @@ async def test_int16_bitshift() -> None:
         ),
     )
 
-    assert 240 == value
+    assert value == 240
 
 
 @pytest.mark.asyncio
@@ -143,7 +143,7 @@ async def test_int32() -> None:
         ),
     )
 
-    assert 65537 == value
+    assert value == 65537
 
 
 @pytest.mark.asyncio
@@ -234,7 +234,7 @@ async def test_string() -> None:
         ),
     )
 
-    assert "HelloWorld" == value
+    assert value == "HelloWorld"
 
 
 @pytest.mark.asyncio
@@ -279,7 +279,7 @@ async def test_enum() -> None:
         ),
     )
 
-    assert "Good" == value
+    assert value == "Good"
 
 
 @pytest.mark.asyncio
@@ -324,7 +324,7 @@ async def test_enum_bitshift() -> None:
         ),
     )
 
-    assert "Good" == value
+    assert value == "Good"
 
 
 @pytest.mark.asyncio
@@ -348,7 +348,7 @@ async def test_enum_bits() -> None:
         ),
     )
 
-    assert "Good" == value
+    assert value == "Good"
 
 
 @pytest.mark.asyncio
@@ -372,7 +372,7 @@ async def test_flags_low() -> None:
         ),
     )
 
-    assert "Good" == value
+    assert value == "Good"
 
 
 @pytest.mark.asyncio
@@ -397,7 +397,7 @@ async def test_flags_high() -> None:
         ),
     )
 
-    assert "Good" == value
+    assert value == "Good"
 
 
 @pytest.mark.asyncio

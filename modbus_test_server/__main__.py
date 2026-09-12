@@ -17,7 +17,7 @@ from pymodbus.server import (
     StartAsyncTcpServer,
 )
 
-_logger: logging.Logger = logging.getLogger(__file__)
+_logger: logging.Logger = logging.getLogger(__name__)
 _logger.setLevel(logging.INFO)
 
 

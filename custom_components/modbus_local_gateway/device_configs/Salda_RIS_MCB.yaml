@@ -7,9 +7,7 @@ device:
   # documented T1..T4 locations (those read 0). Humidity is not exposed over Modbus.
   max_register_read: 16
 
-
 read_write_word: # Holding registers (FC 0x03 / 0x06)
-
   # Fan speed / system mode (0..3). Writing 0..3 here sets the speed.
   fan_speed_select:
     name: Fan Speed
@@ -35,9 +33,7 @@ read_write_word: # Holding registers (FC 0x03 / 0x06)
     device_class: temperature
     icon: mdi:thermometer
 
-
 read_only_word: # Input registers (FC 0x04)
-
   # Current system mode (read-back of the active speed/mode)
   current_system_mode:
     name: Current Mode

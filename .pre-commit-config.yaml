@@ -4,27 +4,182 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      - id: forbid-submodules
       - id: trailing-whitespace
       - id: detect-private-key
       - id: check-docstring-first
       - id: end-of-file-fixer
+      - id: check-shebang-scripts-are-executable
+      - id: check-added-large-files
       - id: check-yaml
         args:
           - --unsafe
       - id: check-added-large-files
       - id: requirements-txt-fixer
       - id: name-tests-test
+        exclude: tests/const.*\.py$|tests/data.py$|tests/protocol_harness.py$
         args:
           - --pytest-test-first
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # Ruff version.
-    rev: v0.14.11
+    rev: v0.16.5
     hooks:
       # Run the linter.
-      - id: ruff
+      - id: ruff-check
+        args:
+          - --fix
       # Run the formatter.
       - id: ruff-format
-  - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
+  - repo: https://github.com/streetsidesoftware/cspell-cli
+    rev: v10.1.0
     hooks:
-      - id: isort
+      - id: cspell
+        args:
+          - --config=.vscode/cspell.json
+          - --no-must-find-files
+          - --no-progress
+          - --no-summary
+      - id: cspell # Spell check the commit message
+        name: check commit message spelling
+        args:
+          - --no-must-find-files
+          - --no-progress
+          - --no-summary
+          - --files
+          - .git/COMMIT_EDITMSG
+        stages: [commit-msg]
+        always_run: true # This might not be necessary.
+  - repo: https://github.com/adrienverge/yamllint.git
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+  - repo: https://github.com/cdce8p/python-typing-update
+    rev: v0.8.1
+    hooks:
+      # Run `python-typing-update` hook manually from time to time
+      # to update python typing syntax.
+      # Will require manual work, before submitting changes!
+      # prek run --hook-stage manual python-typing-update --all-files
+      - id: python-typing-update
+        stages: [manual]
+        args:
+          - --py311-plus
+          - --force
+          - --keep-updates
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: npx prettier --write --ignore-unknown
+        language: node
+        types_or:
+          - json
+          - yaml
+          - markdown
+        additional_dependencies:
+          - prettier-plugin-sort-json
+          - "@prettier/plugin-xml"
+        exclude: custom_components/modbus_local_gateway/manifest.json
+        pass_filenames: true
+      - id: mypy
+        name: MyPy Type checker
+        alias: mypy
+        entry: mypy
+        args:
+          - .
+        types: [python]
+        pass_filenames: false
+        language: python
+        additional_dependencies:
+          # BEGIN GENERATED REQUIREMENTS
+          - getmac>=0.9.5
+          - pycryptodome>=3.23.0
+          - pymodbus>=3.13.1
+          - coverage>=7.6.8
+          - fuzzywuzzy>=0.18.0
+          - homeassistant
+          - isort>=8.0.1
+          - levenshtein>=0.27.3
+          - prek>=0.4.5
+          - pylint>=4.0.6
+          - pytest>=8.3.4
+          - pytest-asyncio>=0.24.0
+          - pytest-cov>=6.0.0
+          - pytest-homeassistant-custom-component
+          - pytest-picked
+          - ruff>=0.15.20
+          - yarl>=1.24.2
+          - tox==4.56.1
+          # END GENERATED REQUIREMENTS
+        stages: [manual]
+      - id: pylint
+        name: Pylint
+        entry: pylint
+        pass_filenames: true
+        args:
+          - "-rn" # Only display messages
+          - "-sn" # Don't display the score
+        types: [python]
+        language: python
+        additional_dependencies:
+          # BEGIN GENERATED REQUIREMENTS
+          - getmac>=0.9.5
+          - pycryptodome>=3.23.0
+          - pymodbus>=3.13.1
+          - coverage>=7.6.8
+          - fuzzywuzzy>=0.18.0
+          - homeassistant
+          - isort>=8.0.1
+          - levenshtein>=0.27.3
+          - prek>=0.4.5
+          - pylint>=4.0.6
+          - pytest>=8.3.4
+          - pytest-asyncio>=0.24.0
+          - pytest-cov>=6.0.0
+          - pytest-homeassistant-custom-component
+          - pytest-picked
+          - ruff>=0.15.20
+          - yarl>=1.24.2
+          - tox==4.56.1
+          # END GENERATED REQUIREMENTS
+        stages: [manual]
+      - id: pytest
+        name: PyTest
+        entry: pytest
+        args:
+          - "--cov=custom_components.modbus_local_gateway"
+          - "--cov-branch"
+          - "--cov-report=term-missing"
+          - "--cov-fail-under=90"
+        language: python
+        stages: [manual]
+        pass_filenames: false
+        additional_dependencies:
+          # BEGIN GENERATED REQUIREMENTS
+          - getmac>=0.9.5
+          - pycryptodome>=3.23.0
+          - pymodbus>=3.13.1
+          - coverage>=7.6.8
+          - fuzzywuzzy>=0.18.0
+          - homeassistant
+          - isort>=8.0.1
+          - levenshtein>=0.27.3
+          - prek>=0.4.5
+          - pylint>=4.0.6
+          - pytest>=8.3.4
+          - pytest-asyncio>=0.24.0
+          - pytest-cov>=6.0.0
+          - pytest-homeassistant-custom-component
+          - pytest-picked
+          - ruff>=0.15.20
+          - yarl>=1.24.2
+          - tox==4.56.1
+          # END GENERATED REQUIREMENTS
+      - id: check-prek-deps
+        name: Check prek dependency sync
+        language: system
+        entry: python3 scripts/sync_prek_deps.py --check
+        args:
+          - requirements_all.txt
+        files: ^(requirements.*\.txt|\.pre-commit-config\.yaml)$
+        pass_filenames: false

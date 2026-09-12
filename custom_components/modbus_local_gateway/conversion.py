@@ -171,7 +171,7 @@ class Conversion:
         )
 
         if desc.conv_sum_scale is not None and isinstance(num, list):
-            num = sum(r * s for r, s in zip(num, desc.conv_sum_scale))
+            num = sum(r * s for r, s in zip(num, desc.conv_sum_scale, strict=False))
 
         if isinstance(num, float):
             return num
@@ -187,7 +187,7 @@ class Conversion:
         )
 
     def _apply_conversion_operations(
-        self, num: int | float, desc: ModbusEntityDescription
+        self, num: float, desc: ModbusEntityDescription
     ) -> float:
         """Apply multiplier and offset to the number"""
         if isinstance(num, (int, float)):
@@ -216,7 +216,7 @@ class Conversion:
             raise NotSupportedError("Setting of scaled sums is not supported")
 
         registers: list[int] = self.client.convert_to_registers(
-            int(round(num)),
+            round(num),
             data_type=self._get_number_data_type(desc),
         )
         return registers
@@ -271,7 +271,7 @@ class Conversion:
         return response.bits[0]  # Single bit for single entity
 
     def convert_to_registers(
-        self, desc: ModbusEntityDescription, value: str | float | int
+        self, desc: ModbusEntityDescription, value: str | float
     ) -> list[int]:
         """Entry point for conversion to registers"""
         registers: list[int] | None = None

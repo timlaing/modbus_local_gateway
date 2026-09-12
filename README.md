@@ -31,7 +31,7 @@ The easiest way to install this integration is through the [Home Assistant Commu
 4. Set category to "Integration" and click "Add".
 5. Search for "Modbus Local Gateway" and install.
 
-Or use these buttons (requires *My Home Assistant*):
+Or use these buttons (requires _My Home Assistant_):
 [![Open HACS Repository](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=timlaing&repository=modbus_local_gateway&category=integration)
 
 Restart Home Assistant after installation.
@@ -43,18 +43,21 @@ For support and discussions, join our Discord community: [Join our Discord commu
 ### Adding a New Device
 
 Add devices via the Home Assistant UI:
+
 1. Go to **Settings > Devices & Services**.
 2. Click **Add Integration**, search for "Modbus Local Gateway".
 3. Or use this button:
    [![Add Integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=modbus_local_gateway)
 
 #### Step 1: Connection Details
+
 - **Host**: Gateway IP/hostname (e.g., `192.168.1.100`).
 - **Port**: TCP port (default: `502`).
 - **Device ID**: Modbus device ID (e.g., `1`).
 - **Prefix**: Optional device and entity name prefix (e.g., `Device 3`).
 
 #### Step 2: Device Selection
+
 Choose a device type from the dropdown (e.g., `Eastron SDM-230` for `SDM230.yaml`).
 
 ### Modifying Existing Devices
@@ -69,18 +72,18 @@ Any files in `/config/modbus_local_gateway/` will override those as part of this
 Once you are happy with your configuration, please consider sharing with others by creating a pull request with your config file.
 
 ### Minimal Example
+
 ```yaml
 device:
   manufacturer: "Dimplex"
   model: "Wärmepumpe SI 11TU"
 
 read_write_word:
-
-  set_water_temp:    # This key must uniquely identify the entity within the config file
+  set_water_temp: # This key must uniquely identify the entity within the config file
     address: 20
     name: "Set Water Temperature"
     multiplier: 0.1
-    control: number  # Show a number input field in the Home Assistant UI
+    control: number # Show a number input field in the Home Assistant UI
     number:
       min: 0
       max: 100
@@ -106,6 +109,7 @@ Each register/coil section contains entity definitions, identified by a unique k
 #### Common Properties
 
 For all entity definitions:
+
 - `address` (required): Modbus address (integer).
 - `name` (optional): Friendly name (default: the entity definition's key).
 - `size` (optional): Register count (default: 1; use 2 for raw 32-bit `float`, or string length / 2 for `string`; not needed for `sum_scale`).
@@ -126,17 +130,17 @@ For all entity definitions:
     - E.g.:
       ```yaml
       control: number
-      number:         # Optional
-        min: 10.0     # float
-        max: 100.0    # float
-        step: 5       # optional (defaults to modbus multiplier or 1.0)
-        mode: slider  # optional: slider or box (default)
+      number: # Optional
+        min: 10.0 # float
+        max: 100.0 # float
+        step: 5 # optional (defaults to modbus multiplier or 1.0)
+        mode: slider # optional: slider or box (default)
       ```
   - `control: select`: Creates a select entity.
     - E.g.:
       ```yaml
       control: select
-      options:        # Required
+      options: # Required
         0: "Closed"
         1: "Half-Open"
         2: "Open"
@@ -145,9 +149,9 @@ For all entity definitions:
     - E.g.:
       ```yaml
       control: switch
-      switch:         # Optional
-        "on": 1       # default: 1
-        "off": 0      # default: 0
+      switch: # Optional
+        "on": 1 # default: 1
+        "off": 0 # default: 0
       ```
   - `control: text`: Creates a text entity.
 
@@ -158,7 +162,7 @@ For all entity definitions:
     - E.g.
       ```yaml
       string: true
-      size: 5       # For a 10 byte string
+      size: 5 # For a 10 byte string
       ```
 - **Math Operations** (applied in order):
   - `swap`: updates the byte ordering of the registers (`byte`, `word` or `word_byte`)
@@ -190,22 +194,24 @@ For all entity definitions:
   - `never_resets: true`: For non-resetting totals. (E.g. for sensors with `state_class: total_increasing`).
 
 #### Coil Properties (`read_write_boolean`, `read_only_boolean`)
+
 - **Control Types** (only for `read_write_boolean`): Allows the user to control the value.
   - `control: switch`: Creates a switch entity.
     - E.g.:
       ```yaml
       control: switch
-      switch:         # Optional
-        "on": 1       # default: 1
-        "off": 0      # default: 0
+      switch: # Optional
+        "on": 1 # default: 1
+        "off": 0 # default: 0
       ```
   - `control: binary_sensor`: Creates a binary_sensor entity.
     - E.g.:
       ```yaml
       control: binary_sensor
-      "on": False       # Optional - default: True
-      "off": True       # Optional - default: False
+      "on": False # Optional - default: True
+      "off": True # Optional - default: False
       ```
+
 ### Example YAML
 
 ```yaml
@@ -214,7 +220,6 @@ device:
   model: MindSync Hub 310
 
 read_write_word:
-
   baud_rate:
     address: 28
     control: select
@@ -239,7 +244,6 @@ read_write_word:
     control: binary_sensor
 
 read_only_word:
-
   voltage:
     address: 0
     precision: 2
@@ -248,17 +252,16 @@ read_only_word:
     state_class: measurement
 
 read_write_boolean:
-
   power_switch:
     address: 10
     control: switch
 
 read_only_boolean:
-
   status:
     address: 15
     device_class: power
 ```
+
 See `custom_components/modbus_local_gateway/device_configs/` for more examples.
 
 ## Troubleshooting
@@ -275,6 +278,7 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
 ## Supported Devices
 
 Tested with a [WaveShare Wi-Fi to RS485 Gateway](https://www.waveshare.com/rs485-to-wifi-eth.htm) in Modbus TCP to RTU mode:
+
 - **Settings**: Baud Rate: 9600, Data Bits: 8, Parity: None, Stop Bits: 1, Baudrate Adaptive: Disable, UART AutoFrame: Disable, Modbus Polling: Off, Network A TCP Time out: 5, Network A MAX TCP Num: 24.
 - **Tested Slaves**: Eastron SDM230/SDM630, Finder 7M.38/7M.24, Growatt MIN-6000-TL-XH/MOD-6000-TL-X/MIC-2500-TL-X.
 

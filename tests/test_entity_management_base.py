@@ -14,9 +14,11 @@ def test_validate_both_float_and_string(
 ) -> None:
     """Test when both is_float and is_string are True."""
     entity: ModbusEntityDescription = valid_entity_description
-    entity = entity.__class__(
-        **{**entity.__dict__, "is_float": True, "is_string": True}
-    )
+    entity = entity.__class__(**{
+        **entity.__dict__,
+        "is_float": True,
+        "is_string": True,
+    })
     with patch(
         "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
     ) as mock_warning:
@@ -58,9 +60,11 @@ def test_validate_invalid_register_count(
 ) -> None:
     """Test when register_count is not 2 while is_float is True."""
     entity: ModbusEntityDescription = valid_entity_description
-    entity = entity.__class__(
-        **{**entity.__dict__, "is_float": True, "register_count": 1}
-    )
+    entity = entity.__class__(**{
+        **entity.__dict__,
+        "is_float": True,
+        "register_count": 1,
+    })
     with patch(
         "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
     ) as mock_warning:
@@ -73,9 +77,11 @@ def test_validate_max_change_with_string(
 ) -> None:
     """Test when max_change is set with is_string as True."""
     entity: ModbusEntityDescription = valid_entity_description
-    entity = entity.__class__(
-        **{**entity.__dict__, "is_string": True, "max_change": 1.0}
-    )
+    entity = entity.__class__(**{
+        **entity.__dict__,
+        "is_string": True,
+        "max_change": 1.0,
+    })
     with patch(
         "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
     ) as mock_warning:
