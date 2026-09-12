@@ -36,10 +36,9 @@ fix and a disclosure timeline.
 
 ### Alternative: Direct email
 
-If you cannot use GitHub Security Advisories, contact the maintainers via the
-email address listed on the maintainer's GitHub profile
-(https://github.com/timlaing) or through the [GitHub Discussions]
-(https://github.com/timlaing/modbus_local_gateway/discussions) community.
+If you cannot use GitHub Security Advisories, contact the maintainers directly
+via the email address listed on the maintainer's GitHub profile
+(https://github.com/timlaing).
 
 ### What to include
 

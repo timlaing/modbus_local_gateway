@@ -66,7 +66,7 @@
 - [ ] This PR is a single, self-contained change (one fix or feature only)
 - [ ] The PR is editable by maintainers (`maintainer_can_modify` / "Allow edits from maintainers")
 - [ ] Ran `uv run prek run --files <changed paths>` — all hooks pass
-- [ ] Ran `uv run pre-commit run --all-files` — all hooks pass
+- [ ] Ran `uv run prek run --all-files` — all hooks pass
 - [ ] Ran `uv run pytest` — all tests pass
 - [ ] Added or updated tests for any code changes (one test file per entity/platform in `tests/`)
 - [ ] No new issues reported by static analysis (ruff, mypy in manual stage, SonarQube)

@@ -117,7 +117,7 @@ uv run isort --check-only --diff .
 uv run prek run --files <paths>
 
 # Everything at once before pushing
-uv run pre-commit run --all-files
+uv run prek run --all-files
 ```
 
 Code should be black-compatible (88-character lines) and pass `ruff`, `isort`, and the `prek` checks without issues. When you change code, also add or update tests.
@@ -160,7 +160,7 @@ feat: add support for the FooBar Baz-300
 1. **Branch from `main`.** The base branch for all pull requests is `main`.
 2. **Keep PRs small and focused.** A single PR should address a single concern — it is much easier to review and merge.
 3. **Update documentation.** If you add user-facing behaviour, update the README to match.
-4. **Run the full check set** (`pre-commit run --all-files`) and the test suite before asking for review.
+4. **Run the full check set** (`uv run prek run --all-files`) and the test suite before asking for review.
 5. **Write a good description.** Explain what the PR does and why, and reference any related issues.
 
 Before your PR is merged it must:

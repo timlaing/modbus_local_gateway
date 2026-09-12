@@ -271,7 +271,7 @@ class Conversion:
         return response.bits[0]  # Single bit for single entity
 
     def convert_to_registers(
-        self, desc: ModbusEntityDescription, value: str | float
+        self, desc: ModbusEntityDescription, value: str | int | float
     ) -> list[int]:
         """Entry point for conversion to registers"""
         registers: list[int] | None = None

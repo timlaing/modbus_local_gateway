@@ -106,7 +106,7 @@ The pytest pre-commit hook enforces `--cov-fail-under=90` at aggregate level onl
 ## 9. Linting & Formatting
 
 - Format/lint: `ruff check .`, `ruff format .`, `isort --check-only --diff .` (black profile, 88 cols, `preview = true`).
-- Full default-stage set: `prek run --all-files` — or `prek run --files <paths>` for a subset. Do not use `pre-commit` directly for regular runs. mypy and pylint are manual-stage hooks only.
+- Full default-stage set: `uv run prek run --all-files` — or `uv run prek run --files <paths>` for a subset. Prefer `prek` for regular runs; `pre-commit` is equivalent only when it executes the same default-stage hook set, so do not invoke it directly. mypy and pylint are manual-stage hooks only.
 - Some hooks apply fixes. A review-only request does not authorize worktree edits: record `git status --short` first and use non-mutating modes where practical. If a required check modifies files, disclose exactly what changed.
 - cspell words and `ignoreWords` in `.vscode/cspell.json` must be **lowercase and sorted alphabetically**; `device_configs/` is ignored by cspell. Only add a word when a legitimate identifier needs it.
 - Inline pylint disables are accepted for `broad-exception-caught`/`broad-except` on handler boundaries this repo already uses; do not silence SonarQube issues that can be fixed with code changes.
