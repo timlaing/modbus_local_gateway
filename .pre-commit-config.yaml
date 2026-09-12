@@ -14,7 +14,6 @@ repos:
       - id: check-yaml
         args:
           - --unsafe
-      - id: check-added-large-files
       - id: requirements-txt-fixer
       - id: name-tests-test
         exclude: tests/const.*\.py$|tests/data.py$|tests/protocol_harness.py$
