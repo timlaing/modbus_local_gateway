@@ -132,12 +132,14 @@ class Conversion:
 
     def _convert_to_enum(
         self, registers: list, desc: ModbusEntityDescription
-    ) -> str | None:
-        """Convert to an enum type"""
+    ) -> str | int:
+        """Convert to an enum type, falling back to the raw value when unmapped."""
         int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
         if desc.conv_map and int_val in desc.conv_map:
             value: str = desc.conv_map[int_val]
             return value
+        _LOGGER.debug("%s: no `map:` entry for %s", desc.key, int_val)
+        return int_val
 
     def _convert_to_flags(
         self, registers: list[int], desc: ModbusEntityDescription
