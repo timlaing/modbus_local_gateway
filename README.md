@@ -170,7 +170,7 @@ For all entity definitions:
   - `shift_bits`: Bit shift right (integer).
   - `bits`: Bit mask length (integer).
     - On a **writable** entity (`control: number`, `control: select` or `control: switch`),
-      `bits` and `shift_bits` make the entity address a *bit field*: the write becomes a
+      `bits` and `shift_bits` make the entity address a _bit field_: the write becomes a
       read-modify-write, so the other bits of the register keep their values. The read and the
       write are issued under the client lock, so a poll cannot interleave between them.
     - This lets several independent controls share one register. E.g. two switches in register 0,
@@ -187,7 +187,7 @@ For all entity definitions:
         shift_bits: 2
         control: switch
       ```
-    - `signed` and `sum_scale` are rejected on a *writable* bit field — neither has a meaningful
+    - `signed` and `sum_scale` are rejected on a _writable_ bit field — neither has a meaningful
       inverse when merging a value back into part of a register. They remain valid on read-only
       entities.
   - `multiplier`: Scaling factor (float).
