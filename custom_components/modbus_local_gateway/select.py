@@ -64,14 +64,20 @@ class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
                 and value is not None
                 and self.entity_description.select_options
             ):
-                self._attr_current_option = self.entity_description.select_options[
-                    int(value)
-                ]
-                _LOGGER.debug(
-                    "Updating device with %s as %s",
-                    self.entity_description.key,
-                    self._attr_current_option,
-                )
+                option: str | None = None
+                if (
+                    isinstance(value, int)
+                    and not isinstance(value, bool)
+                    and value in self.entity_description.select_options
+                ):
+                    option = self.entity_description.select_options[value]
+                if option is not None:
+                    self._attr_current_option = option
+                    _LOGGER.debug(
+                        "Updating device with %s as %s",
+                        self.entity_description.key,
+                        self._attr_current_option,
+                    )
             super()._handle_coordinator_update()
 
         except Exception as err:  # pylint: disable=broad-exception-caught
