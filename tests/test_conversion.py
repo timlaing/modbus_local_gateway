@@ -510,7 +510,7 @@ async def test_flags_high() -> None:
 
 @pytest.mark.asyncio
 async def test_flags_missing() -> None:
-    """Test flag conversion"""
+    """No configured bit set falls back to the converted value"""
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
@@ -526,7 +526,7 @@ async def test_flags_missing() -> None:
         ),
     )
 
-    assert value is None
+    assert value == 32
 
 
 @pytest.mark.asyncio
