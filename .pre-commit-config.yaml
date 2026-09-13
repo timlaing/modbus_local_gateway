@@ -108,7 +108,7 @@ repos:
           - pytest-picked
           - ruff>=0.15.20
           - yarl>=1.24.2
-          - tox==4.56.1
+          - tox==4.61.3
           # END GENERATED REQUIREMENTS
         stages: [manual]
       - id: pylint
@@ -139,7 +139,7 @@ repos:
           - pytest-picked
           - ruff>=0.15.20
           - yarl>=1.24.2
-          - tox==4.56.1
+          - tox==4.61.3
           # END GENERATED REQUIREMENTS
         stages: [manual]
       - id: pytest
@@ -172,7 +172,7 @@ repos:
           - pytest-picked
           - ruff>=0.15.20
           - yarl>=1.24.2
-          - tox==4.56.1
+          - tox==4.61.3
           # END GENERATED REQUIREMENTS
       - id: check-prek-deps
         name: Check prek dependency sync
