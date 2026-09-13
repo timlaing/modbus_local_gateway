@@ -408,7 +408,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         shared by every entry with the same host, port and framer.
         """
         key: str = f"{host}:{port}:{connection_type}"
-        client: "AsyncModbusTcpClientGateway | None" = cls._CLIENT.pop(key, None)
+        client: AsyncModbusTcpClientGateway | None = cls._CLIENT.pop(key, None)
         if client is not None:
             _LOGGER.debug("Closing connection to gateway %s", key)
             client.close()
