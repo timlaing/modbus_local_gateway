@@ -174,6 +174,46 @@ async def test_update_value() -> None:
 
 
 @pytest.mark.asyncio
+async def test_update_unmapped_value_keeps_current_option() -> None:
+    """A value with no select option keeps the current option instead of raising."""
+    coordinator = MagicMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSelectEntityDescription(
+            register_address=1,
+            key="key",
+            data_type=ModbusDataType.INPUT_REGISTER,
+            select_options={1: "A", 2: "B"},
+            control_type="select",
+        ),
+    )
+    device = MagicMock()
+    entity = ModbusSelectEntity(coordinator=coordinator, ctx=ctx, device=device)
+    type(entity).name = PropertyMock(return_value="Test")
+    entity._attr_current_option = "B"
+    coordinator.get_data.return_value = 3
+    write = MagicMock()
+    entity.async_write_ha_state = write
+
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.select._LOGGER.warning"
+        ) as warning,
+        patch("custom_components.modbus_local_gateway.select._LOGGER.debug") as debug,
+        patch("custom_components.modbus_local_gateway.select._LOGGER.error") as error,
+    ):
+        entity._handle_coordinator_update()
+
+        coordinator.get_data.assert_called_once_with(ctx)
+
+        error.assert_not_called()
+        debug.assert_not_called()
+        warning.assert_not_called()
+        write.assert_called_once()
+        assert entity._attr_current_option == "B"
+
+
+@pytest.mark.asyncio
 async def test_update_deviceupdate() -> None:
     """Test the coordinator update function"""
     coordinator = MagicMock()
