@@ -175,5 +175,5 @@ config/*
 uv.lock
 .python-version
 .opencode
-node_modules/
+node_modules
 devcontainer-lock.json
