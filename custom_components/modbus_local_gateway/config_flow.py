@@ -11,6 +11,7 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
+    FlowType,
     OptionsFlow,
 )
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
@@ -78,7 +79,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialise Modbus Local Gateway flow."""
         self.client: AsyncModbusTcpClientGateway | None = None
-        self.data = {}
+        self.data: dict[str, Any] = {}
 
     def is_matching(self, other_flow: ConfigFlowHandler) -> bool:
         """Check if the other flow matches this one."""
@@ -166,7 +167,8 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             create_device_info, self.hass, self.data[CONF_FILENAME]
         )
 
-        # This title is shown in the main devices list under the Modbus Local Gateway integration
+        # This title is shown in the main devices list under the
+        # Modbus Local Gateway integration
         title: str = " ".join([
             part
             for part in [
@@ -179,13 +181,21 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title=title, data=self.data)
 
     def async_abort(
-        self, *, reason: str, description_placeholders: Mapping[str, str] | None = None
+        self,
+        *,
+        reason: str,
+        description_placeholders: Mapping[str, str] | None = None,
+        translation_domain: str | None = None,
+        next_flow: tuple[FlowType, str] | None = None,
     ) -> ConfigFlowResult:
         """Aborting the setup"""
         if self.client:
             self.client.close()
         return super().async_abort(
-            reason=reason, description_placeholders=description_placeholders
+            reason=reason,
+            description_placeholders=description_placeholders,
+            translation_domain=translation_domain,
+            next_flow=next_flow,
         )
 
     def async_show_progress_done(self, *, next_step_id: str) -> ConfigFlowResult:

@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 import logging
-from typing import cast
 
 from homeassistant.components.sensor import RestoreSensor, SensorExtraStoredData
 from homeassistant.components.sensor.const import SensorStateClass
@@ -64,7 +63,7 @@ class MaxChangeExceeded(Exception):
         self.prev_value: int | float = prev_value
 
 
-class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignore
+class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
     """Sensor entity for Modbus gateway"""
 
     def __init__(
@@ -95,9 +94,9 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: str | int | float | None = cast(
-                ModbusCoordinator, self.coordinator
-            ).get_data(self.coordinator_context)
+            value: str | int | float | None = self.coordinator.get_data(
+                self.coordinator_context
+            )
             if value is not None:
                 self._validate_and_update_value(value)
                 self._update_device_versions(value)
@@ -203,7 +202,9 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):  # type: ignor
         return value
 
     @property
-    def native_value(self) -> float | str | int | None | date | datetime | Decimal:  # type: ignore
+    def native_value(
+        self,
+    ) -> float | str | int | None | date | datetime | Decimal:
         """Return the state of the sensor."""
         result: str | int | float | None | date | datetime | Decimal = (
             super().native_value

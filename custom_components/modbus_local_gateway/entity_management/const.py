@@ -96,7 +96,7 @@ class SwapType(StrEnum):
     WORD_BYTE = "word_byte"
 
 
-UOM_MAPPING = {
+UOM_MAPPING: dict[Units, dict[str, str]] = {
     Units.CELSIUS: {
         UNIT: UnitOfTemperature.CELSIUS,
         DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
