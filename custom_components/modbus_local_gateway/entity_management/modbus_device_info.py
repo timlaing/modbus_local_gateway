@@ -345,10 +345,6 @@ class ModbusDeviceInfo:
     ) -> None | type[ModbusSwitchEntityDescription]:
         """Handle switch description specific logic"""
         switch_data = _data.get("switch", {})
-        if _data.get(CONV_BITS) or _data.get(CONV_SHIFT_BITS):
-            _LOGGER.warning("bits / shift bits cannot be set for Switches")
-            return None
-
         if not isinstance(switch_data, dict):
             _LOGGER.warning(
                 "Switch configuration for %s should be a dictionary", entity
