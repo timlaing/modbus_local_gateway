@@ -4,18 +4,20 @@
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from homeassistant.components.sensor.const import SensorStateClass
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import CONF_DEVICE_ID, DOMAIN
 from custom_components.modbus_local_gateway.context import ModbusContext
+from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
-    ModbusDataType,
     ModbusEntityDescription,
     ModbusSensorEntityDescription,
 )
-from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
-    ModbusDeviceInfo,
+from custom_components.modbus_local_gateway.entity_management.const import (
+    ModbusDataType,
 )
 from custom_components.modbus_local_gateway.sensor import (
     ModbusSensorEntity,
@@ -24,7 +26,7 @@ from custom_components.modbus_local_gateway.sensor import (
 
 
 @pytest.mark.asyncio
-async def test_setup_entry(hass) -> None:
+async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test the HA setup function"""
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -62,12 +64,13 @@ async def test_setup_entry(hass) -> None:
 
     with (
         patch(
-            "custom_components.modbus_local_gateway.entity_management.modbus_device_info.load_yaml",
+            "custom_components.modbus_local_gateway.entity_management."
+            "modbus_device_info.load_yaml",
             return_value={"device": MagicMock()},
         ),
-        patch.object(ModbusDeviceInfo, "entity_descriptions", pm1),
-        patch.object(ModbusDeviceInfo, "manufacturer", pm2),
-        patch.object(ModbusDeviceInfo, "model", pm2),
+        patch.object(modbus_device_info.ModbusDeviceInfo, "entity_descriptions", pm1),
+        patch.object(modbus_device_info.ModbusDeviceInfo, "manufacturer", pm2),
+        patch.object(modbus_device_info.ModbusDeviceInfo, "model", pm2),
     ):
         await async_setup_entry(hass, entry, callback.add)
 
@@ -93,7 +96,7 @@ async def test_update_none() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     coordinator.get_data.return_value = None
     entity._handle_coordinator_update()
@@ -117,7 +120,7 @@ async def test_update_exception() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.side_effect = Exception()
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     with (
         patch(
@@ -151,10 +154,10 @@ async def test_update_value() -> None:
         1,
         desc,
     )
-    device: dict[str, str] = {"identifiers": "ABC"}
-    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)  # type: ignore
+    device: DeviceInfo = {"identifiers": {("a", "b")}}
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 1
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     with (
         patch(
@@ -190,7 +193,7 @@ async def test_update_reset() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     coordinator.get_data.return_value = 1
 
@@ -241,7 +244,7 @@ async def test_update_never_reset() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     coordinator.get_data.return_value = 1
     with (
@@ -283,9 +286,9 @@ async def test_update_deviceupdate_hw_version() -> None:
         1,
         desc=desc,
     )
-    device: dict[str, str] = {"identifiers": "ABC"}
-    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)  # type: ignore
-    entity.async_write_ha_state = MagicMock()
+    device: DeviceInfo = {"identifiers": {("a", "b")}}
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     coordinator.get_data.return_value = 1
     with (
@@ -335,9 +338,9 @@ async def test_update_deviceupdate_sw_version() -> None:
         1,
         desc=desc,
     )
-    device: dict[str, str] = {"identifiers": "ABC"}
-    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)  # type: ignore
-    entity.async_write_ha_state = MagicMock()
+    device: DeviceInfo = {"identifiers": {("a", "b")}}
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     coordinator.get_data.return_value = 1
     with (
@@ -390,7 +393,7 @@ async def test_handle_coordinator_update_ignore_same_value() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 10
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
     ):
@@ -426,7 +429,7 @@ async def test_handle_coordinator_update_ignore_large_change() -> None:
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     entity._first_update_received = True
     coordinator.get_data.return_value = 20
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
     with (
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
@@ -466,7 +469,7 @@ async def test_handle_coordinator_update_allow_large_change_on_initial() -> None
     entity._attr_native_value = 10
     entity._first_update_received = False
     coordinator.get_data.return_value = 20
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
     with (
         patch(
             "custom_components.modbus_local_gateway.sensor._LOGGER.warning",
@@ -495,7 +498,7 @@ async def test_handle_coordinator_update_update_value() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 15
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch.object(
@@ -531,7 +534,7 @@ async def test_handle_coordinator_update_update_smaller_value() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 15
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
         patch.object(
@@ -567,7 +570,7 @@ async def test_handle_coordinator_update_smaller_than_precision() -> None:
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
     coordinator.get_data.return_value = 100.0015
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
     with (
         patch("custom_components.modbus_local_gateway.sensor._LOGGER.debug") as debug,
     ):
@@ -599,7 +602,7 @@ async def test_handle_coordinator_update_never_resets() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
     coordinator.get_data.return_value = 10
 
     with (
@@ -639,7 +642,7 @@ async def test_native_value_rounds_float_with_precision() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     entity._attr_native_value = 12.3456
     result = entity.native_value
@@ -663,7 +666,7 @@ async def test_native_value_returns_non_float() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     entity._attr_native_value = 42
     result = entity.native_value
@@ -687,7 +690,7 @@ async def test_native_value_no_precision() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     entity._attr_native_value = 12.3456
     result = entity.native_value
@@ -711,7 +714,7 @@ async def test_native_value_none_result() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     entity._attr_native_value = None
     result = entity.native_value
@@ -720,7 +723,7 @@ async def test_native_value_none_result() -> None:
 
 @pytest.mark.asyncio
 async def test_native_value_non_modbus_description() -> None:
-    """Test native_value when entity_description is not ModbusSensorEntityDescription."""
+    """Test native_value for non-ModbusSensorEntityDescription descriptions."""
 
     coordinator = MagicMock()
     desc = ModbusEntityDescription(
@@ -735,7 +738,7 @@ async def test_native_value_non_modbus_description() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    entity.async_write_ha_state = MagicMock()
+    entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
 
     entity._attr_native_value = 12.3456
     result = entity.native_value

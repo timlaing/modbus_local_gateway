@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import builtins
+from collections.abc import Callable
 from dataclasses import dataclass
 import logging
 
@@ -54,7 +56,7 @@ class UnusedKeysMixin:
     signed: bool | None = False  # is_signed
     control: str | None = ControlType.SENSOR  # control_type
     number: dict[str, int] | None = None  # min, max
-    switch: dict[str, float] | None = None  # on, off
+    switch: dict[str, builtins.float] | None = None  # on, off
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -92,21 +94,17 @@ class ModbusEntityDescription(
 
     def validate(self) -> bool:
         """Validate the entity description"""
-        if not self._validate_string_and_float():
-            return False
-        if not self._validate_string_constraints():
-            return False
-        if not self._validate_float_constraints():
-            return False
-        if not self._validate_register_count():
-            return False
-        if not self._validate_max_change():
-            return False
-        if not self._validate_scan_interval():
-            return False
-        if not self._validate_unavailable_values():
-            return False
-        return self._validate_bitfield()
+        validators: tuple[Callable[[], bool], ...] = (
+            self._validate_string_and_float,
+            self._validate_string_constraints,
+            self._validate_float_constraints,
+            self._validate_register_count,
+            self._validate_max_change,
+            self._validate_scan_interval,
+            self._validate_unavailable_values,
+            self._validate_bitfield,
+        )
+        return all(check() for check in validators)
 
     def _validate_unavailable_values(self) -> bool:
         """`unavailable_values` must be a list of whole numbers.
@@ -222,14 +220,15 @@ class ModbusEntityDescription(
 
     def _validate_string_constraints(self) -> bool:
         """Check constraints for string entities."""
-        if self.is_string and (
+        string_conflicts: bool = bool(
             self.conv_shift_bits
             or self.conv_bits
             or self.precision
             or self.conv_swap
             or self.is_signed
             or (self.conv_multiplier and int(self.conv_multiplier) != 1)
-        ):
+        )
+        if self.is_string and string_conflicts:
             _LOGGER.warning(
                 "Unable to create entity for %s: %s, %s, %s, %s, %s, %s, %s, "
                 "and %s not valid for %s",
@@ -249,12 +248,13 @@ class ModbusEntityDescription(
 
     def _validate_float_constraints(self) -> bool:
         """Check constraints for float entities."""
-        if self.is_float and (
+        float_conflicts: bool = bool(
             self.conv_shift_bits
             or self.conv_bits
             or self.is_signed
             or (self.conv_multiplier is not None and int(self.conv_multiplier) != 1)
-        ):
+        )
+        if self.is_float and float_conflicts:
             _LOGGER.warning(
                 "Unable to create entity for %s: %s, %s, %s, and %s not valid for %s",
                 self.key,
@@ -271,7 +271,8 @@ class ModbusEntityDescription(
         """Check if register count is valid for float entities."""
         if self.is_float and self.register_count not in (2, 4):
             _LOGGER.warning(
-                "Unable to create entity for %s: %s outside valid range not valid for %s",
+                "Unable to create entity for %s: %s outside valid range "
+                "not valid for %s",
                 self.key,
                 REGISTER_COUNT,
                 IS_FLOAT,
@@ -280,7 +281,8 @@ class ModbusEntityDescription(
 
         if not self.is_string and self.register_count not in (1, 2, 4):
             _LOGGER.warning(
-                "Unable to create entity for %s: %s must be 1, 2, or 4 for non-string entities",
+                "Unable to create entity for %s: %s must be 1, 2, or 4 for "
+                "non-string entities",
                 self.key,
                 REGISTER_COUNT,
             )

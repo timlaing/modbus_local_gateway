@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import cast
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
@@ -56,9 +55,9 @@ class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: str | int | None = cast(
-                ModbusCoordinator, self.coordinator
-            ).get_data(self.coordinator_context)
+            value: str | int | None = self.coordinator.get_data(
+                self.coordinator_context
+            )
             if (
                 isinstance(self.entity_description, ModbusSelectEntityDescription)
                 and value is not None

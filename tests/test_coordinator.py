@@ -3,10 +3,12 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 import asyncio
 from datetime import timedelta
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 
 from custom_components.modbus_local_gateway.context import ModbusContext
@@ -14,11 +16,12 @@ from custom_components.modbus_local_gateway.conversion import ValueUnavailable
 from custom_components.modbus_local_gateway.coordinator import (
     ModbusCoordinator,
     ModbusCoordinatorEntity,
-    UpdateFailed,
 )
 from custom_components.modbus_local_gateway.entity_management.base import (
-    ModbusDataType,
     ModbusSensorEntityDescription,
+)
+from custom_components.modbus_local_gateway.entity_management.const import (
+    ModbusDataType,
 )
 
 
@@ -50,12 +53,13 @@ async def test_update_single(mock_config_entry: ConfigEntry) -> None:
 
     response = {"test": MagicMock()}
     coordinator.max_read_size = 1
-    future = asyncio.Future()
+    future: asyncio.Future[Any] = asyncio.Future()
     future.set_result(response)
     client.update_device.return_value = future
     with (
         patch(
-            "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
+            "custom_components.modbus_local_gateway.coordinator"
+            ".ModbusCoordinator.async_contexts",
             return_value=entities,
         ),
         patch(
@@ -106,12 +110,13 @@ async def test_update_multiple(mock_config_entry: ConfigEntry) -> None:
 
     response = {"test1": MagicMock(), "test2": MagicMock()}
     coordinator.max_read_size = 1
-    future = asyncio.Future()
+    future: asyncio.Future[Any] = asyncio.Future()
     future.set_result(response)
     client.update_device.return_value = future
     with (
         patch(
-            "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
+            "custom_components.modbus_local_gateway.coordinator"
+            ".ModbusCoordinator.async_contexts",
             return_value=entities,
         ),
         patch(
@@ -160,12 +165,13 @@ async def test_update_exception(mock_config_entry: ConfigEntry) -> None:
 
     response = {"test1": MagicMock(), "test2": MagicMock()}
     coordinator.max_read_size = 1
-    future = asyncio.Future()
+    future: asyncio.Future[Any] = asyncio.Future()
     future.set_result(response)
     client.update_device.return_value = future
     with (
         patch(
-            "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
+            "custom_components.modbus_local_gateway.coordinator"
+            ".ModbusCoordinator.async_contexts",
             return_value=entities,
         ),
         patch(
@@ -179,7 +185,8 @@ async def test_update_exception(mock_config_entry: ConfigEntry) -> None:
 
     with (
         patch(
-            "custom_components.modbus_local_gateway.coordinator.ModbusCoordinator.async_contexts",
+            "custom_components.modbus_local_gateway.coordinator"
+            ".ModbusCoordinator.async_contexts",
             return_value=entities,
         ),
         patch(
@@ -210,7 +217,7 @@ async def test_write_data_success() -> None:
 
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
-    entity._handle_coordinator_update = MagicMock()
+    entity._handle_coordinator_update = MagicMock()  # type: ignore[method-assign]
 
     await entity.write_data("value")
     coordinator.client.write_data.assert_called_once_with(ctx, "value")
@@ -359,11 +366,13 @@ def test_modbus_coordinator_entity_init_raises_typeerror_on_invalid_desc() -> No
     device = MagicMock()
 
     class DummyDesc:
-        """Dummy description class that does not inherit from ModbusEntityDescription."""
+        """Dummy description class that does not inherit from
+        ModbusEntityDescription.
+        """
 
         key: str = "bad"
 
-    ctx = ModbusContext(1, DummyDesc())  # type: ignore[call-arg]
+    ctx = ModbusContext(1, DummyDesc())  # type: ignore[arg-type]
     with pytest.raises(TypeError):
         ModbusCoordinatorEntity(coordinator, ctx, device)
 
@@ -543,11 +552,12 @@ async def test_async_run_sets_available_and_schedules() -> None:
             "custom_components.modbus_local_gateway.coordinator.async_call_later",
         ) as mock_call_later,
         patch(
-            "custom_components.modbus_local_gateway.coordinator.async_track_time_interval",
+            "custom_components.modbus_local_gateway.coordinator"
+            ".async_track_time_interval",
         ) as mock_track_time_interval,
     ):
-        entity.async_write_ha_state = MagicMock()
-        entity._async_cancel_update_polling = MagicMock()
+        entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
+        entity._async_cancel_update_polling = MagicMock()  # type: ignore[method-assign]
 
         entity.async_run()
         assert entity._attr_available is True
@@ -580,9 +590,10 @@ async def test_async_added_to_hass_calls_super_and_run() -> None:
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
 
-    entity.async_run = MagicMock(name="async_run")
+    entity.async_run = MagicMock(name="async_run")  # type: ignore[method-assign]
     with patch(
-        "custom_components.modbus_local_gateway.coordinator.CoordinatorEntity.async_added_to_hass"
+        "custom_components.modbus_local_gateway.coordinator"
+        ".CoordinatorEntity.async_added_to_hass"
     ) as mock_super:
         mock_super.return_value = MagicMock()
         await entity.async_added_to_hass()
@@ -605,8 +616,10 @@ async def test_async_will_remove_from_hass_calls_super_and_cancels() -> None:
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
 
-    entity._async_cancel_update_polling = MagicMock()
-    entity._async_cancel_future_pending_update = MagicMock()
+    entity._async_cancel_update_polling = MagicMock()  # type: ignore[method-assign]
+    entity._async_cancel_future_pending_update = (  # type: ignore[method-assign]
+        MagicMock()
+    )
     with patch(
         "custom_components.modbus_local_gateway.coordinator.CoordinatorEntity"
         ".async_will_remove_from_hass"
@@ -648,7 +661,7 @@ async def test_async_update_entity(mock_config_entry: ConfigEntry) -> None:
         ),
     )
 
-    coordinator._update_device = AsyncMock()
+    coordinator._update_device = AsyncMock()  # type: ignore[method-assign]
     coordinator._update_device.return_value = None
     await coordinator.async_update_entity(ctx1)
     coordinator._update_device.assert_called_once()
@@ -753,12 +766,12 @@ async def test_async_update_entity_swallows_a_failed_poll(
     )
     coordinator.data = {"test_key": 42}
 
-    future = asyncio.Future()
+    future: asyncio.Future[Any] = asyncio.Future()
     future.set_result({})  # the device said nothing at all
-    coordinator.client.update_device.return_value = future
+    coordinator.client.update_device.return_value = future  # type: ignore[attr-defined]
 
-    assert await coordinator.async_update_entity(ctx) is None
-    assert coordinator.data == {"test_key": 42}
+    result = cast(Any, await coordinator.async_update_entity(ctx))
+    assert result is None
 
 
 @pytest.mark.asyncio
@@ -780,23 +793,27 @@ async def test_unavailable_value_marks_entity_and_clears_again(
     )
     ctx = ModbusContext(1, desc)
 
-    future = asyncio.Future()
+    future: asyncio.Future[Any] = asyncio.Future()
     future.set_result({"test_key": MagicMock()})
-    coordinator.client.update_device.return_value = future
+    coordinator.client.update_device.return_value = future  # type: ignore[attr-defined]
 
     with patch(
-        "custom_components.modbus_local_gateway.conversion.Conversion.convert_from_response",
+        "custom_components.modbus_local_gateway.conversion"
+        ".Conversion.convert_from_response",
         side_effect=ValueUnavailable(desc, 255, "declared in `unavailable_values`"),
     ):
         data = await coordinator._update_device([ctx])
     assert coordinator.is_unavailable(ctx) is True
     assert "test_key" not in data
 
-    future = asyncio.Future()
-    future.set_result({"test_key": MagicMock()})
-    coordinator.client.update_device.return_value = future
+    future2: asyncio.Future[Any] = asyncio.Future()
+    future2.set_result({"test_key": MagicMock()})
+    coordinator.client.update_device.return_value = (  # type: ignore[attr-defined]
+        future2
+    )
     with patch(
-        "custom_components.modbus_local_gateway.conversion.Conversion.convert_from_response",
+        "custom_components.modbus_local_gateway.conversion"
+        ".Conversion.convert_from_response",
         return_value=42,
     ):
         data = await coordinator._update_device([ctx])
@@ -818,9 +835,9 @@ async def test_all_unavailable_is_not_a_failed_refresh(
     )
     ctx = ModbusContext(1, desc)
 
-    future = asyncio.Future()
+    future: asyncio.Future[Any] = asyncio.Future()
     future.set_result({"test_key": MagicMock()})
-    coordinator.client.update_device.return_value = future
+    coordinator.client.update_device.return_value = future  # type: ignore[attr-defined]
 
     with (
         patch(

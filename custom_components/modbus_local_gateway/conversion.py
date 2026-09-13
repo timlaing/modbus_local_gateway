@@ -19,6 +19,8 @@ from .entity_management.const import ModbusDataType, SwapType
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+type ConvertedValue = int | float | str | list[bool] | list[int] | list[float]
+
 
 class NotSupportedError(Exception):
     """Unsupported functionality"""
@@ -105,7 +107,7 @@ class Conversion:
 
     def _convert_to_string(self, registers: list[int]) -> str:
         """Convert to a string type"""
-        value: str | int | float | list = self.client.convert_from_registers(
+        value: ConvertedValue = self.client.convert_from_registers(
             registers,
             data_type=self.client.DATATYPE.STRING,
         )
@@ -122,10 +124,10 @@ class Conversion:
         return registers
 
     def _convert_to_float(
-        self, registers: list, desc: ModbusEntityDescription
+        self, registers: list[int], desc: ModbusEntityDescription
     ) -> float:
         """Convert to a float type"""
-        value: str | int | float | list = self.client.convert_from_registers(
+        value: ConvertedValue = self.client.convert_from_registers(
             registers,
             data_type=self._get_float_data_type(desc),
         )
@@ -146,7 +148,7 @@ class Conversion:
         return registers
 
     def _convert_to_enum(
-        self, registers: list, desc: ModbusEntityDescription
+        self, registers: list[int], desc: ModbusEntityDescription
     ) -> str | int:
         """Convert to an enum type, falling back to the raw value when unmapped."""
         int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
@@ -186,7 +188,7 @@ class Conversion:
         self, registers: list[int], desc: ModbusEntityDescription
     ) -> int | float:
         """Convert registers to a number based on data type"""
-        num: str | int | float | list = self.client.convert_from_registers(
+        num: ConvertedValue = self.client.convert_from_registers(
             registers, data_type=self._get_number_data_type(desc)
         )
 
@@ -336,12 +338,11 @@ class Conversion:
             ModbusDataType.INPUT_REGISTER,
         ]:
             return self._convert_from_register_response(desc, response)
-        elif desc.data_type == ModbusDataType.COIL:
+        if desc.data_type == ModbusDataType.COIL:
             return self._convert_from_coil_response(response)
-        elif desc.data_type == ModbusDataType.DISCRETE_INPUT:
+        if desc.data_type == ModbusDataType.DISCRETE_INPUT:
             return self._convert_from_discrete_input_response(response)
-        else:
-            raise ValueError("Invalid data type")
+        raise ValueError("Invalid data type")
 
     def _convert_from_register_response(
         self, desc: ModbusEntityDescription, response: ModbusPDU

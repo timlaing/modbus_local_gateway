@@ -3,10 +3,12 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import patch
 
+from homeassistant.core import HomeAssistant
 import pytest
 from pytest import LogCaptureFixture
 import yaml
 
+from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSensorEntityDescription,
 )
@@ -15,9 +17,6 @@ from custom_components.modbus_local_gateway.entity_management.const import (
 )
 from custom_components.modbus_local_gateway.entity_management.device_loader import (
     load_devices,
-)
-from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
-    ModbusDeviceInfo,
 )
 
 
@@ -73,10 +72,11 @@ read_only_boolean:
     address: 4"""
 
     with patch(
-        "custom_components.modbus_local_gateway.entity_management.modbus_device_info.load_yaml"
+        "custom_components.modbus_local_gateway.entity_management."
+        "modbus_device_info.load_yaml"
     ) as load_yaml:
         load_yaml.return_value = yaml.full_load(yaml_txt)
-        device = ModbusDeviceInfo("test.yaml")
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
 
         entities = device.entity_descriptions
         assert len(entities) == 7
@@ -148,10 +148,11 @@ def test_entity_create_basic() -> None:
     }
 
     with patch(
-        "custom_components.modbus_local_gateway.entity_management.modbus_device_info.load_yaml",
+        "custom_components.modbus_local_gateway.entity_management."
+        "modbus_device_info.load_yaml",
         return_value=_config,
     ):
-        device = ModbusDeviceInfo("test.yaml")
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
         entities = device.entity_descriptions
         assert len(entities) == 4
         assert any(
@@ -233,7 +234,7 @@ def test_entity_create_all_fields() -> None:
             return_value=True,
         ),
     ):
-        device = ModbusDeviceInfo("test.yaml")
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
         entities = device.entity_descriptions
         assert len(entities) == 1
         assert isinstance(entities[0], ModbusSensorEntityDescription)
@@ -271,14 +272,16 @@ def test_entity_invalid_string_float() -> None:
 
     with (
         patch(
-            "custom_components.modbus_local_gateway.entity_management.modbus_device_info.load_yaml",
+            "custom_components.modbus_local_gateway.entity_management."
+            "modbus_device_info.load_yaml",
             return_value=_config,
         ),
         patch(
-            "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
+            "custom_components.modbus_local_gateway.entity_management."
+            "base._LOGGER.warning"
         ) as log,
     ):
-        device = ModbusDeviceInfo("test.yaml")
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
         entities = device.entity_descriptions
         log.assert_called_once()
         assert len(entities) == 0
@@ -306,7 +309,7 @@ def test_entity_invalid_address() -> None:
             "modbus_device_info._LOGGER.error"
         ) as log,
     ):
-        device = ModbusDeviceInfo("test.yaml")
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
         entities = device.entity_descriptions
         log.assert_not_called()  # No error logged, just skipped
         assert len(entities) == 0
@@ -334,7 +337,7 @@ def test_entity_invalid_control_type() -> None:
             "modbus_device_info._LOGGER.warning"
         ) as log,
     ):
-        device = ModbusDeviceInfo("test.yaml")
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
         entities = device.entity_descriptions
         log.assert_called_once()
         assert len(entities) == 0
@@ -377,7 +380,7 @@ def test_validate_scan_interval(
         ),
         caplog.at_level("WARNING"),
     ):
-        device = ModbusDeviceInfo("test.yaml")
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
         entities = device.entity_descriptions
         assert len(entities) == num_entities
         if log_message:
@@ -385,12 +388,15 @@ def test_validate_scan_interval(
 
 
 @pytest.mark.asyncio
-async def test_devices_yaml(hass) -> None:
+async def test_devices_yaml(hass: HomeAssistant) -> None:
     """Validate yaml files with new structure"""
     with patch(
-        "custom_components.modbus_local_gateway.entity_management.device_loader._LOGGER.error"
+        "custom_components.modbus_local_gateway.entity_management."
+        "device_loader._LOGGER.error"
     ) as log:
-        devices: dict[str, ModbusDeviceInfo] = await load_devices(hass=hass)
+        devices: dict[str, modbus_device_info.ModbusDeviceInfo] = await load_devices(
+            hass=hass
+        )
         log.assert_not_called()
 
     for name in devices:

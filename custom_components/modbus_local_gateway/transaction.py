@@ -16,7 +16,7 @@ class MyTransactionManager(TransactionManager):
         with contextlib.suppress(ModbusIOException, InvalidStateError):
             super().data_received(data)
 
-    def pdu_send(self, pdu: ModbusPDU, addr: tuple | None = None) -> None:
+    def pdu_send(self, pdu: ModbusPDU, addr: tuple[str, int] | None = None) -> None:
         """Initialize the recv buffer before each send to prevent duplication of data"""
         self.recv_buffer = b""
         return super().pdu_send(pdu, addr)

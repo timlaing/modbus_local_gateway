@@ -1,3 +1,5 @@
+"""Test client for the Modbus TCP server using pymodbus."""
+
 import asyncio
 import logging
 
@@ -10,7 +12,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def modbus_operations():
+async def modbus_operations() -> None:
+    """Run a series of Modbus read and write operations against a device."""
     logger.debug("Creating Modbus TCP client for 10.0.0.78:502")
 
     async with AsyncModbusTcpClient(host="10.0.0.78", port=502) as client:
@@ -37,7 +40,8 @@ async def modbus_operations():
 
                 # Write operation using write_register (function code 6)
                 logger.debug(
-                    "Writing value 2 to register at address 2, device 20 using write_register"
+                    "Writing value 2 to register at address 2, device 20 "
+                    "using write_register"
                 )
                 result = await client.write_register(address=2, value=2, device=20)
 
@@ -50,7 +54,8 @@ async def modbus_operations():
 
                 # Write operation using write_registers (function code 16)
                 logger.debug(
-                    "Writing value 5 to 1 register at address 2, device 20 using write_registers"
+                    "Writing value 5 to 1 register at address 2, device 20 "
+                    "using write_registers"
                 )
                 result = await client.write_registers(address=2, values=[5], device=20)
 
@@ -76,5 +81,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(modbus_operations())
         logger.info("Modbus operations completed successfully")
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Program terminated with error: %s", str(e))

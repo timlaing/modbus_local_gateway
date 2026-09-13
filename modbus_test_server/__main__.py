@@ -4,6 +4,8 @@ import argparse
 import asyncio
 import json
 import logging
+from pathlib import Path
+from typing import Any
 
 from pymodbus import __version__ as pymodbus_version
 from pymodbus.datastore import (
@@ -27,18 +29,21 @@ class CallbackDataBlock(ModbusSequentialDataBlock):
     and passes the operation to a message queue for further processing.
     """
 
-    def setValues(self, address, values) -> None:
+    def setValues(self, address: int, values: list[int]) -> None:
         """Set the requested values of the datastore."""
-        super().setValues(address, values)
+        super().setValues(address, values)  # type: ignore[misc]
         txt = f"Callback from setValues with address {address}, value {values}"
         _logger.info(txt)
 
-    def getValues(self, address, count=1):
+    def getValues(self, address: int, count: int = 1) -> list[int]:
         """Return the requested values from the datastore."""
-        result = super().getValues(address, count=count)
-        txt = f"Callback from getValues with address {address}, count {count}, data {result}"
+        result = super().getValues(address, count=count)  # type: ignore[misc]
+        txt = (
+            f"Callback from getValues with address {address}, "
+            f"count {count}, data {result}"
+        )
         _logger.debug(txt)
-        return result
+        return list(result)
 
 
 ADDRESS_TYPE_MAP: dict[str, int] = {
@@ -50,37 +55,45 @@ ADDRESS_TYPE_MAP: dict[str, int] = {
 
 
 def _server_context(
-    data_file,
+    data_file: Path,
     device_id: int = 1,
 ) -> ModbusServerContext:
     """Create a Modbus server context with a single device."""
     _logger.info("### Create datastore")
     context: dict[int, ModbusDeviceContext] = {}
     context[device_id] = ModbusDeviceContext(
-        di=CallbackDataBlock(0x00, [0] * 65536),  # Discrete Inputs
-        co=CallbackDataBlock(0x00, [0] * 65536),  # Coils
-        hr=CallbackDataBlock(0x00, [0] * 65536),  # Holding Registers
-        ir=CallbackDataBlock(0x00, [0] * 65536),  # Input Registers
+        di=CallbackDataBlock(0x00, [0] * 65536),  # type: ignore[no-untyped-call]
+        co=CallbackDataBlock(0x00, [0] * 65536),  # type: ignore[no-untyped-call]
+        hr=CallbackDataBlock(0x00, [0] * 65536),  # type: ignore[no-untyped-call]
+        ir=CallbackDataBlock(0x00, [0] * 65536),  # type: ignore[no-untyped-call]
     )
 
     # Load initial data from file
-    _logger.info("### Load initial data from file %s", data_file.name)
-    data: dict = json.load(data_file)
+    _logger.info("### Load initial data from file %s", data_file)
+    with data_file.open("r", encoding="utf-8") as file:
+        data: dict[str, Any] = json.load(file)
     for block_type, block_data in data.items():
         for address_str, value in block_data.items():
             address: int = int(address_str, 16)
-            context[device_id].setValues(ADDRESS_TYPE_MAP[block_type], address, [value])
+            context[device_id].setValues(  # type: ignore[attr-defined]
+                ADDRESS_TYPE_MAP[block_type], address, [value]
+            )
 
-    return ModbusServerContext(devices=context, single=False)
+    return ModbusServerContext(
+        devices=context,  # type: ignore[arg-type]
+        single=False,
+    )
 
 
 def _server_identity() -> ModbusDeviceIdentification:
     """Create a Modbus device identification."""
-    identity = ModbusDeviceIdentification(
+    identity = ModbusDeviceIdentification(  # type: ignore[no-untyped-call]
         info_name={
             "VendorName": "Pymodbus",
             "ProductCode": "PM",
-            "VendorUrl": "https://github.com/timlaing/modbus-local-gateway/pymodbus-server/",
+            "VendorUrl": (
+                "https://github.com/timlaing/modbus-local-gateway/pymodbus-server/"
+            ),
             "ProductName": "Pymodbus Server",
             "ModelName": "Pymodbus Server",
             "MajorMinorRevision": pymodbus_version,
@@ -90,7 +103,7 @@ def _server_identity() -> ModbusDeviceIdentification:
 
 
 async def run_async_server(
-    data_file,
+    data_file: Path,
     host: str = "localhost",
     port: int = 502,
     device_id: int = 1,
@@ -123,7 +136,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run a Modbus TCP server.")
     parser.add_argument(
         "datafile",
-        type=argparse.FileType("r", encoding="utf-8"),
+        type=Path,
         help="Data file to use.",
     )
     parser.add_argument(

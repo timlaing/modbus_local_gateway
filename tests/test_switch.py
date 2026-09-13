@@ -3,19 +3,20 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
+from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import CONF_DEVICE_ID, DOMAIN
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.coordinator import ModbusCoordinator
+from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
-    ModbusDataType,
     ModbusEntityDescription,
     ModbusSwitchEntityDescription,
 )
-from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
-    ModbusDeviceInfo,
+from custom_components.modbus_local_gateway.entity_management.const import (
+    ModbusDataType,
 )
 from custom_components.modbus_local_gateway.switch import (
     INVALID_DATA_TYPE,
@@ -25,7 +26,7 @@ from custom_components.modbus_local_gateway.switch import (
 
 
 @pytest.mark.asyncio
-async def test_setup_entry(hass) -> None:
+async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test the HA setup function"""
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -67,12 +68,13 @@ async def test_setup_entry(hass) -> None:
 
     with (
         patch(
-            "custom_components.modbus_local_gateway.entity_management.modbus_device_info.load_yaml",
+            "custom_components.modbus_local_gateway.entity_management."
+            "modbus_device_info.load_yaml",
             return_value={"device": MagicMock()},
         ),
-        patch.object(ModbusDeviceInfo, "entity_descriptions", pm1),
-        patch.object(ModbusDeviceInfo, "manufacturer", pm2),
-        patch.object(ModbusDeviceInfo, "model", pm2),
+        patch.object(modbus_device_info.ModbusDeviceInfo, "entity_descriptions", pm1),
+        patch.object(modbus_device_info.ModbusDeviceInfo, "manufacturer", pm2),
+        patch.object(modbus_device_info.ModbusDeviceInfo, "model", pm2),
     ):
         await async_setup_entry(hass, entry, callback.add)
 
@@ -119,7 +121,7 @@ async def test_update_exception() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")
+    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
     coordinator.get_data.side_effect = Exception()
 
     with (
@@ -154,11 +156,11 @@ async def test_update_value() -> None:
     )
     device = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")
+    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
 
     coordinator.get_data.return_value = 1
     write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = write  # type: ignore[misc, method-assign]
 
     with (
         patch(
@@ -195,12 +197,12 @@ async def test_update_deviceupdate() -> None:
     device = MagicMock()
     hass = MagicMock()
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")
+    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
     type(entity).hass = PropertyMock(return_value=hass)
     type(entity).native_value = PropertyMock(return_value=2)  # type: ignore
 
     write = MagicMock()
-    entity.async_write_ha_state = write
+    entity.async_write_ha_state = write  # type: ignore[misc, method-assign]
 
     coordinator.get_data.return_value = 1
 
