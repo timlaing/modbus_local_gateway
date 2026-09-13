@@ -56,7 +56,7 @@ class ModbusBinarySensorEntity(  # type: ignore[misc]
             value = self.coordinator.get_data(self.coordinator_context)
             if (
                 value is not None
-                and isinstance(value, (int | bool))
+                and isinstance(value, (int, bool))
                 and isinstance(
                     self.entity_description, ModbusBinarySensorEntityDescription
                 )
