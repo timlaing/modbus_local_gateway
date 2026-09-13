@@ -1,7 +1,9 @@
-"""Unit tests for the `ModbusEntityDescription` class in the `entity_management.base` module.
+"""Unit tests for `ModbusEntityDescription` in the `entity_management.base` module.
+
 These tests cover various scenarios to ensure the validation logic works as expected."""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -187,7 +189,7 @@ def test_validate_unsigned_bitfield_accepted_when_writable(
 
 
 def _writable_bitfield(
-    entity: ModbusEntityDescription, **overrides
+    entity: ModbusEntityDescription, **overrides: Any
 ) -> ModbusEntityDescription:
     """Build a writable bit-field description from the valid fixture."""
     return entity.__class__(**{
@@ -222,7 +224,7 @@ def _writable_bitfield(
 )
 def test_validate_bitfield_geometry_rejected(
     valid_entity_description: ModbusEntityDescription,
-    overrides: dict,
+    overrides: dict[str, Any],
     reason: str,
 ) -> None:
     """Bad geometry is refused at load, rather than failing at the first write."""

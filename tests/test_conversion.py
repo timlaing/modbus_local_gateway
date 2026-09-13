@@ -1,6 +1,10 @@
 """Conversion Tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
+from typing import Any
+
+from homeassistant.components.sensor.const import SensorStateClass
+from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.register_message import (
@@ -16,13 +20,14 @@ from custom_components.modbus_local_gateway.conversion import (
     ValueUnavailable,
 )
 from custom_components.modbus_local_gateway.entity_management.base import (
-    ModbusDataType,
     ModbusNumberEntityDescription,
     ModbusSensorEntityDescription,
     ModbusSwitchEntityDescription,
 )
-from custom_components.modbus_local_gateway.entity_management.const import SwapType
-from custom_components.modbus_local_gateway.tcp_client import AsyncModbusTcpClient
+from custom_components.modbus_local_gateway.entity_management.const import (
+    ModbusDataType,
+    SwapType,
+)
 
 
 @pytest.mark.asyncio
@@ -665,7 +670,7 @@ async def test_float_multiplier() -> None:
             conv_multiplier=0.001,
             is_float=True,
             register_count=2,
-            state_class="total_increasing",
+            state_class=SensorStateClass.TOTAL_INCREASING,
             data_type=ModbusDataType.INPUT_REGISTER,
         ),
     )
@@ -783,7 +788,7 @@ def test_get_float_type(size: int, expected: ModbusClientMixin.DATATYPE) -> None
         assert result == expected
 
 
-def _switch_desc(**kwargs) -> ModbusSwitchEntityDescription:
+def _switch_desc(**kwargs: Any) -> ModbusSwitchEntityDescription:
     """A writable bit-field switch description."""
     return ModbusSwitchEntityDescription(
         register_address=1,
@@ -794,7 +799,7 @@ def _switch_desc(**kwargs) -> ModbusSwitchEntityDescription:
     )
 
 
-def _number_desc(**kwargs) -> ModbusNumberEntityDescription:
+def _number_desc(**kwargs: Any) -> ModbusNumberEntityDescription:
     """A writable bit-field number description."""
     return ModbusNumberEntityDescription(
         register_address=1,
@@ -825,7 +830,8 @@ def test_merge_single_bit(current: int, value: int, expected: int) -> None:
 
 
 def test_merge_low_byte_preserves_high_byte() -> None:
-    """Two 8-bit fields in one register: writing the low byte must not zero the high byte.
+    """Two 8-bit fields in one register: writing the low byte must not zero
+    the high byte.
 
     A register holding 30 in the high byte and 6 in the low byte; writing 45
     to the low byte must leave the high byte at 30.
@@ -869,7 +875,7 @@ def test_merge_across_two_registers() -> None:
 @pytest.mark.parametrize(
     "swap", [None, SwapType.BYTE, SwapType.WORD, SwapType.WORD_BYTE]
 )
-def test_merge_round_trips_through_swap(swap) -> None:
+def test_merge_round_trips_through_swap(swap: SwapType | None) -> None:
     """Merging then reading back must return the value that was written.
 
     `_swap_registers` is its own inverse, which is what lets the merge use the

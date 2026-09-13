@@ -97,7 +97,8 @@ async def test_async_step_device_type(hass: HomeAssistant) -> None:
     }
 
     with patch(
-        "custom_components.modbus_local_gateway.entity_management.modbus_device_info.load_yaml",
+        "custom_components.modbus_local_gateway.entity_management.modbus_device_info"
+        ".load_yaml",
         return_value=_config,
     ) as load_devices:
         result: ConfigFlowResult = await flow.async_step_device_type(
@@ -137,7 +138,7 @@ async def test_async_abort(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     assert "type" in result
     assert result["type"] == "abort"
     flow.client = None
-    result: ConfigFlowResult = flow.async_abort(reason="test")
+    result = flow.async_abort(reason="test")
     assert "type" in result
     assert result["type"] == "abort"
 
@@ -158,7 +159,7 @@ async def test_async_show_progress_done(
     assert result["type"] == "progress_done"
 
     flow.client = None
-    result: ConfigFlowResult = flow.async_show_progress_done(next_step_id="test")
+    result = flow.async_show_progress_done(next_step_id="test")
     assert "type" in result
     assert result["type"] == "progress_done"
 
@@ -174,7 +175,7 @@ async def test_options_flow_handler(
     flow = OptionsFlowHandler()
     flow.hass = hass
     flow.handler = mock_config_entry.entry_id
-    hass.data = {DOMAIN: {"test-localhost:123:1": MagicMock()}}  # type: ignore
+    hass.data = {DOMAIN: {"test-localhost:123:1": MagicMock()}}
 
     result: ConfigFlowResult = await flow.async_step_init(
         user_input={OPTIONS_REFRESH: 10}

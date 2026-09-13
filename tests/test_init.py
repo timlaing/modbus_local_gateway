@@ -63,7 +63,9 @@ async def test_async_unload_entry(hass: HomeAssistant) -> None:
     entry is gone, so a disabled entry carries on talking to the device.
     """
     coordinator = MagicMock()
-    hass.data = {"modbus_local_gateway": {"test-localhost:123:1": coordinator}}  # type: ignore[assignment]
+    hass.data = {
+        "modbus_local_gateway": {"test-localhost:123:1": coordinator},
+    }
 
     mock_config_entry = MockConfigEntry(
         domain=DOMAIN,
@@ -105,7 +107,7 @@ async def test_async_unload_entry_keeps_shared_client(hass: HomeAssistant) -> No
     leaving.client = shared_client
     staying = MagicMock()
     staying.client = shared_client
-    hass.data = {  # type: ignore[assignment]
+    hass.data = {
         "modbus_local_gateway": {
             "test-localhost:123:1": leaving,
             "test-localhost:123:2": staying,
@@ -148,7 +150,9 @@ async def test_async_unload_entry_keeps_state_when_platforms_fail(
     Assistant the entry had gone.
     """
     coordinator = MagicMock()
-    hass.data = {"modbus_local_gateway": {"test-localhost:123:1": coordinator}}  # type: ignore[assignment]
+    hass.data = {
+        "modbus_local_gateway": {"test-localhost:123:1": coordinator},
+    }
 
     mock_config_entry = MockConfigEntry(
         domain=DOMAIN,

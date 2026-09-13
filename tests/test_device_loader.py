@@ -8,13 +8,11 @@ from homeassistant.core import HomeAssistant
 import pytest
 
 from custom_components.modbus_local_gateway.const import DOMAIN
+from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.device_loader import (
     create_device_info,
     get_config_files,
     load_devices,
-)
-from custom_components.modbus_local_gateway.entity_management.modbus_device_info import (
-    ModbusDeviceInfo,
 )
 
 
@@ -28,7 +26,8 @@ def test_get_config_files_only_config_dir(tmp_path: Path, hass: HomeAssistant) -
     file2.write_text("test2")
 
     with patch(
-        "custom_components.modbus_local_gateway.entity_management.device_loader.CONFIG_DIR",
+        "custom_components.modbus_local_gateway.entity_management."
+        "device_loader.CONFIG_DIR",
         str(config_dir),
     ):
         files: dict[str, str] = get_config_files(hass)
@@ -39,7 +38,7 @@ def test_get_config_files_only_config_dir(tmp_path: Path, hass: HomeAssistant) -
 
 
 def test_get_config_files_with_extra_dir(tmp_path: Path, hass: HomeAssistant) -> None:
-    """Test getting config files from both the main config directory and an extra directory."""
+    """Test getting config files from the main and extra config directories."""
     config_dir: Path = tmp_path / "device_configs"
     config_dir.mkdir()
     file1: Path = config_dir / "dev1.yaml"
@@ -52,7 +51,8 @@ def test_get_config_files_with_extra_dir(tmp_path: Path, hass: HomeAssistant) ->
     extra_file.write_text("extra")
 
     with patch(
-        "custom_components.modbus_local_gateway.entity_management.device_loader.CONFIG_DIR",
+        "custom_components.modbus_local_gateway.entity_management."
+        "device_loader.CONFIG_DIR",
         str(config_dir),
     ):
         files: dict[str, str] = get_config_files(hass)
@@ -73,11 +73,13 @@ def test_get_config_files_extra_dir_not_exists(
     # Do not create extra_dir
     with (
         patch(
-            "custom_components.modbus_local_gateway.entity_management.device_loader.CONFIG_DIR",
+            "custom_components.modbus_local_gateway.entity_management."
+            "device_loader.CONFIG_DIR",
             str(config_dir),
         ),
         patch(
-            "custom_components.modbus_local_gateway.entity_management.device_loader.DOMAIN",
+            "custom_components.modbus_local_gateway.entity_management."
+            "device_loader.DOMAIN",
             "modbus_local_gateway",
         ),
     ):
@@ -101,11 +103,13 @@ def test_get_config_files_extra_dir_not_a_dir(
 
     with (
         patch(
-            "custom_components.modbus_local_gateway.entity_management.device_loader.CONFIG_DIR",
+            "custom_components.modbus_local_gateway.entity_management."
+            "device_loader.CONFIG_DIR",
             str(config_dir),
         ),
         patch(
-            "custom_components.modbus_local_gateway.entity_management.device_loader.DOMAIN",
+            "custom_components.modbus_local_gateway.entity_management."
+            "device_loader.DOMAIN",
             "modbus_local_gateway",
         ),
     ):
@@ -140,9 +144,13 @@ def test_get_create_device_info_found(hass: HomeAssistant, tmp_path: Path) -> No
             ".get_config_files",
             return_value={"dev1.yaml": str(file1)},
         ),
-        patch.object(ModbusDeviceInfo, "__init__", return_value=None),
+        patch.object(
+            modbus_device_info.ModbusDeviceInfo, "__init__", return_value=None
+        ),
     ):
-        device_info: ModbusDeviceInfo = create_device_info(hass, "dev1.yaml")
+        device_info: modbus_device_info.ModbusDeviceInfo = create_device_info(
+            hass, "dev1.yaml"
+        )
         assert device_info is not None
 
 
@@ -162,9 +170,13 @@ async def test_load_devices(hass: HomeAssistant, tmp_path: Path) -> None:
             ".get_config_files",
             return_value={"dev1.yaml": str(file1), "dev2.yaml": str(file2)},
         ),
-        patch.object(ModbusDeviceInfo, "__init__", return_value=None),
+        patch.object(
+            modbus_device_info.ModbusDeviceInfo, "__init__", return_value=None
+        ),
     ):
-        devices: dict[str, ModbusDeviceInfo] = await load_devices(hass)
+        devices: dict[str, modbus_device_info.ModbusDeviceInfo] = await load_devices(
+            hass
+        )
         assert len(devices) == 2
         assert "dev1.yaml" in devices
         assert "dev2.yaml" in devices
@@ -184,8 +196,14 @@ async def test_load_devices_with_error(hass: HomeAssistant, tmp_path: Path) -> N
             ".get_config_files",
             return_value={"dev1.yaml": str(file1)},
         ),
-        patch.object(ModbusDeviceInfo, "__init__", side_effect=Exception("Load error")),
+        patch.object(
+            modbus_device_info.ModbusDeviceInfo,
+            "__init__",
+            side_effect=Exception("Load error"),
+        ),
     ):
-        devices: dict[str, ModbusDeviceInfo] = await load_devices(hass)
+        devices: dict[str, modbus_device_info.ModbusDeviceInfo] = await load_devices(
+            hass
+        )
         assert len(devices) == 0
         assert "dev1.yaml" not in devices
