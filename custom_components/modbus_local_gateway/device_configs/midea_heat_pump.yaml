@@ -36,7 +36,6 @@ device:
   max_register_read: 8
 
 read_write_word:
-
   # Protocol range is 20-75 C. Your unit is commissioned to something narrower - read it
   # from dhw_upper_limit / dhw_lower_limit (registers 207/208) and narrow this to match.
   dhw_setpoint:
@@ -63,8 +62,8 @@ read_write_word:
     address: 7
     control: switch
     switch:
-      'on': 1
-      'off': 2
+      "on": 1
+      "off": 2
     scan_interval: 10
 
   # Engages the electric backup heater. It is a REQUEST: the unit honours it only while a
@@ -76,8 +75,8 @@ read_write_word:
     address: 9
     control: switch
     switch:
-      'on': 1
-      'off': 2
+      "on": 1
+      "off": 2
     scan_interval: 10
 
   curve_water_temp_upper:
@@ -140,8 +139,8 @@ read_write_word:
     shift_bits: 1
     control: switch
     switch:
-      'on': 1
-      'off': 0
+      "on": 1
+      "off": 0
     scan_interval: 10
 
   dhw:
@@ -151,8 +150,8 @@ read_write_word:
     shift_bits: 2
     control: switch
     switch:
-      'on': 1
-      'off': 0
+      "on": 1
+      "off": 0
     scan_interval: 10
 
   climate_curve:
@@ -162,8 +161,8 @@ read_write_word:
     shift_bits: 12
     control: switch
     switch:
-      'on': 1
-      'off': 0
+      "on": 1
+      "off": 0
     scan_interval: 10
 
   disinfect:
@@ -363,7 +362,7 @@ read_write_word:
     address: 101
     scan_interval: 30
     map:
-      0: 'Off'
+      0: "Off"
       2: Cool
       3: Heat
       5: DHW Heating
