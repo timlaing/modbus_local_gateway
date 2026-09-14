@@ -588,12 +588,12 @@ read_write_word:
     state_class: measurement
     scan_interval: 30
 
-  # Reads 255 (0x00FF) when the climate curve is OFF - an invalid marker, not a temperature
-  # (a transient 0 also occurs). With `state_class` set these enter long-term statistics, so
-  # range-guard anything that consumes it.
+  # Reads 255 (0x00FF) when the climate curve is OFF, plus a transient 0 - sentinels, not
+  # temperatures.
   curve_calculated_water_setpoint:
     name: Curve Calculated Water Setpoint
     address: 136
+    unavailable_values: [255, 0]
     signed: true
     unit_of_measurement: °C
     device_class: temperature
@@ -958,10 +958,11 @@ read_write_word:
     entity_category: diagnostic
     entity_registry_enabled_default: false
 
-  # Same 255-when-curve-off caveat as register 136.
+  # Same sentinels as register 136.
   curve_calculated_water_setpoint_zone2:
     name: Curve Calculated Water Setpoint Zone2
     address: 137
+    unavailable_values: [255, 0]
     signed: true
     unit_of_measurement: °C
     device_class: temperature
