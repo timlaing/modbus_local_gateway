@@ -859,6 +859,106 @@ read_write_word:
     control: binary_sensor
     scan_interval: 30
 
+  # Remaining register 129 outputs. The three pump/valve bits that move on every unit are enabled;
+  # the six for optional hardware (DHW recirculation, second-zone mixing, solar, extra valves) or
+  # that duplicate a register-128 flag are disabled by default.
+
+  internal_water_pump:
+    name: Internal Water Pump
+    address: 129
+    bits: 1
+    shift_bits: 3
+    control: binary_sensor
+    device_class: running
+    scan_interval: 10
+    entity_category: diagnostic
+
+  valve_sv2:
+    name: Valve SV2
+    address: 129
+    bits: 1
+    shift_bits: 5
+    control: binary_sensor
+    scan_interval: 10
+    entity_category: diagnostic
+
+  # The external water pump (P_o) runs only while the unit heats the space side: it is on together
+  # with RUN during space heating and stays off through DHW cycles, when the diverter valve sends
+  # the flow to the tank. That makes it the cleanest single "space heating active" signal on the
+  # map - RUN alone is on for DHW too.
+  external_water_pump:
+    name: External Water Pump
+    address: 129
+    bits: 1
+    shift_bits: 6
+    control: binary_sensor
+    device_class: running
+    scan_interval: 10
+
+  dhw_recirculation_pump:
+    name: DHW Recirculation Pump
+    address: 129
+    bits: 1
+    shift_bits: 7
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  mixing_pump:
+    name: Mixing Pump
+    address: 129
+    bits: 1
+    shift_bits: 8
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  valve_sv3:
+    name: Valve SV3
+    address: 129
+    bits: 1
+    shift_bits: 9
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  heat4_output:
+    name: HEAT4 Output
+    address: 129
+    bits: 1
+    shift_bits: 10
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  solar_pump:
+    name: Solar Pump
+    address: 129
+    bits: 1
+    shift_bits: 11
+    control: binary_sensor
+    device_class: running
+    scan_interval: 30
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
+  # Same information as the `defrosting` flag in register 128; kept for cross-checking only.
+  defrost_output:
+    name: Defrost Output
+    address: 129
+    bits: 1
+    shift_bits: 15
+    control: binary_sensor
+    scan_interval: 30
+    entity_category: diagnostic
+    entity_registry_enabled_default: false
+
   room_air_setpoint_raw:
     name: Room Air Setpoint Raw
     address: 3
