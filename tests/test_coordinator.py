@@ -770,6 +770,7 @@ async def test_async_update_entity_swallows_a_failed_poll(
 
     result = cast(Any, await coordinator.async_update_entity(ctx))
     assert result is None
+    assert coordinator.data == {"test_key": 42}
 
 
 @pytest.mark.asyncio
