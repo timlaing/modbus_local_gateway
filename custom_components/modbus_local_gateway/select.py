@@ -33,8 +33,10 @@ async def async_setup_entry(
     )
 
 
-class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
+class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):
     """Select entity for Modbus gateway"""
+
+    entity_description: ModbusSelectEntityDescription
 
     def __init__(
         self,
@@ -55,7 +57,7 @@ class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):  # type: ignore
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: str | int | None = self.coordinator.get_data(
+            value: str | int | float | None = self.coordinator.get_data(
                 self.coordinator_context
             )
             if (

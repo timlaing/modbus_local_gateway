@@ -1,6 +1,6 @@
 """Device loader Tests"""
-
 # pylint: disable=unexpected-keyword-arg, protected-access
+
 from pathlib import Path
 from unittest.mock import patch
 

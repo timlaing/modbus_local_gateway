@@ -1,6 +1,7 @@
 """Sensor tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -117,7 +118,7 @@ async def test_update_exception() -> None:
     )
     device = MagicMock()
     entity = ModbusTextEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
+    cast(Any, type(entity)).name = PropertyMock(return_value="Test")
     coordinator.get_data.side_effect = Exception()
 
     with (
@@ -148,11 +149,11 @@ async def test_update_value() -> None:
     )
     device = MagicMock()
     entity = ModbusTextEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
+    cast(Any, type(entity)).name = PropertyMock(return_value="Test")
 
     coordinator.get_data.return_value = 1
     write = MagicMock()
-    entity.async_write_ha_state = write  # type: ignore[misc, method-assign]
+    cast(Any, entity).async_write_ha_state = write
 
     with (
         patch("custom_components.modbus_local_gateway.text._LOGGER.warning") as warning,
@@ -184,14 +185,14 @@ async def test_update_deviceupdate() -> None:
     device = MagicMock()
     hass = MagicMock()
     entity = ModbusTextEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
+    cast(Any, type(entity)).name = PropertyMock(return_value="Test")
     type(entity).hass = PropertyMock(return_value=hass)
-    type(entity).native_value = PropertyMock(  # type: ignore[method-assign]
+    cast(Any, type(entity)).native_value = PropertyMock(
         return_value=2,
     )
 
     write = MagicMock()
-    entity.async_write_ha_state = write  # type: ignore[misc, method-assign]
+    cast(Any, entity).async_write_ha_state = write
 
     coordinator.get_data.return_value = 1
 

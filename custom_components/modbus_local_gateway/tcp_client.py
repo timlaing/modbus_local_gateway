@@ -18,6 +18,15 @@ from .transaction import MyTransactionManager
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+class ModbusClientError(ModbusException):
+    """Typed Modbus client error."""
+
+    def __init__(self, string: str) -> None:
+        """Initialize the error."""
+        super().__init__(string)  # type: ignore[no-untyped-call]
+        self.string = string
+
+
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     """Custom Modbus TCP client with request batching based on device and locking."""
 
@@ -246,7 +255,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             max_read_size=span_read_count,
         )
         if response is None or response.isError():
-            raise ModbusException(  # type: ignore[no-untyped-call]
+            raise ModbusClientError(
                 "Unable to read current value of "
                 f"{entity.desc.key} at {entity.desc.register_address} - "
                 "aborting bit field write"
@@ -294,7 +303,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     type(registers).__name__,
                 )
                 if len(registers) != entity.desc.register_count:
-                    raise ModbusException(  # type: ignore[no-untyped-call]
+                    raise ModbusClientError(
                         "Incorrect number of registers: expected "
                         f"{entity.desc.register_count}, got {len(registers)}"
                     )
@@ -323,7 +332,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     entity.desc.data_type,
                     pdu,
                 )
-                raise ModbusException(  # type: ignore[no-untyped-call]
+                raise ModbusClientError(
                     f"Error writing data to {entity.desc.key} "
                     f"({entity.desc.data_type}): {pdu}"
                 )

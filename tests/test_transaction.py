@@ -1,6 +1,6 @@
 """Test the MyTransactionManager class."""
-
 # pylint: disable=unexpected-keyword-arg, protected-access
+
 from asyncio import InvalidStateError
 from unittest.mock import MagicMock, patch
 
@@ -47,10 +47,7 @@ async def test_data_received_error() -> None:
         "TransactionManager.data_received"
     ) as data_rec:
         data_rec.side_effect = ModbusIOException()
-        rv = client.ctx.data_received(  # type: ignore[func-returns-value]
-            b"123"
-        )
-        assert rv is None
+        client.ctx.data_received(b"123")
         data_rec.assert_called_once()
 
 
@@ -63,10 +60,7 @@ async def test_data_received_error_state() -> None:
         "TransactionManager.data_received"
     ) as data_rec:
         data_rec.side_effect = InvalidStateError()
-        rv = client.ctx.data_received(  # type: ignore[func-returns-value]
-            b"123"
-        )
-        assert rv is None
+        client.ctx.data_received(b"123")
         data_rec.assert_called_once()
 
 
@@ -78,8 +72,5 @@ async def test_data_received() -> None:
         "custom_components.modbus_local_gateway.transaction."
         "TransactionManager.data_received"
     ) as data_rec:
-        rv = client.ctx.data_received(  # type: ignore[func-returns-value]
-            b"123"
-        )
-        assert rv is None
+        client.ctx.data_received(b"123")
         data_rec.assert_called_once()

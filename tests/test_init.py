@@ -1,6 +1,6 @@
 """Sensor tests"""
-
 # pylint: disable=unexpected-keyword-arg, protected-access
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

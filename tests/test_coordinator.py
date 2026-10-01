@@ -217,12 +217,12 @@ async def test_write_data_success() -> None:
 
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
-    entity._handle_coordinator_update = MagicMock()  # type: ignore[method-assign]
+    cast(Any, entity)._handle_coordinator_update = MagicMock()
 
     await entity.write_data("value")
     coordinator.client.write_data.assert_called_once_with(ctx, "value")
-    coordinator.async_update_entity.assert_called_once()
-    entity._handle_coordinator_update.assert_called_once()
+    cast(Any, coordinator).async_update_entity.assert_called_once()
+    cast(Any, entity)._handle_coordinator_update.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -372,7 +372,7 @@ def test_modbus_coordinator_entity_init_raises_typeerror_on_invalid_desc() -> No
 
         key: str = "bad"
 
-    ctx = ModbusContext(1, DummyDesc())  # type: ignore[arg-type]
+    ctx = ModbusContext(1, cast(Any, DummyDesc()))
     with pytest.raises(TypeError):
         ModbusCoordinatorEntity(coordinator, ctx, device)
 
@@ -497,7 +497,7 @@ def test_async_schedule_future_update_and_cancel() -> None:
         entity._cancel_call = None
         entity._async_schedule_future_update(5)
         print(mock_call_later)
-        assert entity._cancel_call == fake_cancel_call  # pylint: disable=comparison-with-callable
+        assert entity._cancel_call is fake_cancel_call
         assert mock_call_later.called
         mock_call_later.assert_called_once_with(
             entity.hass, 5, entity._async_update_if_not_in_progress
@@ -556,8 +556,8 @@ async def test_async_run_sets_available_and_schedules() -> None:
             ".async_track_time_interval",
         ) as mock_track_time_interval,
     ):
-        entity.async_write_ha_state = MagicMock()  # type: ignore[misc, method-assign]
-        entity._async_cancel_update_polling = MagicMock()  # type: ignore[method-assign]
+        cast(Any, entity).async_write_ha_state = MagicMock()
+        cast(Any, entity)._async_cancel_update_polling = MagicMock()
 
         entity.async_run()
         assert entity._attr_available is True
@@ -572,7 +572,7 @@ async def test_async_run_sets_available_and_schedules() -> None:
             entity._async_update_if_not_in_progress,
             timedelta(seconds=float(1)),
         )
-        entity.async_write_ha_state.assert_called_once()
+        cast(Any, entity).async_write_ha_state.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -590,7 +590,7 @@ async def test_async_added_to_hass_calls_super_and_run() -> None:
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
 
-    entity.async_run = MagicMock(name="async_run")  # type: ignore[method-assign]
+    cast(Any, entity).async_run = MagicMock(name="async_run")
     with patch(
         "custom_components.modbus_local_gateway.coordinator"
         ".CoordinatorEntity.async_added_to_hass"
@@ -598,7 +598,7 @@ async def test_async_added_to_hass_calls_super_and_run() -> None:
         mock_super.return_value = MagicMock()
         await entity.async_added_to_hass()
         mock_super.assert_called_once()
-        entity.async_run.assert_called_once()
+        cast(Any, entity).async_run.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -616,17 +616,15 @@ async def test_async_will_remove_from_hass_calls_super_and_cancels() -> None:
     device = MagicMock()
     entity = ModbusCoordinatorEntity(coordinator, ctx, device)
 
-    entity._async_cancel_update_polling = MagicMock()  # type: ignore[method-assign]
-    entity._async_cancel_future_pending_update = (  # type: ignore[method-assign]
-        MagicMock()
-    )
+    cast(Any, entity)._async_cancel_update_polling = MagicMock()
+    cast(Any, entity)._async_cancel_future_pending_update = MagicMock()
     with patch(
         "custom_components.modbus_local_gateway.coordinator.CoordinatorEntity"
         ".async_will_remove_from_hass"
     ) as mock_super:
         await entity.async_will_remove_from_hass()
-        entity._async_cancel_update_polling.assert_called_once()
-        entity._async_cancel_future_pending_update.assert_called_once()
+        cast(Any, entity)._async_cancel_update_polling.assert_called_once()
+        cast(Any, entity)._async_cancel_future_pending_update.assert_called_once()
         mock_super.assert_called_once()
 
 
@@ -661,20 +659,20 @@ async def test_async_update_entity(mock_config_entry: ConfigEntry) -> None:
         ),
     )
 
-    coordinator._update_device = AsyncMock()  # type: ignore[method-assign]
-    coordinator._update_device.return_value = None
+    cast(Any, coordinator)._update_device = AsyncMock()
+    cast(Any, coordinator)._update_device.return_value = None
     await coordinator.async_update_entity(ctx1)
-    coordinator._update_device.assert_called_once()
+    cast(Any, coordinator)._update_device.assert_called_once()
 
-    coordinator._update_device.return_value = {"test1": "value1"}
+    cast(Any, coordinator)._update_device.return_value = {"test1": "value1"}
     await coordinator.async_update_entity(ctx1)
     assert coordinator.data == {"test1": "value1"}
 
-    coordinator._update_device.return_value = {"test2": "value2"}
+    cast(Any, coordinator)._update_device.return_value = {"test2": "value2"}
     await coordinator.async_update_entity(ctx2)
     assert coordinator.data == {"test1": "value1", "test2": "value2"}
 
-    coordinator._update_device.return_value = {"test2": "value3"}
+    cast(Any, coordinator)._update_device.return_value = {"test2": "value3"}
     await coordinator.async_update_entity(ctx2)
     assert coordinator.data == {"test1": "value1", "test2": "value3"}
 
@@ -768,7 +766,7 @@ async def test_async_update_entity_swallows_a_failed_poll(
 
     future: asyncio.Future[Any] = asyncio.Future()
     future.set_result({})  # the device said nothing at all
-    coordinator.client.update_device.return_value = future  # type: ignore[attr-defined]
+    cast(Any, coordinator.client).update_device.return_value = future
 
     result = cast(Any, await coordinator.async_update_entity(ctx))
     assert result is None
@@ -795,7 +793,7 @@ async def test_unavailable_value_marks_entity_and_clears_again(
 
     future: asyncio.Future[Any] = asyncio.Future()
     future.set_result({"test_key": MagicMock()})
-    coordinator.client.update_device.return_value = future  # type: ignore[attr-defined]
+    cast(Any, coordinator.client).update_device.return_value = future
 
     with patch(
         "custom_components.modbus_local_gateway.conversion"
@@ -808,9 +806,7 @@ async def test_unavailable_value_marks_entity_and_clears_again(
 
     future2: asyncio.Future[Any] = asyncio.Future()
     future2.set_result({"test_key": MagicMock()})
-    coordinator.client.update_device.return_value = (  # type: ignore[attr-defined]
-        future2
-    )
+    cast(Any, coordinator.client).update_device.return_value = future2
     with patch(
         "custom_components.modbus_local_gateway.conversion"
         ".Conversion.convert_from_response",
@@ -837,7 +833,7 @@ async def test_all_unavailable_is_not_a_failed_refresh(
 
     future: asyncio.Future[Any] = asyncio.Future()
     future.set_result({"test_key": MagicMock()})
-    coordinator.client.update_device.return_value = future  # type: ignore[attr-defined]
+    cast(Any, coordinator.client).update_device.return_value = future
 
     with (
         patch(

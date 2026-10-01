@@ -1,6 +1,7 @@
 """Binary Sensor tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -115,7 +116,7 @@ async def test_update_exception() -> None:
     )
     device = MagicMock()
     entity = ModbusBinarySensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
+    cast(Any, type(entity)).name = PropertyMock(return_value="Test")
     coordinator.get_data.side_effect = Exception()
 
     with patch(
@@ -143,10 +144,10 @@ async def test_update_value_bool() -> None:
     )
     device = MagicMock()
     entity = ModbusBinarySensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
+    cast(Any, type(entity)).name = PropertyMock(return_value="Test")
     coordinator.get_data.return_value = True
     write = MagicMock()
-    entity.async_write_ha_state = write  # type: ignore[misc, method-assign]
+    cast(Any, entity).async_write_ha_state = write
 
     with patch(
         "custom_components.modbus_local_gateway.binary_sensor._LOGGER.error"
@@ -175,10 +176,10 @@ async def test_update_value_int() -> None:
     )
     device = MagicMock()
     entity = ModbusBinarySensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    type(entity).name = PropertyMock(return_value="Test")  # type: ignore[method-assign]
+    cast(Any, type(entity)).name = PropertyMock(return_value="Test")
     coordinator.get_data.return_value = 10
     write = MagicMock()
-    entity.async_write_ha_state = write  # type: ignore[misc, method-assign]
+    cast(Any, entity).async_write_ha_state = write
 
     with patch(
         "custom_components.modbus_local_gateway.binary_sensor._LOGGER.error"

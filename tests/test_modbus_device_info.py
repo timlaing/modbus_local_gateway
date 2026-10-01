@@ -1,6 +1,6 @@
 """Device info Tests"""
-
 # pylint: disable=unexpected-keyword-arg, protected-access
+
 from unittest.mock import patch
 
 from homeassistant.core import HomeAssistant

@@ -37,6 +37,8 @@ __all__ = ["ModbusContext", "ModbusCoordinator", "ModbusCoordinatorEntity"]
 class ModbusCoordinatorEntity(CoordinatorEntity):
     """Base class for Modbus entities"""
 
+    entity_description: ModbusEntityDescription
+
     def __init__(
         self,
         coordinator: ModbusCoordinator,
@@ -47,6 +49,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         super().__init__(coordinator, context=ctx)
         if not isinstance(ctx.desc, ModbusEntityDescription):
             raise TypeError()
+        self.entity_description = ctx.desc
 
         prefix: str | None = None
         host_id: str | None = None
@@ -234,11 +237,6 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             return False
         return not self.coordinator.is_unavailable(self.coordinator_context)
 
-    @property
-    def entity_description(self) -> ModbusEntityDescription:  # type: ignore[override]
-        """Return the entity description."""
-        return self.coordinator_context.desc
-
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
     """Update coordinator for modbus entries"""
@@ -368,8 +366,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Whether this entity's last read was a declared non-value."""
         return ctx.desc.key in self._unavailable_keys
 
-    def get_data(self, ctx: ModbusContext) -> str | int | bool | None:
+    def get_data(self, ctx: ModbusContext) -> str | int | float | bool | None:
         """Retrieve cached data for a specific entity"""
         if self.data and ctx.desc.key in self.data:
-            return cast(str | int | bool | None, self.data[ctx.desc.key])
+            return cast(str | int | float | bool | None, self.data[ctx.desc.key])
         return None

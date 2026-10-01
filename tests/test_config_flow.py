@@ -1,6 +1,6 @@
 """Tests for the Modbus Local Gateway config flow."""
-
 # pylint: disable=unexpected-keyword-arg, protected-access
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigFlowResult

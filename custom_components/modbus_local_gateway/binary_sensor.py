@@ -33,10 +33,10 @@ async def async_setup_entry(
     )
 
 
-class ModbusBinarySensorEntity(  # type: ignore[misc]
-    ModbusCoordinatorEntity, BinarySensorEntity
-):
+class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):
     """Binary sensor entity for Modbus gateway"""
+
+    entity_description: ModbusBinarySensorEntityDescription
 
     def __init__(
         self,

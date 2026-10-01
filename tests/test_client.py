@@ -2,7 +2,7 @@
 """Tcp Client tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, PropertyMock, patch
 
 from pymodbus.exceptions import ModbusException
@@ -27,6 +27,7 @@ from custom_components.modbus_local_gateway.entity_management.const import (
 )
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
+    ModbusClientError,
 )
 
 
@@ -65,7 +66,7 @@ async def test_read_registers_single_invalid_response_length() -> None:
 
     with patch.object(AsyncModbusTcpClientGateway, "__init__", __init__):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        client.read_input_registers = func  # type: ignore[method-assign]
+        cast(Any, client).read_input_registers = func
         resp = await client.read_data(
             func=func, address=1, count=1, device_id=1, max_read_size=3
         )
@@ -85,7 +86,7 @@ async def test_read_registers_single_invalid_response_type() -> None:
 
     with patch.object(AsyncModbusTcpClientGateway, "__init__", __init__):
         client = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        client.read_input_registers = func  # type: ignore[method-assign]
+        cast(Any, client).read_input_registers = func
         resp = await client.read_data(
             func=client.read_input_registers,
             address=1,
@@ -142,10 +143,8 @@ async def test_read_registers_multiple() -> None:
 async def test_write_no_registers() -> None:
     """Test successful write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: False
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -155,7 +154,7 @@ async def test_write_no_registers() -> None:
             values=[],
             device_id=1,
         )
-        client.write_register.assert_not_called()
+        cast(Any, client).write_register.assert_not_called()
         mock_logger.debug.assert_called_with("No values to write, skipping.")
 
 
@@ -163,10 +162,8 @@ async def test_write_no_registers() -> None:
 async def test_write_single_register_success() -> None:
     """Test successful write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: False
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -176,7 +173,7 @@ async def test_write_single_register_success() -> None:
             values=[123],
             device_id=1,
         )
-        client.write_register.assert_called_once_with(
+        cast(Any, client).write_register.assert_called_once_with(
             address=1,
             value=123,
             device_id=1,
@@ -188,10 +185,8 @@ async def test_write_single_register_success() -> None:
 async def test_write_single_register_failure() -> None:
     """Test failed write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: True
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: True
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -201,7 +196,7 @@ async def test_write_single_register_failure() -> None:
             values=[123],
             device_id=1,
         )
-        client.write_register.assert_called_once_with(
+        cast(Any, client).write_register.assert_called_once_with(
             address=1,
             value=123,
             device_id=1,
@@ -210,7 +205,7 @@ async def test_write_single_register_failure() -> None:
             "Failed to write value %d to address %d: %s",
             123,
             1,
-            client.write_register.return_value,
+            cast(Any, client).write_register.return_value,
         )
 
 
@@ -218,10 +213,8 @@ async def test_write_single_register_failure() -> None:
 async def test_write_multiple_registers_success() -> None:
     """Test successful write of a multiple registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.write_registers = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_registers.return_value.isError = lambda: False
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -231,7 +224,7 @@ async def test_write_multiple_registers_success() -> None:
             values=[123, 456],
             device_id=1,
         )
-        client.write_registers.assert_called_once_with(
+        cast(Any, client).write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
             device_id=1,
@@ -245,14 +238,10 @@ async def test_write_multiple_registers_success() -> None:
 async def test_write_multiple_registers_failure() -> None:
     """Test failed write of a multiple registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.write_registers = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_registers.return_value.isError = lambda: True
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: True
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: True
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: True
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -262,7 +251,7 @@ async def test_write_multiple_registers_failure() -> None:
             values=[123, 456],
             device_id=1,
         )
-        client.write_registers.assert_called_once_with(
+        cast(Any, client).write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
             device_id=1,
@@ -271,7 +260,7 @@ async def test_write_multiple_registers_failure() -> None:
             "Failed to write value %d to address %d: %s",
             123,
             1,
-            client.write_register.return_value,
+            cast(Any, client).write_register.return_value,
         )
 
 
@@ -279,14 +268,10 @@ async def test_write_multiple_registers_failure() -> None:
 async def test_write_multiple_registers_success_individual() -> None:
     """Test failed write of a multiple registers, successfully individually."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.write_registers = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_registers.return_value.isError = lambda: True
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: False
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: True
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -296,7 +281,7 @@ async def test_write_multiple_registers_success_individual() -> None:
             values=[123, 456],
             device_id=1,
         )
-        client.write_registers.assert_called_once_with(
+        cast(Any, client).write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
             device_id=1,
@@ -357,9 +342,9 @@ async def test_update_device_not_connected() -> None:
         ) as debug,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        gateway.connect = AsyncMock()  # type: ignore[method-assign]
+        cast(Any, gateway).connect = AsyncMock()
         connected = PropertyMock(return_value=False)
-        type(gateway).connected = connected  # type: ignore
+        cast(Any, type(gateway)).connected = connected
 
         resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[
@@ -377,7 +362,7 @@ async def test_update_device_not_connected() -> None:
 
         assert resp is not None
         assert isinstance(resp, dict)
-        gateway.connect.assert_called_once()
+        cast(Any, gateway).connect.assert_called_once()
         warning.assert_called_once()
         debug.assert_not_called()
         assert len(lock.mock_calls) == 2
@@ -406,9 +391,9 @@ async def test_update_device_connected_no_entities() -> None:
         ) as debug,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        gateway.connect = AsyncMock()  # type: ignore[method-assign]
+        cast(Any, gateway).connect = AsyncMock()
         connected = PropertyMock(return_value=True)
-        type(gateway).connected = connected  # type: ignore
+        cast(Any, type(gateway)).connected = connected
 
         resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[],
@@ -417,7 +402,7 @@ async def test_update_device_connected_no_entities() -> None:
 
         assert resp is not None
         assert isinstance(resp, dict)
-        gateway.connect.assert_not_called()
+        cast(Any, gateway).connect.assert_not_called()
         warning.assert_not_called()
         debug.assert_called_once()
         assert len(lock.mock_calls) == 2
@@ -441,10 +426,10 @@ async def test_update_device_connected_success_device_single() -> None:
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        gateway.connect = AsyncMock()  # type: ignore[method-assign]
+        cast(Any, gateway).connect = AsyncMock()
         gateway.lock = lock
         connected = PropertyMock(side_effect=[False, True])
-        type(gateway).connected = connected  # type: ignore
+        cast(Any, type(gateway)).connected = connected
         response = ReadHoldingRegistersResponse(
             registers=[
                 1,
@@ -472,7 +457,7 @@ async def test_update_device_connected_success_device_single() -> None:
         assert isinstance(resp, dict)
         assert len(resp) == 1
         assert resp["key"] == response
-        gateway.connect.assert_called_once()
+        cast(Any, gateway).connect.assert_called_once()
         warning.assert_not_called()
         assert debug.call_count == 2
         assert len(lock.mock_calls) == 2
@@ -496,10 +481,10 @@ async def test_update_device_connected_success_device_multiple() -> None:
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        gateway.connect = AsyncMock()  # type: ignore[method-assign]
+        cast(Any, gateway).connect = AsyncMock()
         gateway.lock = lock
         connected = PropertyMock(side_effect=[False, True])
-        type(gateway).connected = connected  # type: ignore
+        cast(Any, type(gateway)).connected = connected
         response = ReadInputRegistersResponse(
             registers=[
                 1,
@@ -547,7 +532,7 @@ async def test_update_device_connected_success_device_multiple() -> None:
         assert resp["key1"] == response
         assert resp["key2"] == response
         assert resp["key3"] == response
-        gateway.connect.assert_called_once()
+        cast(Any, gateway).connect.assert_called_once()
         warning.assert_not_called()
         assert debug.call_count == 4
         assert len(lock.mock_calls) == 2
@@ -571,14 +556,12 @@ async def test_update_device_connected_failed_device_single() -> None:
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        gateway.connect = AsyncMock()  # type: ignore[method-assign]
+        cast(Any, gateway).connect = AsyncMock()
         gateway.lock = lock
         connected = PropertyMock(side_effect=[False, True])
-        type(gateway).connected = connected  # type: ignore
+        cast(Any, type(gateway)).connected = connected
 
-        read_reg.side_effect = (
-            ModbusException(string="test")  # type: ignore[no-untyped-call]
-        )
+        read_reg.side_effect = ModbusClientError(string="test")
 
         resp: dict[str, ModbusPDU] = await gateway.update_device(
             entities=[
@@ -598,7 +581,7 @@ async def test_update_device_connected_failed_device_single() -> None:
         assert resp is not None
         assert isinstance(resp, dict)
         assert len(resp) == 0
-        gateway.connect.assert_called_once()
+        cast(Any, gateway).connect.assert_called_once()
         warning.assert_called_once()
         assert debug.call_count == 2
         assert len(lock.mock_calls) == 2
@@ -622,10 +605,10 @@ async def test_update_device_connected_failed_device_multiple() -> None:
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        gateway.connect = AsyncMock()  # type: ignore[method-assign]
+        cast(Any, gateway).connect = AsyncMock()
         gateway.lock = lock
         connected = PropertyMock(side_effect=[False, True])
-        type(gateway).connected = connected  # type: ignore
+        cast(Any, type(gateway)).connected = connected
         response = ReadInputRegistersResponse(
             registers=[
                 3,
@@ -634,7 +617,7 @@ async def test_update_device_connected_failed_device_multiple() -> None:
 
         read_reg.side_effect = [
             response,
-            ModbusException(string="test"),  # type: ignore[no-untyped-call]
+            ModbusClientError(string="test"),
             response,
         ]
 
@@ -676,7 +659,7 @@ async def test_update_device_connected_failed_device_multiple() -> None:
         assert len(resp) == 2
         assert resp["key1"] == response
         assert resp["key3"] == response
-        gateway.connect.assert_called_once()
+        cast(Any, gateway).connect.assert_called_once()
         warning.assert_not_called()
         assert debug.call_count == 5
         assert len(lock.mock_calls) == 2
@@ -700,10 +683,10 @@ async def test_update_device_connected_success_all_types() -> None:
         ) as read_reg,
     ):
         gateway = AsyncModbusTcpClientGateway(host="127.0.0.1")
-        gateway.connect = AsyncMock()  # type: ignore[method-assign]
+        cast(Any, gateway).connect = AsyncMock()
         gateway.lock = lock
         connected = PropertyMock(side_effect=[False, True])
-        type(gateway).connected = connected  # type: ignore
+        cast(Any, type(gateway)).connected = connected
 
         responses = [
             ReadHoldingRegistersResponse(registers=[1]),
@@ -757,7 +740,7 @@ async def test_update_device_connected_success_all_types() -> None:
         assert resp["ro_word"] == responses[1]
         assert resp["rw_bool"] == responses[2]
         assert resp["ro_bool"] == responses[3]
-        gateway.connect.assert_called_once()
+        cast(Any, gateway).connect.assert_called_once()
         warning.assert_not_called()
         assert debug.call_count == 5  # 4 reads + 1 completion
         assert len(lock.mock_calls) == 2
@@ -767,11 +750,9 @@ async def test_update_device_connected_success_all_types() -> None:
 async def test_write_data_holding_registers_success() -> None:
     """Test successful write to holding registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_registers = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_registers.return_value.isError = lambda: False
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
 
     entity = ModbusContext(
         device_id=1,
@@ -795,7 +776,7 @@ async def test_write_data_holding_registers_success() -> None:
         ) as mock_logger,
     ):
         result: ModbusPDU | None = await client.write_data(entity, value=789)
-        client.write_registers.assert_called_once_with(
+        cast(Any, client).write_registers.assert_called_once_with(
             address=1,
             values=[123, 456],
             device_id=1,
@@ -813,11 +794,9 @@ async def test_write_data_holding_registers_success() -> None:
 async def test_write_data_holding_registers_error_raises() -> None:
     """An error response to a register write must not be reported as success."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: True
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: True
 
     entity = ModbusContext(
         device_id=1,
@@ -843,11 +822,9 @@ async def test_write_data_holding_registers_error_raises() -> None:
 async def test_write_data_coil_error_raises() -> None:
     """An error response to a coil write must not be reported as success."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_coil = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_coil.return_value.isError = lambda: True
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_coil = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_coil.return_value.isError = lambda: True
 
     entity = ModbusContext(
         device_id=1,
@@ -872,11 +849,9 @@ async def test_write_data_coil_error_raises() -> None:
 async def test_write_data_coils_success() -> None:
     """Test successful write to coils."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_coil = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_coil.return_value.isError = lambda: False
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_coil = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_coil.return_value.isError = lambda: False
 
     entity = ModbusContext(
         device_id=1,
@@ -897,7 +872,7 @@ async def test_write_data_coils_success() -> None:
         ) as mock_logger,
     ):
         result = await client.write_data(entity, value=True)
-        client.write_coil.assert_called_once_with(
+        cast(Any, client).write_coil.assert_called_once_with(
             address=1,
             value=True,
             device_id=1,
@@ -914,7 +889,7 @@ async def test_write_data_coils_success() -> None:
 async def test_write_data_failed_connection() -> None:
     """Test failed connection."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
+    cast(Any, client).connect = AsyncMock()
 
     entity = ModbusContext(
         device_id=1,
@@ -935,7 +910,7 @@ async def test_write_data_failed_connection() -> None:
         ) as mock_logger,
     ):
         result: ModbusPDU | None = await client.write_data(entity, value=123)
-        client.connect.assert_called_once()
+        cast(Any, client).connect.assert_called_once()
         mock_logger.warning.assert_called_with(
             "Failed to connect to gateway - %s", client
         )
@@ -946,7 +921,7 @@ async def test_write_data_failed_connection() -> None:
 async def test_write_data_unsupported_data_type() -> None:
     """Test unsupported data type."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
+    cast(Any, client).connect = AsyncMock()
 
     entity = ModbusContext(
         device_id=1,
@@ -954,7 +929,7 @@ async def test_write_data_unsupported_data_type() -> None:
             key="test",
             register_address=1,
             register_count=1,
-            data_type="unsupported",  # type: ignore
+            data_type=cast(Any, "unsupported"),
         ),
     )
 
@@ -971,7 +946,7 @@ async def test_write_data_unsupported_data_type() -> None:
 async def test_write_data_incorrect_register_count() -> None:
     """Test incorrect register count."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
+    cast(Any, client).connect = AsyncMock()
 
     entity = ModbusContext(
         device_id=1,
@@ -999,7 +974,7 @@ async def test_write_data_incorrect_register_count() -> None:
 async def test_write_data_invalid_coil_value_type() -> None:
     """Test invalid coil value type."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
+    cast(Any, client).connect = AsyncMock()
 
     entity = ModbusContext(
         device_id=1,
@@ -1042,11 +1017,9 @@ def _bitfield_entity() -> ModbusContext:
 async def test_write_data_bitfield_read_modify_write() -> None:
     """Writing a bit field reads the register and merges into it."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: False
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
 
     with (
         patch.object(
@@ -1063,7 +1036,7 @@ async def test_write_data_bitfield_read_modify_write() -> None:
         await client.write_data(_bitfield_entity(), value=1)
 
         # bit 4 set, the two bits already on are untouched
-        client.write_register.assert_called_once_with(
+        cast(Any, client).write_register.assert_called_once_with(
             address=1,
             value=0b0001_0011,
             device_id=1,
@@ -1075,10 +1048,8 @@ async def test_write_data_bitfield_read_failure_aborts_write() -> None:
     """A failed read must abort - merging onto a guess would clear the field's
     neighbours, which is worse than not writing at all."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
 
     with (
         patch.object(
@@ -1091,20 +1062,18 @@ async def test_write_data_bitfield_read_failure_aborts_write() -> None:
     ):
         await client.write_data(_bitfield_entity(), value=1)
 
-    client.write_register.assert_not_called()
+    cast(Any, client).write_register.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_write_data_bitfield_error_response_aborts_write() -> None:
     """An error PDU from the read is a failed read, not a value of zero."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
 
     error_response = ReadHoldingRegistersResponse(registers=[0])
-    error_response.isError = lambda: True  # type: ignore[method-assign]
+    cast(Any, error_response).isError = lambda: True
 
     with (
         patch.object(
@@ -1119,18 +1088,16 @@ async def test_write_data_bitfield_error_response_aborts_write() -> None:
     ):
         await client.write_data(_bitfield_entity(), value=1)
 
-    client.write_register.assert_not_called()
+    cast(Any, client).write_register.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_write_data_non_bitfield_does_not_read_first() -> None:
     """Plain registers keep the single-transaction write they always had."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    client.connect = AsyncMock()  # type: ignore[method-assign]
-    client.write_register = AsyncMock(  # type: ignore[method-assign]
-        return_value=ModbusPDU()
-    )
-    client.write_register.return_value.isError = lambda: False
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
 
     entity = ModbusContext(
         device_id=1,
@@ -1153,4 +1120,4 @@ async def test_write_data_non_bitfield_does_not_read_first() -> None:
         await client.write_data(entity, value=123)
 
         read_data.assert_not_called()
-        client.write_register.assert_called_once()
+        cast(Any, client).write_register.assert_called_once()

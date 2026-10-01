@@ -1,6 +1,6 @@
 """Conversion Tests"""
-
 # pylint: disable=unexpected-keyword-arg, protected-access
+
 from typing import Any
 
 from homeassistant.components.sensor.const import SensorStateClass
