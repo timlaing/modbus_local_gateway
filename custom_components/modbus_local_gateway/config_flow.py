@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import datetime
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.config_entries import (
     ConfigEntry,
@@ -60,14 +60,17 @@ class OptionsFlowHandler(OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required(
-                    OPTIONS_REFRESH,
-                    default=self.config_entry.options.get(
-                        OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
-                    ),
-                ): int
-            }),
+            data_schema=cast(
+                Any,
+                vol.Schema({
+                    vol.Required(
+                        OPTIONS_REFRESH,
+                        default=self.config_entry.options.get(
+                            OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
+                        ),
+                    ): int
+                }),
+            ),
         )
 
 
@@ -123,15 +126,18 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_HOST, None, **host_opts): str,
-                vol.Required(CONF_PORT, None, **port_opts): int,
-                vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
-                vol.Required(
-                    CONF_CONNECTION_TYPE, None, **connection_type_opts
-                ): vol.In(CONF_CONNECTION_TYPES),
-                vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
-            }),
+            data_schema=cast(
+                Any,
+                vol.Schema({
+                    vol.Required(CONF_HOST, None, **host_opts): str,
+                    vol.Required(CONF_PORT, None, **port_opts): int,
+                    vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
+                    vol.Required(
+                        CONF_CONNECTION_TYPE, None, **connection_type_opts
+                    ): vol.In(CONF_CONNECTION_TYPES),
+                    vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
+                }),
+            ),
             errors=errors,
         )
 
@@ -157,7 +163,10 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="device_type",
-            data_schema=vol.Schema({vol.Required(CONF_FILENAME): vol.In(devices_data)}),
+            data_schema=cast(
+                Any,
+                vol.Schema({vol.Required(CONF_FILENAME): vol.In(devices_data)}),
+            ),
             errors=errors,
         )
 
