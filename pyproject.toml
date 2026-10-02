@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "modbus_local_gateway"
 dynamic = ["version", "readme", "dependencies", "optional-dependencies"]
 description = "Modbus Local Gateway is a module which allows integration with Modbus devices in Home Assistant."
-requires-python = ">=3.14"
+requires-python = ">=3.14.2"
 license = "MIT"
 license-files = ["LICENSE.md"]
 authors = [
@@ -36,10 +36,8 @@ repository = "https://github.com/timlaing/modbus_local_gateway"
 [tool.setuptools]
 packages = [
     "custom_components.modbus_local_gateway",
-    "custom_components.modbus_local_gateway.devices",
     "custom_components.modbus_local_gateway.device_configs",
     "custom_components.modbus_local_gateway.entity_management",
-    "custom_components.modbus_local_gateway.sensor_types",
 ]
 
 [tool.setuptools.dynamic]

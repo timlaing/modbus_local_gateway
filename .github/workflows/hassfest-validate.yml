@@ -9,7 +9,8 @@ on:
   repository_dispatch:
     types: [ha-dev-test]
 jobs:
-  validate:
+  validate-hassfest:
+    name: validate-hassfest
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
