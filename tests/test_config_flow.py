@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
+from pymodbus.framer import FramerType
 import pytest
 from pytest_homeassistant_custom_component.common import HomeAssistant, MockConfigEntry
 
@@ -60,6 +61,35 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
         assert "step_id" in result
         assert result["type"] == "form"
         assert result["step_id"] == "device_type"
+
+
+@pytest.mark.asyncio
+async def test_async_step_user_offers_standard_connection_type_names(
+    hass: HomeAssistant,
+) -> None:
+    """The framer is offered under its protocol name, not an internal one.
+
+    The stored value is the `FramerType`, so the label has to describe the
+    protocol on the wire for a user to pick the right one.
+    """
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+
+    result: ConfigFlowResult = await flow.async_step_user()
+
+    schema = result["data_schema"]
+    assert schema is not None
+
+    options: dict[str, str] = next(
+        validator.container
+        for key, validator in schema.schema.items()
+        if getattr(key, "schema", None) == CONF_CONNECTION_TYPE
+    )
+
+    assert options == {
+        FramerType.SOCKET.value: "Modbus TCP",
+        FramerType.RTU.value: "Modbus RTU over TCP",
+    }
 
 
 @pytest.mark.asyncio

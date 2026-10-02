@@ -156,7 +156,7 @@ S7637 is a deliberate, repo-wide exception: actions are pinned by version tag ra
 - `ModbusDataType` and `ControlType` are `StrEnum`s whose _values_ are the YAML section keys / `control` values — do not rely on member names.
 - `desc.register_address` is 1-based/absolute as written in YAML (often `0x`-prefixed hex); pymodbus is zero-relative internally only where the device expects it — don't "fix" addressing casually.
 - A `prefix` config option changes `unique_id` and gateway key (`get_gateway_key`); changing its format breaks existing device/entity identity.
-- FramerType: SOCKET = "Via Gateway Device", RTU = "Direct Connection". `FramerType(connection_type)` derives the framer; never mismatch.
+- Connection type: a config entry stores the `FramerType` value — `FramerType.SOCKET.value` (`"socket"`) and `FramerType.RTU.value` (`"rtu"`). `CONF_CONNECTION_TYPES` in `const.py` maps those to the labels the config flow shows: "Modbus TCP" and "Modbus RTU over TCP". `FramerType(connection_type)` derives the framer from the stored value; never mismatch.
 - `AsyncModbusTcpClientGateway._CLIENT` caches one client per `host:port:connection_type`; a test reset it or stub before asserting connection counts.
 - Strings read from Modbus may be shorter than `register_count` — NUL split is required; do not rely on trailing-pad trimming.
 - `Conversion.convert_to_registers` must reject unsupported write features (`conv_map`, `conv_flags`, bit/shift/sum-scale) with `NotSupportedError`, not silently drop them.

@@ -27,6 +27,8 @@ custom integrations. Pre-releases are not listed here.
 
 ### Changed
 
+- **Standard names for the connection type**: the two options in the config flow were labelled by how the device is reached — "Via Gateway Device" and "Direct Connection" — which does not say what is on the wire, and neither is the name the protocol carries in a manual or a datasheet. They are now "Modbus TCP" and "Modbus RTU over TCP", matching `FramerType.SOCKET` and `FramerType.RTU`, which is what the selection actually changes. The stored value, and therefore existing config entries, are untouched.
+
 - **Python 3.14 only**: packaging metadata and CI no longer advertise 3.13, and the dev Home Assistant pin follows.
 - **Repo tooling and docs**: `prek` hook set (ruff, isort, cspell, yamllint, prettier, mypy, pylint, coverage) plus a dependency sync script, contributor and security docs, a repo-specific PR template, the code-review skill and updated CI workflows. SonarQube scans moved to `workflow_run` with a validated coverage report, keeping the token out of fork-derived code.
 - **mypy and pylint run on every commit** instead of on a manual stage; the findings across the integration, tests and test server are fixed (pylint 10.00/10, mypy clean across all 21 source files). The config flow schemas are cast so they type-check against both voluptuous and the `probatio` annotation Home Assistant 2026.10 uses.
