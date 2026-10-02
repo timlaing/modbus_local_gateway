@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import cast
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -34,8 +33,10 @@ async def async_setup_entry(
     )
 
 
-class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):  # type: ignore
+class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):
     """Binary sensor entity for Modbus gateway"""
+
+    entity_description: ModbusBinarySensorEntityDescription
 
     def __init__(
         self,
@@ -52,12 +53,10 @@ class ModbusBinarySensorEntity(ModbusCoordinatorEntity, BinarySensorEntity):  # 
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value = cast(ModbusCoordinator, self.coordinator).get_data(
-                self.coordinator_context
-            )
+            value = self.coordinator.get_data(self.coordinator_context)
             if (
                 value is not None
-                and isinstance(value, (int | bool))
+                and isinstance(value, (int, bool))
                 and isinstance(
                     self.entity_description, ModbusBinarySensorEntityDescription
                 )

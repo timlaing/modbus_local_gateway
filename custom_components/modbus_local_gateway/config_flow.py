@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 import datetime
 import logging
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
+    FlowType,
     OptionsFlow,
 )
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
@@ -59,14 +60,17 @@ class OptionsFlowHandler(OptionsFlow):
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Required(
-                    OPTIONS_REFRESH,
-                    default=self.config_entry.options.get(
-                        OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
-                    ),
-                ): int
-            }),
+            data_schema=cast(
+                Any,
+                vol.Schema({
+                    vol.Required(
+                        OPTIONS_REFRESH,
+                        default=self.config_entry.options.get(
+                            OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
+                        ),
+                    ): int
+                }),
+            ),
         )
 
 
@@ -78,7 +82,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialise Modbus Local Gateway flow."""
         self.client: AsyncModbusTcpClientGateway | None = None
-        self.data = {}
+        self.data: dict[str, Any] = {}
 
     def is_matching(self, other_flow: ConfigFlowHandler) -> bool:
         """Check if the other flow matches this one."""
@@ -122,15 +126,18 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({
-                vol.Required(CONF_HOST, None, **host_opts): str,
-                vol.Required(CONF_PORT, None, **port_opts): int,
-                vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
-                vol.Required(
-                    CONF_CONNECTION_TYPE, None, **connection_type_opts
-                ): vol.In(CONF_CONNECTION_TYPES),
-                vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
-            }),
+            data_schema=cast(
+                Any,
+                vol.Schema({
+                    vol.Required(CONF_HOST, None, **host_opts): str,
+                    vol.Required(CONF_PORT, None, **port_opts): int,
+                    vol.Required(CONF_DEVICE_ID, None, **device_opts): int,
+                    vol.Required(
+                        CONF_CONNECTION_TYPE, None, **connection_type_opts
+                    ): vol.In(CONF_CONNECTION_TYPES),
+                    vol.Optional(CONF_PREFIX, None, **prefix_opts): str,
+                }),
+            ),
             errors=errors,
         )
 
@@ -156,7 +163,10 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="device_type",
-            data_schema=vol.Schema({vol.Required(CONF_FILENAME): vol.In(devices_data)}),
+            data_schema=cast(
+                Any,
+                vol.Schema({vol.Required(CONF_FILENAME): vol.In(devices_data)}),
+            ),
             errors=errors,
         )
 
@@ -166,7 +176,8 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             create_device_info, self.hass, self.data[CONF_FILENAME]
         )
 
-        # This title is shown in the main devices list under the Modbus Local Gateway integration
+        # This title is shown in the main devices list under the
+        # Modbus Local Gateway integration
         title: str = " ".join([
             part
             for part in [
@@ -179,13 +190,21 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         return self.async_create_entry(title=title, data=self.data)
 
     def async_abort(
-        self, *, reason: str, description_placeholders: Mapping[str, str] | None = None
+        self,
+        *,
+        reason: str,
+        description_placeholders: Mapping[str, str] | None = None,
+        translation_domain: str | None = None,
+        next_flow: tuple[FlowType, str] | None = None,
     ) -> ConfigFlowResult:
         """Aborting the setup"""
         if self.client:
             self.client.close()
         return super().async_abort(
-            reason=reason, description_placeholders=description_placeholders
+            reason=reason,
+            description_placeholders=description_placeholders,
+            translation_domain=translation_domain,
+            next_flow=next_flow,
         )
 
     def async_show_progress_done(self, *, next_step_id: str) -> ConfigFlowResult:

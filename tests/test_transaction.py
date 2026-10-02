@@ -1,6 +1,6 @@
 """Test the MyTransactionManager class."""
-
 # pylint: disable=unexpected-keyword-arg, protected-access
+
 from asyncio import InvalidStateError
 from unittest.mock import MagicMock, patch
 
@@ -43,11 +43,11 @@ async def test_data_received_error() -> None:
     """Test the case when an IO error occurs"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     with patch(
-        "custom_components.modbus_local_gateway.transaction.TransactionManager.data_received"
+        "custom_components.modbus_local_gateway.transaction."
+        "TransactionManager.data_received"
     ) as data_rec:
         data_rec.side_effect = ModbusIOException()
-        rv = client.ctx.data_received(b"123")
-        assert rv is None
+        client.ctx.data_received(b"123")
         data_rec.assert_called_once()
 
 
@@ -56,11 +56,11 @@ async def test_data_received_error_state() -> None:
     """Test the case when an IO error occurs"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     with patch(
-        "custom_components.modbus_local_gateway.transaction.TransactionManager.data_received"
+        "custom_components.modbus_local_gateway.transaction."
+        "TransactionManager.data_received"
     ) as data_rec:
         data_rec.side_effect = InvalidStateError()
-        rv = client.ctx.data_received(b"123")
-        assert rv is None
+        client.ctx.data_received(b"123")
         data_rec.assert_called_once()
 
 
@@ -69,8 +69,8 @@ async def test_data_received() -> None:
     """Test normal data reception without errors"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     with patch(
-        "custom_components.modbus_local_gateway.transaction.TransactionManager.data_received"
+        "custom_components.modbus_local_gateway.transaction."
+        "TransactionManager.data_received"
     ) as data_rec:
-        rv = client.ctx.data_received(b"123")
-        assert rv is None
+        client.ctx.data_received(b"123")
         data_rec.assert_called_once()

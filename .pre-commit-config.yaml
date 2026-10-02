@@ -110,7 +110,6 @@ repos:
           - yarl>=1.24.2
           - tox==4.61.3
           # END GENERATED REQUIREMENTS
-        stages: [manual]
       - id: pylint
         name: Pylint
         entry: pylint
@@ -141,7 +140,6 @@ repos:
           - yarl>=1.24.2
           - tox==4.61.3
           # END GENERATED REQUIREMENTS
-        stages: [manual]
       - id: pytest
         name: PyTest
         entry: pytest

@@ -1,4 +1,5 @@
 """Fixtures for tests"""
+# pylint: disable=unexpected-keyword-arg, protected-access
 
 from unittest.mock import AsyncMock
 
@@ -15,9 +16,6 @@ from custom_components.modbus_local_gateway.entity_management.const import (
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
 )
-
-# pylint: disable=unexpected-keyword-arg
-# pylint: disable=protected-access
 
 
 @pytest.fixture

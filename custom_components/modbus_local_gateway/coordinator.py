@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 from typing import Any, cast
 
@@ -31,9 +31,13 @@ from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+__all__ = ["ModbusContext", "ModbusCoordinator", "ModbusCoordinatorEntity"]
+
 
 class ModbusCoordinatorEntity(CoordinatorEntity):
     """Base class for Modbus entities"""
+
+    entity_description: ModbusEntityDescription
 
     def __init__(
         self,
@@ -45,6 +49,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         super().__init__(coordinator, context=ctx)
         if not isinstance(ctx.desc, ModbusEntityDescription):
             raise TypeError()
+        self.entity_description = ctx.desc
 
         prefix: str | None = None
         host_id: str | None = None
@@ -54,7 +59,8 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             host: str | None = coordinator.config_entry.data.get(CONF_HOST)
 
             if host:
-                # IP/Host without separators as requested (e.g. 192.168.1.10 -> 192168110)
+                # IP/Host without separators as requested
+                # (e.g. 192.168.1.10 -> 192168110)
                 host_id = (
                     str(host)
                     .replace(".", "")
@@ -67,8 +73,10 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         if host_id:
             self._attr_suggested_object_id = f"{host_id}_{ctx.desc.key}"
 
-        # Keep unique_id compatible with previous releases so existing entities can be renamed in-place.
-        # (If you change unique_id, HA creates NEW entities instead of renaming the existing ones.)
+        # Keep unique_id compatible with previous releases so existing entities
+        # can be renamed in-place.
+        # (If you change unique_id, HA creates NEW entities instead of renaming
+        # the existing ones.)
         self._attr_unique_id: str | None = (
             f"{prefix}-{ctx.device_id}-{ctx.desc.key}"
             if prefix
@@ -81,6 +89,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
+        self.coordinator_context: ModbusContext
         self._update_lock = asyncio.Lock()
         self._cancel_timer: Callable[[], None] | None = None
         self._cancel_call: Callable[[], None] | None = None
@@ -113,7 +122,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
         await self._async_update_if_not_in_progress()
 
-    async def _async_update_if_not_in_progress(self, _=None) -> None:
+    async def _async_update_if_not_in_progress(self, _: datetime | None = None) -> None:
         """Update the entity state if not already in progress."""
         try:
             await self._async_update_write_state()
@@ -226,14 +235,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         """Unavailable while the device is reporting a non-value for this entity."""
         if not super().available:
             return False
-        return not cast(ModbusCoordinator, self.coordinator).is_unavailable(
-            self.coordinator_context
-        )
-
-    @property
-    def entity_description(self) -> ModbusEntityDescription:
-        """Return the entity description."""
-        return self.coordinator_context.desc
+        return not self.coordinator.is_unavailable(self.coordinator_context)
 
 
 class ModbusCoordinator(TimestampDataUpdateCoordinator):
@@ -262,7 +264,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             logger=_LOGGER,
             name=f"Modbus Coordinator - {self._gateway}",
             update_interval=timedelta(seconds=update_interval),
-            update_method=self.async_update,  # type: ignore
+            update_method=self.async_update,
             always_update=True,
         )
 
@@ -364,8 +366,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Whether this entity's last read was a declared non-value."""
         return ctx.desc.key in self._unavailable_keys
 
-    def get_data(self, ctx: ModbusContext) -> str | int | bool | None:
+    def get_data(self, ctx: ModbusContext) -> str | int | float | bool | None:
         """Retrieve cached data for a specific entity"""
         if self.data and ctx.desc.key in self.data:
-            return self.data[ctx.desc.key]
+            return cast(str | int | float | bool | None, self.data[ctx.desc.key])
         return None
