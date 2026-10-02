@@ -332,10 +332,12 @@ composite:
   composite must not claim the same bits, and `signed` is rejected on a bit
   field.
 
-- Several entities on **one register** are read from a single transaction: a
-  poll asks the device once for a register, however many of the device's
-  entities read it, and they all report that one snapshot. Entities that share
-  a register but not its register bank are still read separately.
+- Several entities on **one register** are read from a single transaction when
+  the read succeeds: a poll asks the device once for a register, however many
+  of the device's entities read it, and they all report that one snapshot. A
+  read that failed is not kept, so a later entity on that register asks again
+  rather than reporting the failure of someone else's read. Entities that
+  share a register but not its register bank are still read separately.
 
 - A part the device reports as unavailable - or one that cannot form a real
   date or time - makes the entity **unavailable**, rather than publishing an
