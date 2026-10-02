@@ -5,7 +5,7 @@
 from typing import Any, cast
 from unittest.mock import AsyncMock, PropertyMock, patch
 
-from pymodbus.exceptions import ModbusException
+from pymodbus.exceptions import ModbusException, ModbusIOException
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.pdu import ModbusPDU
 from pymodbus.pdu.register_message import (
@@ -164,6 +164,8 @@ async def test_write_single_register_success() -> None:
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
     cast(Any, client).write_register.return_value.isError = lambda: False
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -178,13 +180,135 @@ async def test_write_single_register_success() -> None:
             value=123,
             device_id=1,
         )
+        cast(Any, client).write_registers.assert_not_called()
         mock_logger.debug.assert_called_with("Writing successful")
 
 
 @pytest.mark.asyncio
-async def test_write_single_register_failure() -> None:
-    """Test failed write of a single register."""
+async def test_write_single_register_refused_retries_with_multiple() -> None:
+    """A device that refuses FC 0x06 still gets the write, over FC 0x10."""
     client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: True
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        result = await client._custom_write_registers(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+        cast(Any, client).write_registers.assert_called_once_with(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+        assert result is cast(Any, client).write_registers.return_value
+        mock_logger.warning.assert_called_once()
+        mock_logger.error.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_unanswered_retries_with_multiple() -> None:
+    """A device that ignores FC 0x06 silently gets the write, over FC 0x10.
+
+    This is the reported symptom in #96: pymodbus retries FC 0x06 five times
+    and raises ModbusIOException because nothing comes back.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(
+        side_effect=ModbusIOException("No response received after 5 retries")
+    )
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        result = await client._custom_write_registers(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+        cast(Any, client).write_registers.assert_called_once_with(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+        assert result is cast(Any, client).write_registers.return_value
+        mock_logger.warning.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_timeout_retries_with_multiple() -> None:
+    """A timeout on FC 0x06 is treated the same as an unanswered write."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(side_effect=TimeoutError)
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+
+    result = await client._custom_write_registers(
+        address=301,
+        values=[3],
+        device_id=1,
+    )
+    cast(Any, client).write_registers.assert_called_once_with(
+        address=301,
+        values=[3],
+        device_id=1,
+    )
+    assert result is cast(Any, client).write_registers.return_value
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_fallback_also_fails() -> None:
+    """Both functions refused: the FC 0x10 failure is what the caller sees.
+
+    The fallback must not repeat FC 0x06 once more, so `write_register` is
+    called exactly once.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: True
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: True
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        result = await client._custom_write_registers(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+        cast(Any, client).write_register.assert_called_once()
+        cast(Any, client).write_registers.assert_called_once_with(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+        assert result is cast(Any, client).write_registers.return_value
+        mock_logger.error.assert_called_once_with(
+            "Failed to write value %d to address %d: %s",
+            3,
+            301,
+            cast(Any, client).write_registers.return_value,
+        )
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_does_not_repeat_single_function() -> None:
+    """A multi-register write that falls back to single writes keeps FC 0x06.
+
+    FC 0x10 has already been tried by then, so the single-write fallback must
+    not retry it again.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: True
     cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
     cast(Any, client).write_register.return_value.isError = lambda: True
 
@@ -193,20 +317,13 @@ async def test_write_single_register_failure() -> None:
     ) as mock_logger:
         await client._custom_write_registers(
             address=1,
-            values=[123],
+            values=[123, 456],
             device_id=1,
         )
-        cast(Any, client).write_register.assert_called_once_with(
-            address=1,
-            value=123,
-            device_id=1,
-        )
-        mock_logger.error.assert_called_with(
-            "Failed to write value %d to address %d: %s",
-            123,
-            1,
-            cast(Any, client).write_register.return_value,
-        )
+        # FC 0x10 once, then the individual writes stop at the first refusal
+        cast(Any, client).write_registers.assert_called_once()
+        assert cast(Any, client).write_register.call_count == 1
+        mock_logger.warning.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -797,6 +914,9 @@ async def test_write_data_holding_registers_error_raises() -> None:
     cast(Any, client).connect = AsyncMock()
     cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
     cast(Any, client).write_register.return_value.isError = lambda: True
+    # Both write functions are refused, so the FC 0x10 fallback fails too
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: True
 
     entity = ModbusContext(
         device_id=1,

@@ -153,16 +153,56 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     async def _write_single_register(
         self, address: int, value: int, device_id: int
     ) -> ModbusPDU:
-        """Write a single value to a Modbus register."""
+        """Write a single value to a Modbus register.
+
+        Falls back to preset multiple registers (FC 0x10) when the device does
+        not implement preset single register (FC 0x06): such a device either
+        answers with an exception or stays silent, and the write is lost. This
+        mirrors the fallback `_write_multiple_registers()` takes in the other
+        direction.
+        """
         _LOGGER.debug(
             "Writing single value %d to register at address %d, device_id %d",
             value,
             address,
             device_id,
         )
-        result: ModbusPDU = await self.write_register(
+        try:
+            result: ModbusPDU = await self.write_register(
+                address=address,
+                value=value,
+                device_id=device_id,
+            )
+        except ModbusException, TimeoutError:
+            return await self._retry_single_with_multiple_registers(
+                address, value, device_id, "it went unanswered"
+            )
+        if result.isError():
+            return await self._retry_single_with_multiple_registers(
+                address, value, device_id, f"it was refused: {result}"
+            )
+        _LOGGER.debug("Writing successful")
+        return result
+
+    async def _retry_single_with_multiple_registers(
+        self, address: int, value: int, device_id: int, reason: str
+    ) -> ModbusPDU:
+        """Repeat a failed single-register write with preset multiple registers.
+
+        Sent straight through `write_registers` rather than through
+        `_write_multiple_registers()`, whose own fallback writes the register
+        one at a time - repeating the function that just failed.
+        """
+        _LOGGER.warning(
+            "Preset single register failed for value %d at address %d (%s). "
+            "Retrying with preset multiple registers",
+            value,
+            address,
+            reason,
+        )
+        result: ModbusPDU = await self.write_registers(
             address=address,
-            value=value,
+            values=[value],
             device_id=device_id,
         )
         if result.isError():
@@ -173,7 +213,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 result,
             )
         else:
-            _LOGGER.debug("Writing successful")
+            _LOGGER.debug(
+                "Writing single value %d to address %d succeeded with preset "
+                "multiple registers",
+                value,
+                address,
+            )
         return result
 
     async def _write_multiple_registers(

@@ -315,6 +315,11 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
       custom_components.modbus_local_gateway: debug
   ```
 - **Connection Issues**: Verify gateway IP, port, and device ID.
+- **Writes Fail with "No response received after 5 retries"**: some devices only implement
+  _Preset Multiple Registers_ (FC `0x10`). A single-value write to them now falls back to
+  FC `0x10` on its own, and the log says which attempt failed; you can also select
+  _Preset Multiple Registers_ explicitly in the device's **Configure** dialog so the first
+  attempt uses the function the device speaks.
 
 ## Supported Devices
 
