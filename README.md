@@ -309,8 +309,8 @@ composite:
 
   ```yaml
   composite:
-    period1_end:
-      name: Period 1 End Time
+    period1_start:
+      name: Period 1 Start Time
       type: time
       fields:
         minute: { address: 3038, bits: 8, shift_bits: 0 }
@@ -331,6 +331,11 @@ composite:
   same lock a poll takes, so the enable and mode bits survive. Two fields of one
   composite must not claim the same bits, and `signed` is rejected on a bit
   field.
+
+- Several entities on **one register** are read from a single transaction: a
+  poll asks the device once for a register, however many of the device's
+  entities read it, and they all report that one snapshot. Entities that share
+  a register but not its register bank are still read separately.
 
 - A part the device reports as unavailable - or one that cannot form a real
   date or time - makes the entity **unavailable**, rather than publishing an

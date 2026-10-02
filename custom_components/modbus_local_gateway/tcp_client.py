@@ -28,6 +28,10 @@ from .transaction import MyTransactionManager
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+# What one read of a poll cycle is remembered by: the device it went to, the
+# bank it came from, and the range it covered.
+ReadKey = tuple[int, ModbusDataType, int, int]
+
 
 class ModbusClientError(ModbusException):
     """Typed Modbus client error."""
@@ -616,6 +620,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     ) -> dict[str, ModbusPDU]:
         """Fetches all values for a single device id"""
         data: dict[str, ModbusPDU] = {}
+        # One poll cycle, one answer per register range: entities that read the
+        # same registers are answered from the same transaction.
+        cache: dict[ReadKey, ModbusPDU] = {}
         async with self.lock:
             if not self.connected:
                 await self.connect()
@@ -624,24 +631,68 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     return data
 
             for idx, entity in enumerate(entities):
-                await self._process_entity(entity, data, idx, max_read_size)
+                await self._process_entity(entity, data, idx, max_read_size, cache)
 
             _LOGGER.debug("Update completed %s", self)
 
         return data
+
+    async def _read_once(
+        self,
+        cache: dict[ReadKey, ModbusPDU],
+        func: Callable[..., Any],
+        device_id: int,
+        data_type: ModbusDataType,
+        address: int,
+        count: int,
+        max_read_size: int,
+    ) -> ModbusPDU | None:
+        """Read one register range, at most once per poll cycle.
+
+        Entities of one device often share a register: a time window whose start
+        time, mode and enable live in a single word is three entities on one
+        address, and asking the device for that word once per entity triples the
+        traffic of the poll without telling the caller anything new. The answer
+        is kept for the rest of the cycle, so those entities report the same
+        snapshot, and a failed read is not kept, so the next entity asks the
+        device again rather than inheriting the failure.
+        """
+        key: ReadKey = (device_id, data_type, address, count)
+        cached: ModbusPDU | None = cache.get(key)
+        if cached is not None:
+            _LOGGER.debug(
+                "Reusing registers %d-%d for device %d from this cycle",
+                address,
+                address + count - 1,
+                device_id,
+            )
+            return cached
+
+        response: ModbusPDU | None = await self.read_data(
+            func=func,
+            address=address,
+            count=count,
+            device_id=device_id,
+            max_read_size=max_read_size,
+        )
+        if response is not None and not response.isError():
+            cache[key] = response
+        return response
 
     async def _read_composite_runs(
         self,
         entity: ModbusContext,
         func: Callable[..., Any],
         max_read_size: int,
+        cache: dict[ReadKey, ModbusPDU],
     ) -> ModbusPDU:
         """Read every run of adjacent registers a composite entity uses.
 
         Each run is read on its own, so the entity never asks for registers it
         does not use, and the runs are then stitched into a single response
         spanning the entity's whole register range - which is the shape
-        `CompositeConversion` expects to read.
+        `CompositeConversion` expects to read. A run another entity has already
+        read in this cycle comes from that read instead of a new transaction.
         """
         desc: ModbusCompositeEntityDescription = cast(
             ModbusCompositeEntityDescription, entity.desc
@@ -655,12 +706,14 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         for run in desc.runs:
             count: int = run[-1].end_address - run[0].address + 1
-            response: ModbusPDU | None = await self.read_data(
-                func=func,
-                address=run[0].address,
-                count=count,
-                device_id=entity.device_id,
-                max_read_size=max_read_size,
+            response: ModbusPDU | None = await self._read_once(
+                cache,
+                func,
+                entity.device_id,
+                desc.data_type,
+                run[0].address,
+                count,
+                max_read_size,
             )
             if response is None:
                 raise ModbusClientError(
@@ -689,6 +742,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         data: dict[str, ModbusPDU],
         idx: int,
         max_read_size: int,
+        cache: dict[ReadKey, ModbusPDU],
     ) -> None:
         """Process a single entity and update the data dictionary"""
         _LOGGER.debug(
@@ -710,21 +764,23 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             modbus_response: ModbusPDU | None
             if isinstance(entity.desc, ModbusCompositeEntityDescription):
                 modbus_response = await self._read_composite_runs(
-                    entity, func, max_read_size
+                    entity, func, max_read_size, cache
                 )
             else:
-                modbus_response = await self.read_data(
-                    func=func,
-                    address=entity.desc.register_address,
+                modbus_response = await self._read_once(
+                    cache,
+                    func,
+                    entity.device_id,
+                    entity.desc.data_type,
+                    entity.desc.register_address,
                     # Treat empty list as "no scaling" to avoid zero-length reads
-                    count=entity.desc.register_count
+                    entity.desc.register_count
                     * (
                         max(1, len(entity.desc.conv_sum_scale))
                         if entity.desc.conv_sum_scale is not None
                         else 1
                     ),
-                    device_id=entity.device_id,
-                    max_read_size=max_read_size,
+                    max_read_size,
                 )
 
             if modbus_response and not modbus_response.isError():
