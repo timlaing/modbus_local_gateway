@@ -92,6 +92,16 @@ FIELD_KEYS: tuple[str, ...] = (
     IS_STRING,
 )
 
+# The keys a `composite:` entry takes next to its own `type`, `data_type` and
+# `fields`: the entity-level options every other entity gets, so a composite
+# polls and presents like the rest of the device instead of silently losing them.
+ENTITY_KEYS: tuple[str, ...] = (
+    CONF_SCAN_INTERVAL,
+    "icon",
+    "entity_category",
+    "entity_registry_enabled_default",
+)
+
 
 def _optional_int(value: Any) -> int | None:
     """Return an optional integer key as an int, or None when it is absent.
@@ -233,24 +243,30 @@ class ModbusDeviceInfo:
             return None
 
         addresses: list[int] = [field.address for field in fields]
+        params: dict[str, Any] = {
+            key: data[key] for key in ENTITY_KEYS if data.get(key) is not None
+        }
+        if "entity_category" in params:
+            self._handle_entity_category(params, entity)
+        params.update({
+            "key": entity,
+            "name": "".join(["", data.get(NAME, entity)]),
+            "data_type": data_type,
+            "control_type": ControlType.DATETIME,
+            "composite_type": composite_type,
+            "fields": fields,
+            # The span covers every field, so the entity reads as one value
+            # and the gaps between non-adjacent fields are not addressed.
+            "register_address": min(addresses),
+            "register_count": max(field.end_address for field in fields)
+            - min(addresses)
+            + 1,
+        })
         composite_desc: ModbusDateTimeEntityDescription | None = cast(
             "ModbusDateTimeEntityDescription | None",
             self._create_description_instance(
                 ModbusDateTimeEntityDescription,
-                {
-                    "key": entity,
-                    "name": "".join(["", data.get(NAME, entity)]),
-                    "data_type": data_type,
-                    "control_type": ControlType.DATETIME,
-                    "composite_type": composite_type,
-                    "fields": fields,
-                    # The span covers every field, so the entity reads as one value
-                    # and the gaps between non-adjacent fields are not addressed.
-                    "register_address": min(addresses),
-                    "register_count": max(field.end_address for field in fields)
-                    - min(addresses)
-                    + 1,
-                },
+                params,
             ),
         )
         return composite_desc

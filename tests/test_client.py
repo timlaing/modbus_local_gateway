@@ -1743,7 +1743,7 @@ async def test_write_composite_bit_fields_keep_other_bits() -> None:
         return_value=ReadHoldingRegistersResponse(registers=[0xC900])
     )
     cast(Any, client).read_holding_registers = read_holding
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
 
     with patch.object(
         AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
@@ -1754,10 +1754,12 @@ async def test_write_composite_bit_fields_keep_other_bits() -> None:
         )
 
     # 0xC900 is mode Grid (bits 13-14) and enabled (bit 15); the merged write
-    # keeps both and only replaces the hour and minute.
-    cast(Any, client).write_registers.assert_called_once_with(
-        address=3038, values=[0xD62D], device_id=1
+    # keeps both and only replaces the hour and minute. A run of one register
+    # goes out as a single register write, and the merge reads it exactly once.
+    cast(Any, client).write_register.assert_called_once_with(
+        address=3038, value=0xD62D, device_id=1
     )
+    read_holding.assert_called_once()
     assert read_holding.call_args.kwargs["count"] == 1
 
 

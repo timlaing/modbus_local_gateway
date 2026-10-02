@@ -134,7 +134,15 @@ class CompositeConversion:
 
         Only the declared fields come back, so a `date` composite writes
         year/month/day and leaves the device's clock registers alone.
+
+        A value that arrives with an offset - the entity's own state, for
+        instance, which Home Assistant serialises in UTC - is brought into
+        local time first, so the device is set to the wall clock `from_registers`
+        reads. A naive value is already the wall clock of the local timezone
+        and is taken as it is.
         """
+        if value.tzinfo is not None:
+            value = dt_util.as_local(value)
         parts: dict[str, int] = {
             "year": value.year,
             "month": value.month,

@@ -4,6 +4,7 @@
 from unittest.mock import patch
 
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest import LogCaptureFixture
@@ -753,6 +754,84 @@ def test_composite_entity_invalid(
 
     assert len(entities) == 0
     assert expected_log in caplog.text
+
+
+def test_composite_entity_keeps_entity_level_options() -> None:
+    """A composite takes the entity-level options any other entity takes"""
+    desc = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "datetime",
+                "scan_interval": 30,
+                "icon": "mdi:clock",
+                "entity_category": "config",
+                "entity_registry_enabled_default": False,
+                "fields": {
+                    "year": {"address": 1},
+                    "month": {"address": 2},
+                    "day": {"address": 3},
+                    "hour": {"address": 4},
+                    "minute": {"address": 5},
+                },
+            }
+        },
+    })
+
+    assert desc.scan_interval == 30
+    assert desc.icon == "mdi:clock"
+    assert desc.entity_category == EntityCategory.CONFIG
+    assert desc.entity_registry_enabled_default is False
+
+
+def test_composite_entity_without_entity_level_options() -> None:
+    """The entity-level options are optional"""
+    desc = _load_composite(yaml.full_load(COMPOSITE_YAML))
+
+    assert desc.scan_interval is None
+    assert desc.icon is None
+    assert desc.entity_registry_enabled_default is True
+
+
+@pytest.mark.parametrize(
+    ("scan_interval", "num_entities", "log_message"),
+    [
+        (10, 1, None),
+        (0, 0, "scan_interval must be > 0"),
+        (-5, 0, "scan_interval must be > 0"),
+    ],
+)
+def test_composite_entity_scan_interval(
+    scan_interval: int,
+    num_entities: int,
+    log_message: str | None,
+    caplog: LogCaptureFixture,
+) -> None:
+    """A composite honours and validates the scan_interval of any other entity"""
+    config = yaml.full_load(COMPOSITE_YAML)
+    config["composite"]["current_time"]["scan_interval"] = scan_interval
+
+    with caplog.at_level("WARNING"):
+        entities = _load(config)
+
+    assert len(entities) == num_entities
+    if log_message:
+        assert log_message in caplog.text
+
+
+def test_composite_entity_bad_entity_category(
+    caplog: LogCaptureFixture,
+) -> None:
+    """An unusable entity_category warns and is left out"""
+    config = yaml.full_load(COMPOSITE_YAML)
+    config["composite"]["current_time"]["entity_category"] = "nonsense"
+
+    with caplog.at_level("WARNING"):
+        entities = _load(config)
+
+    assert len(entities) == 1
+    assert entities[0].entity_category is None
+    assert "Invalid entity_category nonsense" in caplog.text
 
 
 def test_composite_entity_missing_required_field() -> None:

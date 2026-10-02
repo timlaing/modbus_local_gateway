@@ -288,7 +288,8 @@ composite:
   - `date`: `year`, `month` and `day` (required).
   - `time`: `hour` and `minute` (required).
   - `datetime`: `year`, `month`, `day`, `hour` and `minute` (required).
-  - `second`: Optional for every type; a clock without it reads on the minute.
+  - `second`: Optional for `time` and `datetime`, not allowed for `date`; a
+    clock without it reads on the minute.
 - `data_type` (optional): `read_write_word` (default, writable) or
   `read_only_word` (read-only). A coil cannot hold a composite.
 - `fields` (required): One entry per part, each an `address` and any of
@@ -298,8 +299,11 @@ composite:
   `flags` is rejected with a warning and the entity is skipped.
 - Fields that are **not adjacent** are grouped: each run of adjacent registers
   is read with its own request, so the registers in between are never touched,
-  and written with one `write_registers` per run. A clock in registers 45-50 is
-  therefore always updated in one request.
+  and written in one request per run (FC `0x10`, or FC `0x06` for a run of one
+  register). A clock in registers 45-50 is therefore always updated in one
+  request.
+- The entity-level options of any other entity work here too: `scan_interval`,
+  `icon`, `entity_category` and `entity_registry_enabled_default`.
 - A field may claim **part of a register** with `bits` / `shift_bits`, which is
   how some devices pack a time together with a mode and an enable flag:
 
@@ -332,7 +336,8 @@ composite:
   date or time - makes the entity **unavailable**, rather than publishing an
   error.
 - The value is stamped with Home Assistant's local timezone, since a device
-  clock is a wall-clock reading.
+  clock is a wall-clock reading, and a value that arrives with an offset is
+  brought into local time before it is written back, so the two sides agree.
 
 ### Example YAML
 

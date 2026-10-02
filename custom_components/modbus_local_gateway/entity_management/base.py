@@ -520,6 +520,8 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
 
     def validate(self) -> bool:
         """Validate the composite and every field in it."""
+        if not self._validate_scan_interval():
+            return False
         if not self.validate_composite():
             return False
         if not self.validate_field_overlap():

@@ -3,6 +3,7 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 from datetime import datetime
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 from homeassistant.util import dt as dt_util
 from pymodbus.client import AsyncModbusTcpClient
@@ -250,6 +251,45 @@ def test_to_field_values_declared_fields_only() -> None:
         "month": 9,
         "day": 22,
     }
+
+
+def test_to_field_values_converts_aware_value_to_local_time() -> None:
+    """A value that arrives with an offset is written as the local wall clock.
+
+    Home Assistant serialises the state of a datetime entity in UTC, so a value
+    that comes back that way is converted before it is split: the device is set
+    to the clock `from_registers` reads, not to its UTC equivalent.
+    """
+    desc = make_description()
+
+    with patch.object(dt_util, "DEFAULT_TIME_ZONE", ZoneInfo("Europe/Berlin")):
+        assert CompositeConversion.to_field_values(
+            desc, datetime(2026, 9, 22, 14, 30, 5, tzinfo=ZoneInfo("UTC"))
+        ) == {
+            "year": 2026,
+            "month": 9,
+            "day": 22,
+            "hour": 16,
+            "minute": 30,
+            "second": 5,
+        }
+
+
+def test_to_field_values_keeps_naive_value_as_it_is() -> None:
+    """A naive value is already a local wall clock and is taken as it is"""
+    desc = make_description()
+
+    with patch.object(dt_util, "DEFAULT_TIME_ZONE", ZoneInfo("Europe/Berlin")):
+        assert CompositeConversion.to_field_values(
+            desc, datetime(2026, 9, 22, 16, 30)
+        ) == {
+            "year": 2026,
+            "month": 9,
+            "day": 22,
+            "hour": 16,
+            "minute": 30,
+            "second": 0,
+        }
 
 
 def _packed_time_description(
