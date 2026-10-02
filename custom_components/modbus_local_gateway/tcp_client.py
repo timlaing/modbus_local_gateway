@@ -9,6 +9,7 @@ from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from pymodbus.framer import FramerType
 from pymodbus.pdu.pdu import ModbusPDU
+from pymodbus.pdu.register_message import WriteSingleRegisterResponse
 
 from .context import ModbusContext
 from .conversion import Conversion
@@ -157,9 +158,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         Falls back to preset multiple registers (FC 0x10) when the device does
         not implement preset single register (FC 0x06): such a device either
-        answers with an exception or stays silent, and the write is lost. This
-        mirrors the fallback `_write_multiple_registers()` takes in the other
-        direction.
+        answers with an exception or stays silent, and the write is lost.
         """
         _LOGGER.debug(
             "Writing single value %d to register at address %d, device_id %d",
@@ -173,21 +172,78 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 value=value,
                 device_id=device_id,
             )
-        except ModbusException, TimeoutError:
-            return await self._retry_single_with_multiple_registers(
-                address, value, device_id, "it went unanswered"
+        except (ModbusException, TimeoutError) as exc:
+            return await self._write_single_register_unanswered(
+                address, value, device_id, exc
             )
         if result.isError():
+            # An exception response means the device rejected the request without
+            # carrying it out, so FC 0x10 can safely be handed the same value.
             return await self._retry_single_with_multiple_registers(
                 address, value, device_id, f"it was refused: {result}"
             )
         _LOGGER.debug("Writing successful")
         return result
 
+    async def _write_single_register_unanswered(
+        self, address: int, value: int, device_id: int, exc: Exception
+    ) -> ModbusPDU:
+        """Deal with a single-register write that never got an answer.
+
+        The request may have reached the device with only the response lost, and
+        writing a register is not idempotent: some registers run a command when
+        written, and repeating the request would run it twice. The register is
+        therefore read back first, and only one that still holds its previous
+        value is written again.
+
+        A read that fails leaves it unknown whether the write landed, and then
+        nothing is repeated.
+        """
+        applied: bool | None = await self._write_was_applied(address, value, device_id)
+        if applied:
+            _LOGGER.warning(
+                "No answer writing value %d to address %d (%s), but the register "
+                "holds it: the write was carried out and only the response was "
+                "lost",
+                value,
+                address,
+                exc,
+            )
+            return WriteSingleRegisterResponse(address=address, registers=[value])
+        if applied is None:
+            raise ModbusClientError(
+                f"No answer writing value {value} to address {address} ({exc}) and "
+                "the register could not be read back, so the write is not repeated"
+            )
+        return await self._retry_single_with_multiple_registers(
+            address, value, device_id, f"it went unanswered ({exc})"
+        )
+
+    async def _write_was_applied(
+        self, address: int, value: int, device_id: int
+    ) -> bool | None:
+        """Whether the register holds `value`, or None when that is unknowable.
+
+        Read under the lock `write_data()` holds, so no poll can change the
+        register between the write and this read.
+        """
+        try:
+            response: ModbusPDU = await self.read_holding_registers(
+                address=address, count=1, device_id=device_id
+            )
+        except ModbusException, TimeoutError:
+            _LOGGER.debug(
+                "Could not read back address %d after an unanswered write", address
+            )
+            return None
+        if response is None or response.isError() or not response.registers:
+            return None
+        return bool(response.registers[0] == value)
+
     async def _retry_single_with_multiple_registers(
         self, address: int, value: int, device_id: int, reason: str
     ) -> ModbusPDU:
-        """Repeat a failed single-register write with preset multiple registers.
+        """Repeat a write that did not happen with preset multiple registers.
 
         Sent straight through `write_registers` rather than through
         `_write_multiple_registers()`, whose own fallback writes the register

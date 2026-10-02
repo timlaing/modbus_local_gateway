@@ -186,12 +186,19 @@ async def test_write_single_register_success() -> None:
 
 @pytest.mark.asyncio
 async def test_write_single_register_refused_retries_with_multiple() -> None:
-    """A device that refuses FC 0x06 still gets the write, over FC 0x10."""
+    """A device that refuses FC 0x06 still gets the write, over FC 0x10.
+
+    An exception response says the request was rejected without being carried
+    out, so there is no read-back to do.
+    """
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
     cast(Any, client).write_register.return_value.isError = lambda: True
     cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
     cast(Any, client).write_registers.return_value.isError = lambda: False
+    cast(Any, client).read_holding_registers = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[0])
+    )
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -206,6 +213,7 @@ async def test_write_single_register_refused_retries_with_multiple() -> None:
             values=[3],
             device_id=1,
         )
+        cast(Any, client).read_holding_registers.assert_not_called()
         assert result is cast(Any, client).write_registers.return_value
         mock_logger.warning.assert_called_once()
         mock_logger.error.assert_not_called()
@@ -216,7 +224,8 @@ async def test_write_single_register_unanswered_retries_with_multiple() -> None:
     """A device that ignores FC 0x06 silently gets the write, over FC 0x10.
 
     This is the reported symptom in #96: pymodbus retries FC 0x06 five times
-    and raises ModbusIOException because nothing comes back.
+    and raises ModbusIOException because nothing comes back. The read-back shows
+    the register still holds its old value, so the write did not happen.
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).write_register = AsyncMock(
@@ -224,6 +233,9 @@ async def test_write_single_register_unanswered_retries_with_multiple() -> None:
     )
     cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
     cast(Any, client).write_registers.return_value.isError = lambda: False
+    cast(Any, client).read_holding_registers = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[0])
+    )
 
     with patch(
         "custom_components.modbus_local_gateway.tcp_client._LOGGER"
@@ -233,13 +245,17 @@ async def test_write_single_register_unanswered_retries_with_multiple() -> None:
             values=[3],
             device_id=1,
         )
+        cast(Any, client).read_holding_registers.assert_called_once_with(
+            address=301, count=1, device_id=1
+        )
         cast(Any, client).write_registers.assert_called_once_with(
             address=301,
             values=[3],
             device_id=1,
         )
         assert result is cast(Any, client).write_registers.return_value
-        mock_logger.warning.assert_called_once()
+        # the reason keeps pymodbus' own diagnostics
+        assert "No response received" in mock_logger.warning.call_args[0][-1]
 
 
 @pytest.mark.asyncio
@@ -249,6 +265,9 @@ async def test_write_single_register_timeout_retries_with_multiple() -> None:
     cast(Any, client).write_register = AsyncMock(side_effect=TimeoutError)
     cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
     cast(Any, client).write_registers.return_value.isError = lambda: False
+    cast(Any, client).read_holding_registers = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[0])
+    )
 
     result = await client._custom_write_registers(
         address=301,
@@ -261,6 +280,59 @@ async def test_write_single_register_timeout_retries_with_multiple() -> None:
         device_id=1,
     )
     assert result is cast(Any, client).write_registers.return_value
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_unanswered_but_applied() -> None:
+    """A lost response on a write that did land is not repeated.
+
+    Writing a register can run a command, so a write whose response went missing
+    must not be repeated: the read-back shows the value is there.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(
+        side_effect=ModbusIOException("No response received after 5 retries")
+    )
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+    cast(Any, client).read_holding_registers = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[3])
+    )
+
+    with patch(
+        "custom_components.modbus_local_gateway.tcp_client._LOGGER"
+    ) as mock_logger:
+        result = await client._custom_write_registers(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+        cast(Any, client).write_registers.assert_not_called()
+        assert result is not None
+        assert not result.isError()
+        mock_logger.warning.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_unanswered_read_back_fails() -> None:
+    """When the read-back fails, the write is not repeated on a guess."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(
+        side_effect=ModbusIOException("No response received after 5 retries")
+    )
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+    cast(Any, client).read_holding_registers = AsyncMock(
+        side_effect=ModbusIOException("no answer either")
+    )
+
+    with pytest.raises(ModbusClientError, match="could not be read back"):
+        await client._custom_write_registers(
+            address=301,
+            values=[3],
+            device_id=1,
+        )
+    cast(Any, client).write_registers.assert_not_called()
 
 
 @pytest.mark.asyncio
