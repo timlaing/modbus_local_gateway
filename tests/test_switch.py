@@ -18,6 +18,7 @@ from custom_components.modbus_local_gateway.entity_management.base import (
 )
 from custom_components.modbus_local_gateway.entity_management.const import (
     ModbusDataType,
+    WriteFunction,
 )
 from custom_components.modbus_local_gateway.switch import (
     INVALID_DATA_TYPE,
@@ -230,6 +231,7 @@ async def test_async_turn_on_coil() -> None:
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
     coordinator.config_entry = AsyncMock()
+    coordinator.write_function = WriteFunction.SINGLE
     ctx = ModbusContext(
         1,
         ModbusSwitchEntityDescription(
@@ -247,7 +249,9 @@ async def test_async_turn_on_coil() -> None:
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_on()
-        mock_write_data.assert_called_once_with(entity.coordinator_context, True)
+        mock_write_data.assert_called_once_with(
+            entity.coordinator_context, True, write_function=WriteFunction.SINGLE
+        )
 
 
 @pytest.mark.asyncio
@@ -256,6 +260,7 @@ async def test_async_turn_on_holding_register() -> None:
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
     coordinator.config_entry = AsyncMock()
+    coordinator.write_function = WriteFunction.SINGLE
 
     ctx = ModbusContext(
         1,
@@ -274,7 +279,9 @@ async def test_async_turn_on_holding_register() -> None:
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_on()
-        mock_write_data.assert_called_once_with(entity.coordinator_context, 1)
+        mock_write_data.assert_called_once_with(
+            entity.coordinator_context, 1, write_function=WriteFunction.SINGLE
+        )
 
 
 @pytest.mark.asyncio
@@ -283,6 +290,7 @@ async def test_async_turn_on_invalid_data_type() -> None:
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
     coordinator.config_entry = AsyncMock()
+    coordinator.write_function = WriteFunction.SINGLE
 
     ctx = ModbusContext(
         1,
@@ -309,6 +317,7 @@ async def test_async_turn_off_coil() -> None:
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
     coordinator.config_entry = AsyncMock()
+    coordinator.write_function = WriteFunction.SINGLE
 
     ctx = ModbusContext(
         1,
@@ -327,7 +336,9 @@ async def test_async_turn_off_coil() -> None:
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_off()
-        mock_write_data.assert_called_once_with(entity.coordinator_context, False)
+        mock_write_data.assert_called_once_with(
+            entity.coordinator_context, False, write_function=WriteFunction.SINGLE
+        )
 
 
 @pytest.mark.asyncio
@@ -336,6 +347,7 @@ async def test_async_turn_off_holding_register() -> None:
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
     coordinator.config_entry = AsyncMock()
+    coordinator.write_function = WriteFunction.SINGLE
 
     ctx = ModbusContext(
         1,
@@ -354,7 +366,9 @@ async def test_async_turn_off_holding_register() -> None:
     entity = ModbusSwitchEntity(coordinator=coordinator, ctx=ctx, device=device)
     with patch.object(coordinator.client, "write_data", AsyncMock()) as mock_write_data:
         await entity.async_turn_off()
-        mock_write_data.assert_called_once_with(entity.coordinator_context, 0)
+        mock_write_data.assert_called_once_with(
+            entity.coordinator_context, 0, write_function=WriteFunction.SINGLE
+        )
 
 
 @pytest.mark.asyncio
@@ -363,6 +377,7 @@ async def test_async_turn_off_invalid_data_type() -> None:
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
     coordinator.config_entry = AsyncMock()
+    coordinator.write_function = WriteFunction.SINGLE
 
     ctx = ModbusContext(
         1,

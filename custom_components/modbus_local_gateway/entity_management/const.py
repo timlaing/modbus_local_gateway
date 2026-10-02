@@ -61,6 +61,13 @@ class ModbusDataType(StrEnum):
     DISCRETE_INPUT = "read_only_boolean"
 
 
+class WriteFunction(StrEnum):
+    """Modbus function used to write a single holding register"""
+
+    SINGLE = "single"
+    MULTIPLE = "multiple"
+
+
 class ControlType(StrEnum):
     """Valid control types"""
 

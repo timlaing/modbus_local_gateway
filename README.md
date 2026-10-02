@@ -61,7 +61,13 @@ Choose a device type from the dropdown (e.g., `Eastron SDM-230` for `SDM230.yaml
 
 ### Modifying Existing Devices
 
-Adjust the **update frequency** (default: 30 seconds) via "Configure" at the device in **Devices & Services**.
+Adjust the **update frequency** (default: 30 seconds) and the **register write function** via "Configure" at the device in **Devices & Services**.
+
+#### Register Write Function
+
+Holding register writes normally use _Preset Single Register_ (FC `0x06`). Some devices only implement _Preset Multiple Registers_ (FC `0x10`) and silently ignore FC `0x06`, so every write to them fails. In that case set **Register write function** to _Preset Multiple Registers_; the value count no longer matters and single values are sent as FC `0x10` too.
+
+Coil writes always use _Force Single Coil_ (FC `0x05`) and are unaffected by this option.
 
 ## Creating YAML Device Configurations
 

@@ -12,7 +12,7 @@ from pymodbus.pdu.pdu import ModbusPDU
 
 from .context import ModbusContext
 from .conversion import Conversion
-from .entity_management.const import ModbusDataType
+from .entity_management.const import ModbusDataType, WriteFunction
 from .transaction import MyTransactionManager
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -134,10 +134,18 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         return response
 
     async def _custom_write_registers(
-        self, address: int, values: list[int], device_id: int
+        self,
+        address: int,
+        values: list[int],
+        device_id: int,
+        write_function: WriteFunction = WriteFunction.SINGLE,
     ) -> ModbusPDU | None:
-        """Write values to Modbus registers. Try write_registers first, and
-        fall back to individual write_register calls if it fails.
+        """Write values to Modbus registers.
+
+        The write function is chosen from the number of values, unless
+        `write_function` selects one explicitly: some devices only implement
+        preset multiple registers (FC 0x10) and ignore preset single register
+        (FC 0x06), including for a single value.
 
         Returns the last PDU received so the caller can detect an error
         response; None only when there was nothing to write.
@@ -146,9 +154,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             _LOGGER.debug("No values to write, skipping.")
             return None
 
-        if len(values) == 1:
-            return await self._write_single_register(address, values[0], device_id)
-        return await self._write_multiple_registers(address, values, device_id)
+        if write_function == WriteFunction.MULTIPLE or len(values) > 1:
+            return await self._write_multiple_registers(address, values, device_id)
+        return await self._write_single_register(address, values[0], device_id)
 
     async def _write_single_register(
         self, address: int, value: int, device_id: int
@@ -262,8 +270,18 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             )
         return response.registers
 
-    async def write_data(self, entity: ModbusContext, value: Any) -> ModbusPDU | None:
-        """Writes data to Holding Registers or Coils"""
+    async def write_data(
+        self,
+        entity: ModbusContext,
+        value: Any,
+        write_function: WriteFunction = WriteFunction.SINGLE,
+    ) -> ModbusPDU | None:
+        """Writes data to Holding Registers or Coils.
+
+        `write_function` is read from the config entry rather than stored on the
+        client, because one client is shared by every entry pointing at the same
+        gateway.
+        """
         pdu: ModbusPDU | None = None
         async with self.lock:
             if not self.connected:
@@ -311,6 +329,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     address=entity.desc.register_address,
                     values=registers,
                     device_id=entity.device_id,
+                    write_function=write_function,
                 )
             elif entity.desc.data_type == ModbusDataType.COIL:
                 if not isinstance(value, bool):

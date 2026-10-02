@@ -23,10 +23,11 @@ from homeassistant.helpers.update_coordinator import (
 )
 from pymodbus.pdu.pdu import ModbusPDU
 
-from .const import CONF_PREFIX
+from .const import CONF_PREFIX, OPTIONS_DEFAULT_WRITE_FUNCTION, OPTIONS_WRITE_FUNCTION
 from .context import ModbusContext
 from .conversion import Conversion, ValueUnavailable
 from .entity_management.base import ModbusEntityDescription
+from .entity_management.const import WriteFunction
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -113,7 +114,11 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
     ) -> None:
         """Write data to the Modbus device"""
         try:
-            await self.coordinator.client.write_data(self.coordinator_context, value)
+            await self.coordinator.client.write_data(
+                self.coordinator_context,
+                value,
+                write_function=self.coordinator.write_function,
+            )
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.error(
                 "Failed to write %s to %s: %s", value, self.coordinator_context, exc
@@ -287,6 +292,30 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     def max_read_size(self, value: int) -> None:
         """Sets the max register read size"""
         self._max_read_size = value
+
+    @property
+    def write_function(self) -> WriteFunction:
+        """Return the Modbus write function this entry writes registers with.
+
+        Defaults to preset single register (FC 0x06), which is what every
+        installation used before the option existed. An unrecognised stored
+        value falls back to that default rather than failing the write.
+        """
+        if self.config_entry is None:
+            return WriteFunction(OPTIONS_DEFAULT_WRITE_FUNCTION)
+        stored: Any = self.config_entry.options.get(
+            OPTIONS_WRITE_FUNCTION, OPTIONS_DEFAULT_WRITE_FUNCTION
+        )
+        try:
+            return WriteFunction(stored)
+        except ValueError:
+            _LOGGER.warning(
+                "Unknown write function %s for %s, using %s",
+                stored,
+                self._gateway,
+                OPTIONS_DEFAULT_WRITE_FUNCTION,
+            )
+            return WriteFunction(OPTIONS_DEFAULT_WRITE_FUNCTION)
 
     async def async_update(self) -> dict[str, Any]:
         """Fetch updated data for all registered entities"""

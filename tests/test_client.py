@@ -19,11 +19,14 @@ from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusBinarySensorEntityDescription,
     ModbusEntityDescription,
+    ModbusSelectEntityDescription,
     ModbusSensorEntityDescription,
     ModbusSwitchEntityDescription,
 )
 from custom_components.modbus_local_gateway.entity_management.const import (
+    ControlType,
     ModbusDataType,
+    WriteFunction,
 )
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
@@ -207,6 +210,78 @@ async def test_write_single_register_failure() -> None:
             1,
             cast(Any, client).write_register.return_value,
         )
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_multiple_function() -> None:
+    """A single value goes out as FC 0x10 when that function is selected."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
+
+    await client._custom_write_registers(
+        address=301,
+        values=[3],
+        device_id=1,
+        write_function=WriteFunction.MULTIPLE,
+    )
+    cast(Any, client).write_registers.assert_called_once_with(
+        address=301,
+        values=[3],
+        device_id=1,
+    )
+    cast(Any, client).write_register.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_single_function() -> None:
+    """The default keeps a single value on FC 0x06."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
+
+    await client._custom_write_registers(
+        address=301,
+        values=[3],
+        device_id=1,
+        write_function=WriteFunction.SINGLE,
+    )
+    cast(Any, client).write_register.assert_called_once_with(
+        address=301,
+        value=3,
+        device_id=1,
+    )
+
+
+@pytest.mark.asyncio
+async def test_write_data_passes_write_function() -> None:
+    """write_data forwards the entry's write function to the client."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    connected = PropertyMock(return_value=True)
+    cast(Any, type(client)).connected = connected
+    cast(Any, client)._custom_write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client)._custom_write_registers.return_value.isError = lambda: False
+
+    ctx = ModbusContext(
+        desc=ModbusSelectEntityDescription(
+            register_address=301,
+            key="output_priority",
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            control_type=ControlType.SELECT,
+            select_options={0: "UTI", 3: "SUB"},
+        ),
+        device_id=1,
+    )
+
+    await client.write_data(ctx, 3, write_function=WriteFunction.MULTIPLE)
+    cast(Any, client)._custom_write_registers.assert_called_once_with(
+        address=301,
+        values=[3],
+        device_id=1,
+        write_function=WriteFunction.MULTIPLE,
+    )
 
 
 @pytest.mark.asyncio

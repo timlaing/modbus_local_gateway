@@ -1,6 +1,7 @@
 """Tests for the Modbus Local Gateway config flow."""
 # pylint: disable=unexpected-keyword-arg, protected-access
 
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigFlowResult
@@ -8,6 +9,7 @@ from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from pymodbus.framer import FramerType
 import pytest
 from pytest_homeassistant_custom_component.common import HomeAssistant, MockConfigEntry
+import voluptuous as vol
 
 from custom_components.modbus_local_gateway.config_flow import (
     ConfigFlowHandler,
@@ -19,7 +21,9 @@ from custom_components.modbus_local_gateway.const import (
     CONF_PREFIX,
     DOMAIN,
     OPTIONS_REFRESH,
+    OPTIONS_WRITE_FUNCTION,
 )
+from custom_components.modbus_local_gateway.entity_management.const import WriteFunction
 
 
 @pytest.mark.asyncio
@@ -220,3 +224,58 @@ async def test_options_flow_handler(
     assert "step_id" in result
     assert result["type"] == "form"
     assert result["step_id"] == "init"
+
+
+@pytest.mark.asyncio
+async def test_options_flow_write_function(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Test the write function option is offered and stored."""
+    mock_config_entry.add_to_hass(hass)
+    flow = OptionsFlowHandler()
+    flow.hass = hass
+    flow.handler = mock_config_entry.entry_id
+    hass.data = {DOMAIN: {"test-localhost:123:1": MagicMock()}}
+
+    result = await flow.async_step_init(
+        user_input={
+            OPTIONS_REFRESH: 10,
+            OPTIONS_WRITE_FUNCTION: WriteFunction.MULTIPLE.value,
+        }
+    )
+    assert result["type"] == "create_entry"
+    assert result["data"] == {
+        OPTIONS_REFRESH: 10,
+        OPTIONS_WRITE_FUNCTION: WriteFunction.MULTIPLE.value,
+    }
+
+    result = await flow.async_step_init(user_input=None)
+    assert result["type"] == "form"
+    data_schema = cast(vol.Schema, result["data_schema"])
+    defaults = {
+        str(key.schema): key.default() for key in data_schema.schema if key.default
+    }
+    # An entry that never chose the option defaults to FC 0x06
+    assert defaults[OPTIONS_WRITE_FUNCTION] == WriteFunction.SINGLE.value
+
+
+@pytest.mark.asyncio
+async def test_options_flow_write_function_rejects_unknown(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Test an unknown write function is rejected by the schema."""
+    mock_config_entry.add_to_hass(hass)
+    flow = OptionsFlowHandler()
+    flow.hass = hass
+    flow.handler = mock_config_entry.entry_id
+    hass.data = {DOMAIN: {"test-localhost:123:1": MagicMock()}}
+
+    result = await flow.async_step_init(user_input=None)
+    assert result["type"] == "form"
+    data_schema = cast(vol.Schema, result["data_schema"])
+
+    with pytest.raises(vol.Invalid):
+        data_schema({
+            OPTIONS_REFRESH: 10,
+            OPTIONS_WRITE_FUNCTION: "nonsense",
+        })
