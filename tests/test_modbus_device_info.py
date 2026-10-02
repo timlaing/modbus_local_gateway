@@ -3,6 +3,7 @@
 
 from unittest.mock import patch
 
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest import LogCaptureFixture
@@ -18,6 +19,12 @@ from custom_components.modbus_local_gateway.entity_management.const import (
 from custom_components.modbus_local_gateway.entity_management.device_loader import (
     load_devices,
 )
+
+POWER_DEVICE_CLASSES: frozenset[SensorDeviceClass] = frozenset({
+    SensorDeviceClass.POWER,
+    SensorDeviceClass.REACTIVE_POWER,
+    SensorDeviceClass.APPARENT_POWER,
+})
 
 
 def test_entity_load() -> None:
@@ -410,3 +417,27 @@ async def test_devices_yaml(hass: HomeAssistant) -> None:
             log.assert_not_called()
             _ = devices[name].model
             log.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_devices_power_entities_are_measurements(hass: HomeAssistant) -> None:
+    """A power reading is a measurement, not a total.
+
+    `total_increasing` cannot hold a negative state, so a meter that reports
+    export as a negative demand was logged as ignored by `never_resets` and
+    rejected by the recorder.
+    """
+    devices: dict[str, modbus_device_info.ModbusDeviceInfo] = await load_devices(
+        hass=hass
+    )
+
+    offenders: list[str] = [
+        f"{name}: {entity.key}"
+        for name, device in devices.items()
+        for entity in device.entity_descriptions
+        if isinstance(entity, ModbusSensorEntityDescription)
+        and entity.device_class in POWER_DEVICE_CLASSES
+        and entity.state_class == SensorStateClass.TOTAL_INCREASING
+    ]
+
+    assert not offenders, f"power entities declared as totals: {offenders}"
