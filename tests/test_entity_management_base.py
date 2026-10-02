@@ -122,6 +122,42 @@ def test_validate_valid_entity(
         mock_warning.assert_not_called()
 
 
+@pytest.mark.parametrize("no_flag_value", ["No error", 0, -1])
+def test_validate_no_flag_value_scalars(
+    valid_entity_description: ModbusEntityDescription, no_flag_value: str | int
+) -> None:
+    """A state is either a label or a number, so both are accepted."""
+    entity: ModbusEntityDescription = valid_entity_description
+    entity = entity.__class__(**{
+        **entity.__dict__,
+        "conv_flags": {1: "One"},
+        "conv_no_flag_value": no_flag_value,
+    })
+    assert entity.validate()
+
+
+@pytest.mark.parametrize("no_flag_value", [1.5, True, [0], {"0": "No error"}])
+def test_validate_no_flag_value_rejects_other_types(
+    valid_entity_description: ModbusEntityDescription, no_flag_value: Any
+) -> None:
+    """A value a sensor cannot hold is refused at load."""
+    entity: ModbusEntityDescription = valid_entity_description
+    entity = entity.__class__(**{
+        **entity.__dict__,
+        "conv_flags": {1: "One"},
+        "conv_no_flag_value": no_flag_value,
+    })
+    with patch(
+        "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
+    ) as mock_warning:
+        assert not entity.validate()
+        mock_warning.assert_called_once_with(
+            "Unable to create entity for %s: %s must be a string or an integer",
+            entity.key,
+            "no_flag_value",
+        )
+
+
 @pytest.mark.parametrize(
     "control_type", [ControlType.NUMBER, ControlType.SWITCH, ControlType.SELECT]
 )

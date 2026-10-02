@@ -211,6 +211,17 @@ For all entity definitions:
         3: "Mill active"
         4: "Heating active"
       ```
+  - `no_flag_value`: State to report when none of the `flags` bits is set (string or
+    integer). Without it, the converted number is reported, which is the raw register
+    value on a fault register nothing is flagged for. Useful where the register is an
+    error code and "no error" needs its own state.
+    - E.g.
+      ```yaml
+      flags:
+        1: "Sensor fault"
+        2: "Communication fault"
+      no_flag_value: "No error"
+      ```
 - **Behavior**:
   - `never_resets: true`: For non-resetting totals. (E.g. for sensors with `state_class: total_increasing`).
   - `unavailable_values`: Register values that mean "no reading" - the sentinel many devices publish
