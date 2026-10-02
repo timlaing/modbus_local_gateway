@@ -161,7 +161,12 @@ class Conversion:
     def _convert_to_flags(
         self, registers: list[int], desc: ModbusEntityDescription
     ) -> str | int:
-        """Convert to a flags type, falling back to the value when no bit is set."""
+        """Convert to a flags type, falling back to the value when no bit is set.
+
+        A config that sets `no_flag_value` reports that instead, so a register
+        used as an error code can publish a "nothing flagged" state rather than
+        the raw number.
+        """
         int_val: int = int(self._convert_to_decimal(registers=registers, desc=desc))
         ret_val: str | None = None
         if desc.conv_flags:
@@ -174,6 +179,8 @@ class Conversion:
             if ret_val is not None:
                 return ret_val
         _LOGGER.debug("%s: no `flags:` bit set for %s", desc.key, int_val)
+        if desc.conv_no_flag_value is not None:
+            return desc.conv_no_flag_value
         return int_val
 
     def _convert_to_decimal(

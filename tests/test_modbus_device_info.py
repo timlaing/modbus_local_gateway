@@ -215,6 +215,7 @@ def test_entity_create_all_fields() -> None:
                 "device_class": "A",
                 "unit_of_measurement": "%",
                 "flags": {1: "One"},
+                "no_flag_value": "No error",
             },
         },
         "read_only_word": {},
@@ -254,6 +255,7 @@ def test_entity_create_all_fields() -> None:
         assert entity.device_class == "A"
         assert entity.unit_of_measurement == "%"
         assert entity.conv_flags == {1: "One"}
+        assert entity.conv_no_flag_value == "No error"
         assert entity.data_type == ModbusDataType.HOLDING_REGISTER
 
 

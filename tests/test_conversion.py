@@ -562,6 +562,61 @@ async def test_flags_multiple() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("raw", "no_flag_value", "expected"),
+    [
+        (0, "No error", "No error"),
+        (32, "No error", "No error"),
+        (0, 0, 0),
+        (32, 0, 0),
+    ],
+)
+async def test_flags_no_match_value(
+    raw: int, no_flag_value: str | int, expected: str | int
+) -> None:
+    """`no_flag_value` is reported when no configured bit is set."""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(raw, data_type=client.DATATYPE.UINT16)
+        ),
+        desc=ModbusSensorEntityDescription(
+            register_address=1,
+            key="test",
+            conv_flags={1: "One", 3: "Good", 4: "Bad"},
+            conv_no_flag_value=no_flag_value,
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+
+    assert value == expected
+
+
+@pytest.mark.asyncio
+async def test_flags_match_ignores_no_flag_value() -> None:
+    """A set bit wins over the fallback."""
+    client = AsyncModbusTcpClient
+    conversion = Conversion(client=client)
+
+    value = conversion.convert_from_response(
+        response=ReadInputRegistersResponse(
+            registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16)
+        ),
+        desc=ModbusSensorEntityDescription(
+            register_address=1,
+            key="test",
+            conv_flags={1: "One", 3: "Good", 4: "Bad"},
+            conv_no_flag_value="No error",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+
+    assert value == "One"
+
+
+@pytest.mark.asyncio
 async def test_convert_from_response_coils() -> None:
     """Test convert from response"""
     client = AsyncModbusTcpClient

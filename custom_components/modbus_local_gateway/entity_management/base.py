@@ -27,6 +27,7 @@ from .const import (
     IS_SIGNED,
     IS_STRING,
     MAX_CHANGE,
+    NO_FLAG_VALUE,
     PRECISION,
     REGISTER_COUNT,
     ControlType,
@@ -51,6 +52,7 @@ class UnusedKeysMixin:
     map: dict[int, str] | None = None  # conv_map
     unavailable_values: list[int] | None = None  # conv_unavailable_values
     flags: dict[int, str] | None = None  # conv_flags
+    no_flag_value: str | int | None = None  # conv_no_flag_value
     string: bool | None = False  # is_string
     float: bool | None = False  # is_float
     signed: bool | None = False  # is_signed
@@ -83,6 +85,7 @@ class ModbusEntityDescription(
     conv_map: dict[int, str] | None = None
     conv_unavailable_values: list[int] | None = None
     conv_flags: dict[int, str] | None = None
+    conv_no_flag_value: str | int | None = None
     is_signed: bool | None = False
     is_string: bool | None = False
     is_float: bool | None = False
@@ -102,6 +105,7 @@ class ModbusEntityDescription(
             self._validate_max_change,
             self._validate_scan_interval,
             self._validate_unavailable_values,
+            self._validate_no_flag_value,
             self._validate_bitfield,
         )
         return all(check() for check in validators)
@@ -122,6 +126,26 @@ class ModbusEntityDescription(
                 "Unable to create entity for %s: %s must be a list of integers",
                 self.key,
                 CONV_UNAVAILABLE_VALUES,
+            )
+            return False
+        return True
+
+    def _validate_no_flag_value(self) -> bool:
+        """`no_flag_value` must be a string or an integer.
+
+        It is the state reported when none of the entity's `flags` bits is set,
+        so it must be a type a sensor can hold. Absent, the raw register value
+        is reported as before.
+        """
+        if self.conv_no_flag_value is None:
+            return True
+        if not isinstance(self.conv_no_flag_value, (str, int)) or isinstance(
+            self.conv_no_flag_value, bool
+        ):
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s must be a string or an integer",
+                self.key,
+                NO_FLAG_VALUE,
             )
             return False
         return True
