@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import logging
 from os.path import join
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.number import NumberMode
 from homeassistant.const import CONF_SCAN_INTERVAL, EntityCategory
@@ -117,7 +118,7 @@ class ModbusDeviceInfo:
             and isinstance(self._config[DEVICE], dict)
             and MANUFACTURER in self._config[DEVICE]
         ):
-            return self._config[DEVICE][MANUFACTURER]
+            return cast(str, self._config[DEVICE][MANUFACTURER])
         raise DeviceConfigError()
 
     @property
@@ -130,14 +131,14 @@ class ModbusDeviceInfo:
             and isinstance(self._config[DEVICE], dict)
             and MODEL in self._config[DEVICE]
         ):
-            return self._config[DEVICE][MODEL]
+            return cast(str, self._config[DEVICE][MODEL])
         raise DeviceConfigError()
 
     @property
     def max_read_size(self) -> int:
         """Maximum number of registers to read in a single request"""
         if self._config and isinstance(self._config, dict) and DEVICE in self._config:
-            return self._config[DEVICE].get(MAX_READ, MAX_READ_DEFAULT)
+            return cast(int, self._config[DEVICE].get(MAX_READ, MAX_READ_DEFAULT))
         raise DeviceConfigError()
 
     @property
@@ -161,7 +162,9 @@ class ModbusDeviceInfo:
                         descriptions.append(desc)
         return tuple(descriptions)
 
-    def get_uom(self, data, control_type) -> dict[str, str | None]:
+    def get_uom(
+        self, data: dict[str, Any], control_type: ControlType
+    ) -> dict[str, str | None]:
         """Get the unit_of_measurement and device class"""
         unit = data.get(UOM)
         state_class: str | None = DEFAULT_STATE_CLASS
@@ -255,7 +258,7 @@ class ModbusDeviceInfo:
         })
         return params
 
-    def _handle_entity_category(self, params, entity) -> None:
+    def _handle_entity_category(self, params: dict[str, Any], entity: str) -> None:
         """Handle entity category in parameters"""
         try:
             params["entity_category"] = EntityCategory(params["entity_category"])
@@ -268,7 +271,11 @@ class ModbusDeviceInfo:
             del params["entity_category"]
 
     def _select_description_class(
-        self, control_type, params, _data, entity
+        self,
+        control_type: ControlType,
+        params: dict[str, Any],
+        _data: dict[str, Any],
+        entity: str,
     ) -> None | type[DESCRIPTION_TYPE]:
         """Select the appropriate description class based on control type"""
         if params["data_type"] in [ModbusDataType.COIL, ModbusDataType.DISCRETE_INPUT]:
@@ -287,23 +294,31 @@ class ModbusDeviceInfo:
                 )
                 return None
 
-        if control_type == ControlType.SENSOR:
-            return self._handle_sensor_description(params)
-        elif control_type == ControlType.BINARY_SENSOR:
-            return self._handle_binary_sensor_description(params, _data)
-        elif control_type == ControlType.SWITCH:
-            return self._handle_switch_description(params, _data, entity)
-        elif control_type == ControlType.SELECT:
-            return self._handle_select_description(params, _data)
-        elif control_type == ControlType.NUMBER:
-            return self._handle_number_description(params, _data, entity)
-        elif control_type == ControlType.TEXT:
-            return ModbusTextEntityDescription
-        else:
+        handlers: dict[str, Callable[[], type[DESCRIPTION_TYPE] | None]] = {
+            ControlType.SENSOR: lambda: self._handle_sensor_description(params),
+            ControlType.BINARY_SENSOR: lambda: self._handle_binary_sensor_description(
+                params, _data
+            ),
+            ControlType.SWITCH: lambda: self._handle_switch_description(
+                params, _data, entity
+            ),
+            ControlType.SELECT: lambda: self._handle_select_description(params, _data),
+            ControlType.NUMBER: lambda: self._handle_number_description(
+                params, _data, entity
+            ),
+            ControlType.TEXT: lambda: ModbusTextEntityDescription,
+        }
+        handler: Callable[[], type[DESCRIPTION_TYPE] | None] | None = handlers.get(
+            control_type
+        )
+        if handler is None:
             _LOGGER.warning("Unsupported control_type %s", control_type)
             return None
+        return handler()
 
-    def _handle_sensor_description(self, params) -> type[ModbusSensorEntityDescription]:
+    def _handle_sensor_description(
+        self, params: dict[str, Any]
+    ) -> type[ModbusSensorEntityDescription]:
         """Handle sensor description specific logic"""
         if (
             params.get("precision") is None
@@ -333,7 +348,7 @@ class ModbusDeviceInfo:
         return ModbusSensorEntityDescription
 
     def _handle_binary_sensor_description(
-        self, params, _data
+        self, params: dict[str, Any], _data: dict[str, Any]
     ) -> None | type[ModbusBinarySensorEntityDescription]:
         """Handle binary sensor description specific logic"""
         params["on"] = _data.get("on", True)
@@ -341,7 +356,7 @@ class ModbusDeviceInfo:
         return ModbusBinarySensorEntityDescription
 
     def _handle_switch_description(
-        self, params, _data, entity
+        self, params: dict[str, Any], _data: dict[str, Any], entity: str
     ) -> None | type[ModbusSwitchEntityDescription]:
         """Handle switch description specific logic"""
         switch_data = _data.get("switch", {})
@@ -355,7 +370,7 @@ class ModbusDeviceInfo:
         return ModbusSwitchEntityDescription
 
     def _handle_select_description(
-        self, params, _data
+        self, params: dict[str, Any], _data: dict[str, Any]
     ) -> None | type[ModbusSelectEntityDescription]:
         """Handle select description specific logic"""
         params["select_options"] = _data.get("options")
@@ -365,7 +380,7 @@ class ModbusDeviceInfo:
         return ModbusSelectEntityDescription
 
     def _handle_number_description(
-        self, params, _data, entity
+        self, params: dict[str, Any], _data: dict[str, Any], entity: str
     ) -> None | type[ModbusNumberEntityDescription]:
         """Handle number description specific logic"""
         number_data = _data.get("number", {})
@@ -393,7 +408,7 @@ class ModbusDeviceInfo:
         return ModbusNumberEntityDescription
 
     def _create_description_instance(
-        self, desc_cls: type[DESCRIPTION_TYPE], params
+        self, desc_cls: type[DESCRIPTION_TYPE], params: dict[str, Any]
     ) -> DESCRIPTION_TYPE | None:
         """Create an instance of the description class"""
         try:

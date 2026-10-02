@@ -18,6 +18,15 @@ from .transaction import MyTransactionManager
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
+class ModbusClientError(ModbusException):
+    """Typed Modbus client error."""
+
+    def __init__(self, string: str) -> None:
+        """Initialize the error."""
+        super().__init__(string)  # type: ignore[no-untyped-call]
+        self.string = string
+
+
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     """Custom Modbus TCP client with request batching based on device and locking."""
 
@@ -31,7 +40,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         source_address: tuple[str, int] | None = None,
         **kwargs: Any,
     ) -> None:
-        self._data_type_function_mapping: dict[str, Callable] = {
+        self._data_type_function_mapping: dict[str, Callable[..., Any]] = {
             ModbusDataType.HOLDING_REGISTER: self.read_holding_registers,
             ModbusDataType.INPUT_REGISTER: self.read_input_registers,
             ModbusDataType.COIL: self.read_coils,
@@ -53,7 +62,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     async def read_data(
         self,
-        func: Callable,
+        func: Callable[..., Any],
         address: int,
         count: int,
         device_id: int,
@@ -237,15 +246,16 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         in between. A failed read raises, abandoning the write - merging onto a
         guess would clear the field's neighbours.
         """
+        span_read_count: int = entity.desc.register_count or 1
         response: ModbusPDU | None = await self.read_data(
             func=self.read_holding_registers,
             address=entity.desc.register_address,
-            count=entity.desc.register_count,
+            count=span_read_count,
             device_id=entity.device_id,
-            max_read_size=entity.desc.register_count,
+            max_read_size=span_read_count,
         )
         if response is None or response.isError():
-            raise ModbusException(
+            raise ModbusClientError(
                 "Unable to read current value of "
                 f"{entity.desc.key} at {entity.desc.register_address} - "
                 "aborting bit field write"
@@ -293,7 +303,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     type(registers).__name__,
                 )
                 if len(registers) != entity.desc.register_count:
-                    raise ModbusException(
+                    raise ModbusClientError(
                         "Incorrect number of registers: expected "
                         f"{entity.desc.register_count}, got {len(registers)}"
                     )
@@ -322,7 +332,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     entity.desc.data_type,
                     pdu,
                 )
-                raise ModbusException(
+                raise ModbusClientError(
                     f"Error writing data to {entity.desc.key} "
                     f"({entity.desc.data_type}): {pdu}"
                 )
@@ -363,7 +373,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             entity.desc.register_address,
             entity.desc.register_count,
         )
-        func: Callable | None = self._data_type_function_mapping.get(
+        func: Callable[..., Any] | None = self._data_type_function_mapping.get(
             entity.desc.data_type
         )
         if func is None:
@@ -400,7 +410,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 )
                 return
             _LOGGER.debug(
-                "Unable to retrieve value for Device ID %d, register/coil (%s): %d, count: %d",
+                "Unable to retrieve value for Device ID %d, register/coil (%s): "
+                "%d, count: %d",
                 entity.device_id,
                 entity.desc.key,
                 entity.desc.register_address,

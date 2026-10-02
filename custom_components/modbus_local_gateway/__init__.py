@@ -82,7 +82,8 @@ async def async_setup_entry(
             )
         else:
             raise ConfigEntryNotReady(
-                f"Unable to connect to {gateway_key}, device: {entry.data[CONF_DEVICE_ID]}"
+                f"Unable to connect to {gateway_key}, "
+                f"device: {entry.data[CONF_DEVICE_ID]}"
             )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

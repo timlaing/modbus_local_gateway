@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import cast
 
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
@@ -12,6 +11,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
+from .entity_management.base import ModbusTextEntityDescription
 from .entity_management.const import ControlType
 from .helpers import async_setup_entities
 
@@ -33,8 +33,10 @@ async def async_setup_entry(
     )
 
 
-class ModbusTextEntity(ModbusCoordinatorEntity, TextEntity):  # type: ignore
+class ModbusTextEntity(ModbusCoordinatorEntity, TextEntity):
     """Text entity for Modbus gateway"""
+
+    entity_description: ModbusTextEntityDescription
 
     def __init__(
         self,
@@ -49,9 +51,9 @@ class ModbusTextEntity(ModbusCoordinatorEntity, TextEntity):  # type: ignore
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: str | int | None = cast(
-                ModbusCoordinator, self.coordinator
-            ).get_data(self.coordinator_context)
+            value: str | int | float | None = self.coordinator.get_data(
+                self.coordinator_context
+            )
             if value is not None:
                 self._attr_native_value = str(value)
                 _LOGGER.debug(

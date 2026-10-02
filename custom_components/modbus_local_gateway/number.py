@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import cast
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -34,8 +33,10 @@ async def async_setup_entry(
     )
 
 
-class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
+class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):
     """Number entity for Modbus gateway"""
+
+    entity_description: ModbusNumberEntityDescription
 
     def __init__(
         self,
@@ -70,9 +71,9 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):  # type: ignore
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         try:
-            value: str | int | None = cast(
-                ModbusCoordinator, self.coordinator
-            ).get_data(self.coordinator_context)
+            value: str | int | float | None = self.coordinator.get_data(
+                self.coordinator_context
+            )
             if value is not None:
                 self._set_state(float(value))
                 _LOGGER.debug(

@@ -72,7 +72,7 @@ async def async_setup_entities(
         model=device_info.model,
     )
     if coordinator.gateway_device:
-        device["via_device"] = next(iter(coordinator.gateway_device.identifiers))
+        device["via_device_id"] = coordinator.gateway_device.id
 
     _LOGGER.debug(device)
 
