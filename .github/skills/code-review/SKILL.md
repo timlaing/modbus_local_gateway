@@ -123,9 +123,11 @@ Project key `timlaing_modbus_local_gateway` (sources `./custom_components/modbus
 | S9081 | Lambda should use `return_value`   | Use `patch(..., return_value=x)` instead of `lambda: x` |
 | S7502 | Untracked asyncio task             | Save `create_task()` return to prevent GC               |
 | S3776 | Cognitive complexity               | Refactor into smaller functions                         |
-| S7637 | Actions pinned by tag not SHA      | Pin reusable actions to full commit SHAs                |
+| S7637 | Actions pinned by tag not SHA      | Intentionally violated — keep version tags (Section 11) |
 
 Verify changed files with the SonarQube MCP before pushing. The project key lives in `sonar-project.properties`; PR decoration requires the SonarQube Cloud GitHub App to be installed on the repo.
+
+S7637 is a deliberate, repo-wide exception: actions are pinned by version tag rather than full commit SHA so Dependabot can open version-update PRs (see Section 11). Never "fix" S7637 by reintroducing a SHA pin.
 
 ## 11. CI & Workflows
 
@@ -134,6 +136,9 @@ Verify changed files with the SonarQube MCP before pushing. The project key live
 - `sonar.yml` — trusted scan on push to `main` (generates its own coverage) and a `pull_request_target` scan for fork/bot PRs using `secrets.SONAR_TOKEN` with `persist-credentials: false`.
 - `hacs-validate.yml`, `hassfest-validate.yml`, `codeql.yml`, `release-drafter.yml` — validate the custom-component packaging/security posture.
 - SonarQube secrets must never be used in untrusted (fork-derived) contexts; keep the privileged scan out of PR-controlled steps.
+- **Every action reference in `.github/workflows/**` must use a version tag (`owner/repo@v4`, `owner/repo@v1.2.3`), never a full commit SHA.** Dependabot's `github-actions` ecosystem (`.github/dependabot.yml`, daily) only opens version-update PRs for tag references, so SHA pins silently stop dependency updates and are a defect, not a hardening measure.
+- Prefer a major-line tag (`@v4`) shared by every step that uses the same action, so `init`/`analyze` or per-platform steps cannot resolve to different releases. Mixed pins have broken CodeQL with a config/runtime version mismatch.
+- Verify the tag actually exists (`gh api repos/<owner>/<repo>/tags`) — a bare `@4` fails to resolve where the action publishes `@v4`.
 
 ## 12. Commit & PR Conventions
 
@@ -162,6 +167,6 @@ Verify changed files with the SonarQube MCP before pushing. The project key live
 6. Check test conventions (Section 7) and coverage (Section 8) for test changes.
 7. Record the initial worktree status. Run non-mutating checks; if running `prek run --all-files`, detect and disclose any files it changes.
 8. Run the coverage command and inspect every file's line and branch results. Do not infer per-file compliance from the aggregate percentage.
-9. Check for SonarQube-tractable issues (Section 10) and workflow/security concerns (Section 11).
+9. Check for SonarQube-tractable issues (Section 10) and workflow/security concerns (Section 11), including any action reference that was changed to a SHA pin.
 10. Report findings in priority order with tight `file:line` references, triggering conditions, impact, and a concrete fix. Separate suggestions from defects. If there are no actionable findings, say so explicitly.
 11. Add a verification summary listing each command run and its pass, fail, or not-run status. Include relevant failures and environmental limitations; never imply a check ran when it did not.
