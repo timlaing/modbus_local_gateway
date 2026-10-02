@@ -362,9 +362,8 @@ read_only_word:
     unit_of_measurement: Watts
     precision: 2
     float: true
-    state_class: total_increasing
+    state_class: measurement
     size: 2
-    never_resets: true
 
   Maximum Total System Power demand:
     address: 86
@@ -382,9 +381,8 @@ read_only_word:
     unit_of_measurement: VA
     precision: 2
     float: true
-    state_class: total_increasing
+    state_class: measurement
     size: 2
-    never_resets: true
 
   Maximum Total System VA demand:
     address: 102
