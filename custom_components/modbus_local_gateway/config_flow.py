@@ -26,9 +26,12 @@ from .const import (
     CONF_DEFAULT_PORT,
     CONF_DEVICE_ID,
     CONF_PREFIX,
+    CONF_WRITE_FUNCTION_TYPES,
     DOMAIN,
     OPTIONS_DEFAULT_REFRESH,
+    OPTIONS_DEFAULT_WRITE_FUNCTION,
     OPTIONS_REFRESH,
+    OPTIONS_WRITE_FUNCTION,
 )
 from .coordinator import ModbusCoordinator
 from .entity_management.device_loader import create_device_info, load_devices
@@ -68,7 +71,13 @@ class OptionsFlowHandler(OptionsFlow):
                         default=self.config_entry.options.get(
                             OPTIONS_REFRESH, OPTIONS_DEFAULT_REFRESH
                         ),
-                    ): int
+                    ): int,
+                    vol.Required(
+                        OPTIONS_WRITE_FUNCTION,
+                        default=self.config_entry.options.get(
+                            OPTIONS_WRITE_FUNCTION, OPTIONS_DEFAULT_WRITE_FUNCTION
+                        ),
+                    ): vol.In(CONF_WRITE_FUNCTION_TYPES),
                 }),
             ),
         )

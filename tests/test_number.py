@@ -17,6 +17,7 @@ from custom_components.modbus_local_gateway.entity_management.base import (
 )
 from custom_components.modbus_local_gateway.entity_management.const import (
     ModbusDataType,
+    WriteFunction,
 )
 from custom_components.modbus_local_gateway.number import (
     ModbusNumberEntity,
@@ -234,6 +235,7 @@ async def test_async_set_native_value_reads_back() -> None:
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
     coordinator.config_entry = AsyncMock()
+    coordinator.write_function = WriteFunction.SINGLE
     ctx = ModbusContext(
         1,
         ModbusNumberEntityDescription(
@@ -250,7 +252,9 @@ async def test_async_set_native_value_reads_back() -> None:
     with patch.object(coordinator.client, "write_data", AsyncMock()) as write_data:
         await entity.async_set_native_value(42)
 
-        write_data.assert_called_once_with(entity.coordinator_context, 42)
+        write_data.assert_called_once_with(
+            entity.coordinator_context, 42, write_function=WriteFunction.SINGLE
+        )
         # the readback is the point of routing through the entity
         coordinator.async_update_entity.assert_awaited_once_with(
             entity.coordinator_context

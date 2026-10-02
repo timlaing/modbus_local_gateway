@@ -29,10 +29,11 @@
   "options": {
     "step": {
       "init": {
-        "description": "Update device parameters",
         "data": {
-          "refresh": "Update frequency"
-        }
+          "refresh": "Update frequency",
+          "write_function": "Register write function"
+        },
+        "description": "Update device parameters"
       }
     }
   }
