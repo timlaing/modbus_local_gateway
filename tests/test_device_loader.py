@@ -9,6 +9,9 @@ import pytest
 
 from custom_components.modbus_local_gateway.const import DOMAIN
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
+from custom_components.modbus_local_gateway.entity_management.const import (
+    ModbusDataType,
+)
 from custom_components.modbus_local_gateway.entity_management.device_loader import (
     create_device_info,
     get_config_files,
@@ -207,3 +210,70 @@ async def test_load_devices_with_error(hass: HomeAssistant, tmp_path: Path) -> N
         )
         assert len(devices) == 0
         assert "dev1.yaml" not in devices
+
+
+GROWATT_PERIOD_WINDOWS: tuple[tuple[int, int], ...] = (
+    (3038, 3039),
+    (3040, 3041),
+    (3042, 3043),
+    (3044, 3045),
+    (3050, 3051),
+    (3052, 3053),
+    (3054, 3055),
+    (3056, 3057),
+    (3058, 3059),
+)
+
+GROWATT_CONFIGS: tuple[str, ...] = (
+    "MOD-6000TL-X.yaml",
+    "MIN-6000TL-XH.yaml",
+    "MOD-10KTL3-XH.yaml",
+)
+
+
+@pytest.mark.parametrize("fname", GROWATT_CONFIGS)
+def test_growatt_period_windows_match_the_protocol(fname: str) -> None:
+    """The Growatt windows sit where the protocol table says they do.
+
+    Register 3038 of the pair carries the enable flag (bit 15), the charge mode
+    (bits 13-14) and the *start* time, and the register after it the *end* time
+    with those bits reserved, so the two times and the two switches cannot be
+    read off each other's register.
+    """
+    entities = {
+        desc.key: desc
+        for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
+    }
+
+    for period, (start_address, end_address) in enumerate(GROWATT_PERIOD_WINDOWS, 1):
+        start = entities[f"period{period}_start"]
+        end = entities[f"period{period}_end"]
+        mode = entities[f"period{period}_mode"]
+        enable = entities[f"period{period}_enable"]
+
+        assert start.register_address == start_address
+        assert end.register_address == end_address
+        # the mode and the enable share the start time's register
+        assert mode.register_address == start_address
+        assert enable.register_address == start_address
+        assert (mode.conv_bits, mode.conv_shift_bits) == (2, 13)
+        assert (enable.conv_bits, enable.conv_shift_bits) == (1, 15)
+
+
+@pytest.mark.parametrize("fname", GROWATT_CONFIGS)
+def test_growatt_windows_are_writable_holding_registers(fname: str) -> None:
+    """A window is set through the holding registers, not read from the input ones.
+
+    The input registers of the same models carry the grid voltages and the
+    energy counters at these numbers, so a window that declared the input bank
+    would read a voltage and write a voltage.
+    """
+    entities = {
+        desc.key: desc
+        for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
+    }
+
+    for period, (start_address, _) in enumerate(GROWATT_PERIOD_WINDOWS, 1):
+        for key in (f"period{period}_start", f"period{period}_end"):
+            assert entities[key].data_type == ModbusDataType.HOLDING_REGISTER
+        assert entities[f"period{period}_start"].register_address == start_address

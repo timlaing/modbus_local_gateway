@@ -109,6 +109,10 @@ Each file requires a `device` section and optional register/coil sections:
   - `read_write_boolean`: Coils (read/write).
   - `read_only_boolean`: Discrete inputs (read-only).
 
+- **`composite` Section** (optional):
+  - `composite`: Entities assembled from several registers (see
+    [Composite Entities](#composite-entities)).
+
 Each register/coil section contains entity definitions, identified by a unique key (e.g., `set_water_temp`), mapping registers/coils to Home Assistant entities.
 
 #### Common Properties
@@ -258,6 +262,89 @@ For all entity definitions:
       "on": False # Optional - default: True
       "off": True # Optional - default: False
       ```
+
+### Composite Entities
+
+Some devices split a date, a time or a timestamp across several registers. A
+`composite` entity assembles them into a single Home Assistant `datetime`
+entity, which is writable when its registers are writable:
+
+```yaml
+composite:
+  current_time:
+    name: Current Time
+    type: datetime
+    data_type: read_write_word # default: read_write_word
+    fields:
+      year: { address: 45, offset: 2000 }
+      month: { address: 46 }
+      day: { address: 47 }
+      hour: { address: 48 }
+      minute: { address: 49 }
+      second: { address: 50 }
+```
+
+- `type` (required): Which parts the entity carries.
+  - `date`: `year`, `month` and `day` (required).
+  - `time`: `hour` and `minute` (required).
+  - `datetime`: `year`, `month`, `day`, `hour` and `minute` (required).
+  - `second`: Optional for `time` and `datetime`, not allowed for `date`; a
+    clock without it reads on the minute.
+- `data_type` (optional): `read_write_word` (default, writable) or
+  `read_only_word` (read-only). A coil cannot hold a composite.
+- `fields` (required): One entry per part, each an `address` and any of
+  `size`, `swap`, `multiplier`, `offset`, `unavailable_values`, `bits`,
+  `shift_bits`, `signed`, `float` and `string`, exactly as for a register
+  entity. A field name that is not a part of `type`, an unknown key, `map` or
+  `flags` is rejected with a warning and the entity is skipped.
+- Fields that are **not adjacent** are grouped: each run of adjacent registers
+  is read with its own request, so the registers in between are never touched,
+  and written in one request per run (FC `0x10`, or FC `0x06` for a run of one
+  register). A clock in registers 45-50 is therefore always updated in one
+  request.
+- The entity-level options of any other entity work here too: `scan_interval`,
+  `icon`, `entity_category` and `entity_registry_enabled_default`.
+- A field may claim **part of a register** with `bits` / `shift_bits`, which is
+  how some devices pack a time together with a mode and an enable flag:
+
+  ```yaml
+  composite:
+    period1_start:
+      name: Period 1 Start Time
+      type: time
+      fields:
+        minute: { address: 3038, bits: 8, shift_bits: 0 }
+        hour: { address: 3038, bits: 5, shift_bits: 8 }
+
+  read_write_word:
+    period1_mode: # the same register, other bits, as its own entity
+      name: Period 1 Mode
+      address: 3038
+      control: select
+      bits: 2
+      shift_bits: 13
+      options: { 0: Load, 1: Battery, 2: Grid }
+  ```
+
+  The bits the composite does not describe are left as the device has them: a
+  write reads the registers first and merges its fields into them, inside the
+  same lock a poll takes, so the enable and mode bits survive. Two fields of one
+  composite must not claim the same bits, and `signed` is rejected on a bit
+  field.
+
+- Several entities on **one register** are read from a single transaction when
+  the read succeeds: a poll asks the device once for a register, however many
+  of the device's entities read it, and they all report that one snapshot. A
+  read that failed is not kept, so a later entity on that register asks again
+  rather than reporting the failure of someone else's read. Entities that
+  share a register but not its register bank are still read separately.
+
+- A part the device reports as unavailable - or one that cannot form a real
+  date or time - makes the entity **unavailable**, rather than publishing an
+  error.
+- The value is stamped with Home Assistant's local timezone, since a device
+  clock is a wall-clock reading, and a value that arrives with an offset is
+  brought into local time before it is written back, so the two sides agree.
 
 ### Example YAML
 

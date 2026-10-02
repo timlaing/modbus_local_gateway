@@ -235,3 +235,21 @@ read_only_word:
     map:
       0: Charge
       1: Discharge
+composite:
+  current_time:
+    name: Current Time
+    type: datetime
+    data_type: read_write_word
+    fields:
+      year:
+        address: 45
+      month:
+        address: 46
+      day:
+        address: 47
+      hour:
+        address: 48
+      minute:
+        address: 49
+      second:
+        address: 50

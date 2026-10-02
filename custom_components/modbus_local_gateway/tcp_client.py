@@ -3,20 +3,34 @@
 import asyncio
 from collections.abc import Callable
 import logging
-from typing import Any
+from typing import Any, cast
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from pymodbus.framer import FramerType
 from pymodbus.pdu.pdu import ModbusPDU
-from pymodbus.pdu.register_message import WriteSingleRegisterResponse
+from pymodbus.pdu.register_message import (
+    ReadHoldingRegistersResponse,
+    ReadInputRegistersResponse,
+    WriteSingleRegisterResponse,
+)
 
+from .composite import CompositeConversion
 from .context import ModbusContext
 from .conversion import Conversion
+from .entity_management.base import (
+    ModbusCompositeEntityDescription,
+    ModbusEntityDescription,
+    ModbusFieldDescription,
+)
 from .entity_management.const import ModbusDataType, WriteFunction
 from .transaction import MyTransactionManager
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# What one read of a poll cycle is remembered by: the device it went to, the
+# bank it came from, and the range it covered.
+ReadKey = tuple[int, ModbusDataType, int, int]
 
 
 class ModbusClientError(ModbusException):
@@ -387,6 +401,165 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             )
         return response.registers
 
+    async def _write_composite(
+        self,
+        entity: ModbusContext,
+        value: Any,
+        write_function: WriteFunction,
+    ) -> ModbusPDU:
+        """Write a composite entity as one request per run of adjacent registers.
+
+        Grouping the fields keeps the device from being left with a half updated
+        value: a clock written as one preset multiple registers request changes
+        year to second together, and only fields that are not adjacent to each
+        other need a request of their own.
+        """
+        desc: ModbusCompositeEntityDescription = cast(
+            ModbusCompositeEntityDescription, entity.desc
+        )
+        if desc.data_type != ModbusDataType.HOLDING_REGISTER:
+            raise ModbusClientError(
+                f"Composite {desc.key} is declared as {desc.data_type} and "
+                "cannot be written"
+            )
+
+        field_values: dict[str, Any] = CompositeConversion.to_field_values(desc, value)
+        conversion: Conversion = Conversion(type(self))
+        current: list[int] | None = None
+        if any(field.is_bitfield for field in desc.fields):
+            # A field that claims part of a register has to be merged into what
+            # the device holds, or the bits it does not describe - a mode, an
+            # enable, reserved bits - would be zeroed by the write. The whole
+            # span is read once, in one transaction, inside `self.lock`.
+            current = await self._read_current_registers(entity)
+        pdu: ModbusPDU | None = None
+        for run in desc.runs:
+            registers: list[int] = self._run_registers(
+                desc, run, field_values, conversion, current
+            )
+            _LOGGER.debug(
+                "Writing composite %s run %s to address %d",
+                desc.key,
+                ", ".join(field.key for field in run),
+                run[0].address,
+            )
+            run_pdu: ModbusPDU | None = await self._custom_write_registers(
+                address=run[0].address,
+                values=registers,
+                device_id=entity.device_id,
+                write_function=write_function,
+            )
+            if run_pdu is None:
+                raise ModbusClientError(
+                    f"No response writing composite {desc.key} to registers "
+                    f"{run[0].address}-{run[-1].end_address}"
+                )
+            if run_pdu.isError():
+                raise ModbusClientError(
+                    f"Error writing {desc.key} to registers "
+                    f"{run[0].address}-{run[-1].end_address}: {run_pdu}"
+                )
+            pdu = run_pdu
+
+        if pdu is None:
+            raise ModbusClientError(f"Composite {desc.key} declares no fields")
+        return pdu
+
+    def _run_registers(
+        self,
+        desc: ModbusCompositeEntityDescription,
+        run: tuple[ModbusFieldDescription, ...],
+        field_values: dict[str, Any],
+        conversion: Conversion,
+        current: list[int] | None,
+    ) -> list[int]:
+        """Turn one run of fields into the registers to write for it.
+
+        A field is placed at its own offset in the run, because two bit fields
+        of the same register are one run and must end up in the same word. A bit
+        field is merged into what `current` holds, so the bits around it - a
+        mode, an enable, reserved bits - survive; every other register of the
+        run starts from the device value and is overwritten by its field.
+
+        `current` is None only when no field in the composite is a bit field,
+        which is the case where a run can be written outright.
+        """
+        length: int = run[-1].end_address - run[0].address + 1
+        base: int = run[0].address - desc.register_address
+        registers: list[int] = (
+            list(current[base : base + length]) if current is not None else [0] * length
+        )
+        for field in run:
+            field_desc: ModbusEntityDescription = field.as_entity_description(
+                desc.data_type
+            )
+            offset: int = field.address - run[0].address
+            count: int = max(1, field.size)
+            if field.is_bitfield:
+                if current is None:
+                    raise ModbusClientError(
+                        f"Composite {desc.key} field {field.key} is a bit field "
+                        "but no current registers were read"
+                    )
+                registers[offset : offset + count] = conversion.merge_into_registers(
+                    field_desc,
+                    field_values[field.key],
+                    registers[offset : offset + count],
+                )
+            else:
+                registers[offset : offset + count] = conversion.convert_to_registers(
+                    field_desc, field_values[field.key]
+                )
+        return registers
+
+    async def _write_holding_registers(
+        self,
+        entity: ModbusContext,
+        value: Any,
+        write_function: WriteFunction,
+    ) -> ModbusPDU | None:
+        """Write one entity's value to its holding registers"""
+        conversion = Conversion(type(self))
+        if entity.desc.conv_bits or entity.desc.conv_shift_bits:
+            # No dependable device-side bit write (FC 0x16 is optional): read the
+            # register, replace this field, write it back. Still inside
+            # `self.lock`, so nothing lands in between.
+            registers = conversion.merge_into_registers(
+                entity.desc,
+                value,
+                await self._read_current_registers(entity),
+            )
+        else:
+            registers = conversion.convert_to_registers(entity.desc, value)
+        _LOGGER.debug(
+            "Raw value after conversion to registers: %s (type: %s)",
+            registers,
+            type(registers).__name__,
+        )
+        if len(registers) != entity.desc.register_count:
+            raise ModbusClientError(
+                "Incorrect number of registers: expected "
+                f"{entity.desc.register_count}, got {len(registers)}"
+            )
+        return await self._custom_write_registers(
+            address=entity.desc.register_address,
+            values=registers,
+            device_id=entity.device_id,
+            write_function=write_function,
+        )
+
+    async def _write_coil(self, entity: ModbusContext, value: Any) -> ModbusPDU:
+        """Write one entity's value to its coil"""
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"Value for COIL must be boolean, got {type(value).__name__}"
+            )
+        return await self.write_coil(
+            address=entity.desc.register_address,
+            value=value,
+            device_id=entity.device_id,
+        )
+
     async def write_data(
         self,
         entity: ModbusContext,
@@ -419,45 +592,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 "Value before conversion: %s (type: %s)", value, type(value).__name__
             )
 
-            if entity.desc.data_type == ModbusDataType.HOLDING_REGISTER:
-                conversion = Conversion(type(self))
-                if entity.desc.conv_bits or entity.desc.conv_shift_bits:
-                    # No dependable device-side bit write (FC 0x16 is optional):
-                    # read the register, replace this field, write it back. Still
-                    # inside `self.lock`, so nothing lands in between.
-                    registers = conversion.merge_into_registers(
-                        entity.desc,
-                        value,
-                        await self._read_current_registers(entity),
-                    )
-                else:
-                    registers = conversion.convert_to_registers(entity.desc, value)
-                _LOGGER.debug(
-                    "Raw value after conversion to registers: %s (type: %s)",
-                    registers,
-                    type(registers).__name__,
-                )
-                if len(registers) != entity.desc.register_count:
-                    raise ModbusClientError(
-                        "Incorrect number of registers: expected "
-                        f"{entity.desc.register_count}, got {len(registers)}"
-                    )
-                pdu = await self._custom_write_registers(
-                    address=entity.desc.register_address,
-                    values=registers,
-                    device_id=entity.device_id,
-                    write_function=write_function,
-                )
+            if isinstance(entity.desc, ModbusCompositeEntityDescription):
+                pdu = await self._write_composite(entity, value, write_function)
+            elif entity.desc.data_type == ModbusDataType.HOLDING_REGISTER:
+                pdu = await self._write_holding_registers(entity, value, write_function)
             elif entity.desc.data_type == ModbusDataType.COIL:
-                if not isinstance(value, bool):
-                    raise TypeError(
-                        f"Value for COIL must be boolean, got {type(value).__name__}"
-                    )
-                pdu = await self.write_coil(
-                    address=entity.desc.register_address,
-                    value=value,
-                    device_id=entity.device_id,
-                )
+                pdu = await self._write_coil(entity, value)
             else:
                 raise ValueError(f"Unsupported data type: {entity.desc.data_type}")
 
@@ -480,6 +620,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     ) -> dict[str, ModbusPDU]:
         """Fetches all values for a single device id"""
         data: dict[str, ModbusPDU] = {}
+        # One poll cycle, one answer per register range: entities that read the
+        # same registers are answered from the same transaction.
+        cache: dict[ReadKey, ModbusPDU] = {}
         async with self.lock:
             if not self.connected:
                 await self.connect()
@@ -488,11 +631,110 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     return data
 
             for idx, entity in enumerate(entities):
-                await self._process_entity(entity, data, idx, max_read_size)
+                await self._process_entity(entity, data, idx, max_read_size, cache)
 
             _LOGGER.debug("Update completed %s", self)
 
         return data
+
+    async def _read_once(
+        self,
+        cache: dict[ReadKey, ModbusPDU],
+        func: Callable[..., Any],
+        device_id: int,
+        data_type: ModbusDataType,
+        address: int,
+        count: int,
+        max_read_size: int,
+    ) -> ModbusPDU | None:
+        """Read one register range, at most once per poll cycle.
+
+        Entities of one device often share a register: a time window whose start
+        time, mode and enable live in a single word is three entities on one
+        address, and asking the device for that word once per entity triples the
+        traffic of the poll without telling the caller anything new. The answer
+        is kept for the rest of the cycle, so those entities report the same
+        snapshot, and a failed read is not kept, so the next entity asks the
+        device again rather than inheriting the failure.
+        """
+        key: ReadKey = (device_id, data_type, address, count)
+        cached: ModbusPDU | None = cache.get(key)
+        if cached is not None:
+            _LOGGER.debug(
+                "Reusing registers %d-%d for device %d from this cycle",
+                address,
+                address + count - 1,
+                device_id,
+            )
+            return cached
+
+        response: ModbusPDU | None = await self.read_data(
+            func=func,
+            address=address,
+            count=count,
+            device_id=device_id,
+            max_read_size=max_read_size,
+        )
+        if response is not None and not response.isError():
+            cache[key] = response
+        return response
+
+    async def _read_composite_runs(
+        self,
+        entity: ModbusContext,
+        func: Callable[..., Any],
+        max_read_size: int,
+        cache: dict[ReadKey, ModbusPDU],
+    ) -> ModbusPDU:
+        """Read every run of adjacent registers a composite entity uses.
+
+        Each run is read on its own, so the entity never asks for registers it
+        does not use, and the runs are then stitched into a single response
+        spanning the entity's whole register range - which is the shape
+        `CompositeConversion` expects to read. A run another entity has already
+        read in this cycle comes from that read instead of a new transaction.
+        """
+        desc: ModbusCompositeEntityDescription = cast(
+            ModbusCompositeEntityDescription, entity.desc
+        )
+        registers: list[int] = [0] * (desc.register_count or 0)
+        response_class: type[ModbusPDU] = (
+            ReadHoldingRegistersResponse
+            if desc.data_type == ModbusDataType.HOLDING_REGISTER
+            else ReadInputRegistersResponse
+        )
+
+        for run in desc.runs:
+            count: int = run[-1].end_address - run[0].address + 1
+            response: ModbusPDU | None = await self._read_once(
+                cache,
+                func,
+                entity.device_id,
+                desc.data_type,
+                run[0].address,
+                count,
+                max_read_size,
+            )
+            if response is None:
+                raise ModbusClientError(
+                    f"No response reading composite {desc.key} from registers "
+                    f"{run[0].address}-{run[-1].end_address}"
+                )
+            if response.isError():
+                raise ModbusClientError(
+                    f"Error reading composite {desc.key} from registers "
+                    f"{run[0].address}-{run[-1].end_address}: {response}"
+                )
+            start: int = run[0].address - desc.register_address
+            registers[start : start + count] = list(response.registers)
+
+        _LOGGER.debug(
+            "Composite %s stitched %d registers: %s",
+            desc.key,
+            desc.register_count,
+            registers,
+        )
+        return response_class(registers=registers)
 
     async def _process_entity(
         self,
@@ -500,6 +742,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         data: dict[str, ModbusPDU],
         idx: int,
         max_read_size: int,
+        cache: dict[ReadKey, ModbusPDU],
     ) -> None:
         """Process a single entity and update the data dictionary"""
         _LOGGER.debug(
@@ -518,19 +761,27 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             raise ValueError("Invalid register count")
 
         try:
-            modbus_response: ModbusPDU | None = await self.read_data(
-                func=func,
-                address=entity.desc.register_address,
-                # Treat empty list as “no scaling” to avoid zero-length reads
-                count=entity.desc.register_count
-                * (
-                    max(1, len(entity.desc.conv_sum_scale))
-                    if entity.desc.conv_sum_scale is not None
-                    else 1
-                ),
-                device_id=entity.device_id,
-                max_read_size=max_read_size,
-            )
+            modbus_response: ModbusPDU | None
+            if isinstance(entity.desc, ModbusCompositeEntityDescription):
+                modbus_response = await self._read_composite_runs(
+                    entity, func, max_read_size, cache
+                )
+            else:
+                modbus_response = await self._read_once(
+                    cache,
+                    func,
+                    entity.device_id,
+                    entity.desc.data_type,
+                    entity.desc.register_address,
+                    # Treat empty list as "no scaling" to avoid zero-length reads
+                    entity.desc.register_count
+                    * (
+                        max(1, len(entity.desc.conv_sum_scale))
+                        if entity.desc.conv_sum_scale is not None
+                        else 1
+                    ),
+                    max_read_size,
+                )
 
             if modbus_response and not modbus_response.isError():
                 data[entity.desc.key] = modbus_response

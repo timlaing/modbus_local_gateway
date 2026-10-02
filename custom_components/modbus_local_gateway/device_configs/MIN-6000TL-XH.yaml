@@ -107,6 +107,154 @@ read_write_word:
       "off": 0
       "on": 1
 
+  # Time-of-use windows 1-9: the start time word of each pair carries the charge
+  # mode in bits 13-14 and the enable flag in bit 15, and the end time word
+  # (one register higher) leaves those bits reserved. All of it is holding
+  # registers, so the windows can be set from Home Assistant.
+  period1_mode:
+    name: Period 1 Mode
+    address: 3038
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period1_enable:
+    name: Period 1 Enable
+    address: 3038
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period2_mode:
+    name: Period 2 Mode
+    address: 3040
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period2_enable:
+    name: Period 2 Enable
+    address: 3040
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period3_mode:
+    name: Period 3 Mode
+    address: 3042
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period3_enable:
+    name: Period 3 Enable
+    address: 3042
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period4_mode:
+    name: Period 4 Mode
+    address: 3044
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period4_enable:
+    name: Period 4 Enable
+    address: 3044
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period5_mode:
+    name: Period 5 Mode
+    address: 3050
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period5_enable:
+    name: Period 5 Enable
+    address: 3050
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period6_mode:
+    name: Period 6 Mode
+    address: 3052
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period6_enable:
+    name: Period 6 Enable
+    address: 3052
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period7_mode:
+    name: Period 7 Mode
+    address: 3054
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period7_enable:
+    name: Period 7 Enable
+    address: 3054
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period8_mode:
+    name: Period 8 Mode
+    address: 3056
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period8_enable:
+    name: Period 8 Enable
+    address: 3056
+    control: switch
+    bits: 1
+    shift_bits: 15
+  period9_mode:
+    name: Period 9 Mode
+    address: 3058
+    control: select
+    bits: 2
+    shift_bits: 13
+    options:
+      0: Load
+      1: Battery
+      2: Grid
+  period9_enable:
+    name: Period 9 Enable
+    address: 3058
+    control: switch
+    bits: 1
+    shift_bits: 15
 read_only_word:
   machine_status:
     name: Inverter Machine Status
@@ -589,3 +737,258 @@ read_only_word:
 read_write_boolean:
 
 read_only_boolean:
+composite:
+  current_time:
+    name: Current Time
+    type: datetime
+    data_type: read_write_word
+    fields:
+      year:
+        address: 45
+      month:
+        address: 46
+      day:
+        address: 47
+      hour:
+        address: 48
+      minute:
+        address: 49
+      second:
+        address: 50
+  # Time-of-use windows 1-9: minute in bits 0-7 and hour in bits 8-12 of one
+  # holding register, read and written without disturbing the mode and enable
+  # bits that share the start time register.
+  period1_start:
+    name: Period 1 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3038
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3038
+        bits: 5
+        shift_bits: 8
+  period1_end:
+    name: Period 1 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3039
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3039
+        bits: 5
+        shift_bits: 8
+  period2_start:
+    name: Period 2 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3040
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3040
+        bits: 5
+        shift_bits: 8
+  period2_end:
+    name: Period 2 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3041
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3041
+        bits: 5
+        shift_bits: 8
+  period3_start:
+    name: Period 3 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3042
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3042
+        bits: 5
+        shift_bits: 8
+  period3_end:
+    name: Period 3 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3043
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3043
+        bits: 5
+        shift_bits: 8
+  period4_start:
+    name: Period 4 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3044
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3044
+        bits: 5
+        shift_bits: 8
+  period4_end:
+    name: Period 4 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3045
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3045
+        bits: 5
+        shift_bits: 8
+  period5_start:
+    name: Period 5 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3050
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3050
+        bits: 5
+        shift_bits: 8
+  period5_end:
+    name: Period 5 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3051
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3051
+        bits: 5
+        shift_bits: 8
+  period6_start:
+    name: Period 6 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3052
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3052
+        bits: 5
+        shift_bits: 8
+  period6_end:
+    name: Period 6 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3053
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3053
+        bits: 5
+        shift_bits: 8
+  period7_start:
+    name: Period 7 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3054
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3054
+        bits: 5
+        shift_bits: 8
+  period7_end:
+    name: Period 7 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3055
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3055
+        bits: 5
+        shift_bits: 8
+  period8_start:
+    name: Period 8 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3056
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3056
+        bits: 5
+        shift_bits: 8
+  period8_end:
+    name: Period 8 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3057
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3057
+        bits: 5
+        shift_bits: 8
+  period9_start:
+    name: Period 9 Start Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3058
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3058
+        bits: 5
+        shift_bits: 8
+  period9_end:
+    name: Period 9 End Time
+    type: time
+    data_type: read_write_word
+    fields:
+      minute:
+        address: 3059
+        bits: 8
+        shift_bits: 0
+      hour:
+        address: 3059
+        bits: 5
+        shift_bits: 8

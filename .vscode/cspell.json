@@ -21,6 +21,7 @@
   ],
   "ignorePaths": [
     "custom_components/modbus_local_gateway/device_configs/",
+    "docs/Growatt_PV_Inverter_Modbus_RTU_v1.20_Tables.md",
     ".gitignore"
   ],
   "ignoreWords": [

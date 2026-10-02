@@ -2,7 +2,7 @@
 
 # pylint: disable=unexpected-keyword-arg, protected-access
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -21,9 +21,13 @@ from custom_components.modbus_local_gateway.coordinator import (
     ModbusCoordinatorEntity,
 )
 from custom_components.modbus_local_gateway.entity_management.base import (
+    ModbusDateTimeEntityDescription,
+    ModbusFieldDescription,
     ModbusSensorEntityDescription,
 )
 from custom_components.modbus_local_gateway.entity_management.const import (
+    CompositeType,
+    ControlType,
     ModbusDataType,
     WriteFunction,
 )
@@ -76,6 +80,64 @@ async def test_update_single(mock_config_entry: ConfigEntry) -> None:
         convert.assert_called_once_with(
             desc=entities[0].desc, response=response["test"]
         )
+
+
+@pytest.mark.asyncio
+async def test_update_composite(mock_config_entry: ConfigEntry) -> None:
+    """A composite entity is assembled by the composite conversion"""
+
+    hass = MagicMock()
+    gateway = MagicMock()
+    client = MagicMock()
+    coordinator = ModbusCoordinator(
+        hass=hass,
+        config_entry=mock_config_entry,
+        gateway_device=gateway,
+        client=client,
+        gateway="Test",
+    )
+
+    entities: list[ModbusContext] = [
+        ModbusContext(
+            1,
+            ModbusDateTimeEntityDescription(
+                key="clock",
+                register_address=1,
+                register_count=2,
+                data_type=ModbusDataType.HOLDING_REGISTER,
+                control_type=ControlType.DATETIME,
+                composite_type=CompositeType.TIME,
+                fields=(
+                    ModbusFieldDescription(key="hour", address=1),
+                    ModbusFieldDescription(key="minute", address=2),
+                ),
+            ),
+        )
+    ]
+
+    response = {"clock": MagicMock()}
+    coordinator.max_read_size = 1
+    future: asyncio.Future[Any] = asyncio.Future()
+    future.set_result(response)
+    client.update_device.return_value = future
+    converted = datetime(2026, 9, 22, 16, 30)
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.coordinator"
+            ".ModbusCoordinator.async_contexts",
+            return_value=entities,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.composite.CompositeConversion"
+            ".from_registers"
+        ) as from_registers,
+    ):
+        from_registers.return_value = converted
+        data = await coordinator._async_update_data()
+        from_registers.assert_called_once()
+        assert from_registers.call_args.args[0] == entities[0].desc
+        assert from_registers.call_args.args[1] == response["clock"]
+        assert data["clock"] == converted
 
 
 @pytest.mark.asyncio

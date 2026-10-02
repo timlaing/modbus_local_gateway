@@ -28,6 +28,9 @@ NAME = "name"
 CONTROL_TYPE = "control"
 REGISTER_ADDRESS = "address"
 REGISTER_COUNT = "size"
+COMPOSITE = "composite"
+COMPOSITE_TYPE = "type"
+COMPOSITE_FIELDS = "fields"
 CONV_BITS = "bits"
 CONV_FLAGS = "flags"
 CONV_MAP = "map"
@@ -68,6 +71,34 @@ class WriteFunction(StrEnum):
     MULTIPLE = "multiple"
 
 
+class CompositeType(StrEnum):
+    """Semantic value a set of registers is assembled into"""
+
+    DATE = "date"
+    TIME = "time"
+    DATETIME = "datetime"
+
+    @property
+    def required_fields(self) -> tuple[str, ...]:
+        """Fields the composite cannot be built without.
+
+        `second` is never required: plenty of devices keep minute resolution,
+        and a missing field simply leaves that part of the value at zero.
+        """
+        if self is CompositeType.DATE:
+            return ("year", "month", "day")
+        if self is CompositeType.TIME:
+            return ("hour", "minute")
+        return ("year", "month", "day", "hour", "minute")
+
+    @property
+    def optional_fields(self) -> tuple[str, ...]:
+        """Fields a config may add on top of `required_fields`."""
+        if self is CompositeType.DATE:
+            return ()
+        return ("second",)
+
+
 class ControlType(StrEnum):
     """Valid control types"""
 
@@ -77,6 +108,7 @@ class ControlType(StrEnum):
     TEXT = "text"
     NUMBER = "number"
     BINARY_SENSOR = "binary_sensor"
+    DATETIME = "datetime"
 
 
 class Units(StrEnum):

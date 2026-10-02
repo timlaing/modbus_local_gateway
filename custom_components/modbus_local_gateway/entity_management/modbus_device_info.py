@@ -16,6 +16,8 @@ from homeassistant.util.yaml.loader import JSON_TYPE
 from ..device_configs import CONFIG_DIR
 from .base import (
     ModbusBinarySensorEntityDescription,
+    ModbusDateTimeEntityDescription,
+    ModbusFieldDescription,
     ModbusNumberEntityDescription,
     ModbusSelectEntityDescription,
     ModbusSensorEntityDescription,
@@ -23,6 +25,9 @@ from .base import (
     ModbusTextEntityDescription,
 )
 from .const import (
+    COMPOSITE,
+    COMPOSITE_FIELDS,
+    COMPOSITE_TYPE,
     CONTROL_TYPE,
     CONV_BITS,
     CONV_FLAGS,
@@ -54,6 +59,7 @@ from .const import (
     UNIT,
     UOM,
     UOM_MAPPING,
+    CompositeType,
     ControlType,
     ModbusDataType,
 )
@@ -67,7 +73,43 @@ DESCRIPTION_TYPE = (
     | ModbusSwitchEntityDescription
     | ModbusTextEntityDescription
     | ModbusBinarySensorEntityDescription
+    | ModbusDateTimeEntityDescription
 )
+
+# The keys a `fields:` entry understands. Everything else is left out so a typo
+# cannot be read as a conversion the field never had.
+FIELD_KEYS: tuple[str, ...] = (
+    REGISTER_ADDRESS,
+    REGISTER_COUNT,
+    CONV_SWAP,
+    CONV_MULTIPLIER,
+    CONV_OFFSET,
+    CONV_UNAVAILABLE_VALUES,
+    CONV_BITS,
+    CONV_SHIFT_BITS,
+    IS_SIGNED,
+    IS_FLOAT,
+    IS_STRING,
+)
+
+# The keys a `composite:` entry takes next to its own `type`, `data_type` and
+# `fields`: the entity-level options every other entity gets, so a composite
+# polls and presents like the rest of the device instead of silently losing them.
+ENTITY_KEYS: tuple[str, ...] = (
+    CONF_SCAN_INTERVAL,
+    "icon",
+    "entity_category",
+    "entity_registry_enabled_default",
+)
+
+
+def _optional_int(value: Any) -> int | None:
+    """Return an optional integer key as an int, or None when it is absent.
+
+    `bits` and `shift_bits` are read straight from YAML, so a quoted number or a
+    word has to fail here rather than deep inside the geometry check.
+    """
+    return None if value is None else int(value)
 
 
 class DeviceConfigError(HomeAssistantError):
@@ -148,20 +190,229 @@ class ModbusDeviceInfo:
         if not self._config or not isinstance(self._config, dict):
             raise DeviceConfigError()
 
-        descriptions = []
+        descriptions: list[DESCRIPTION_TYPE] = []
         for section in (
             ModbusDataType.HOLDING_REGISTER,
             ModbusDataType.INPUT_REGISTER,
             ModbusDataType.COIL,
             ModbusDataType.DISCRETE_INPUT,
         ):
-            if isinstance(self._config.get(section), dict):
-                for entity, entity_data in self._config[section].items():
-                    if isinstance(entity_data, dict) and (
-                        desc := self._create_description(entity, section, entity_data)
-                    ):
-                        descriptions.append(desc)
+            descriptions += [
+                desc
+                for desc in (
+                    self._create_description(entity, section, entity_data)
+                    for entity, entity_data in self._entities_of(section)
+                )
+                if desc
+            ]
+        descriptions += [
+            desc
+            for desc in (
+                self._create_composite_description(entity, entity_data)
+                for entity, entity_data in self._entities_of(COMPOSITE)
+            )
+            if desc
+        ]
         return tuple(descriptions)
+
+    def _entities_of(self, section: str) -> list[tuple[str, dict[str, Any]]]:
+        """The entity definitions of one config section, ignoring unusable ones"""
+        declared = self._config.get(section) if isinstance(self._config, dict) else None
+        if not isinstance(declared, dict):
+            return []
+        return [
+            (entity, entity_data)
+            for entity, entity_data in declared.items()
+            if isinstance(entity_data, dict)
+        ]
+
+    def _create_composite_description(
+        self, entity: str, data: dict[str, Any]
+    ) -> ModbusDateTimeEntityDescription | None:
+        """Create a description for an entity assembled from several registers"""
+        composite_type = self._composite_type(entity, data)
+        if composite_type is None:
+            return None
+
+        data_type = self._composite_data_type(entity, data)
+        if data_type is None:
+            return None
+
+        fields = self._composite_fields(entity, data, data_type)
+        if fields is None:
+            return None
+
+        addresses: list[int] = [field.address for field in fields]
+        params: dict[str, Any] = {
+            key: data[key] for key in ENTITY_KEYS if data.get(key) is not None
+        }
+        if "entity_category" in params:
+            self._handle_entity_category(params, entity)
+        params.update({
+            "key": entity,
+            "name": "".join(["", data.get(NAME, entity)]),
+            "data_type": data_type,
+            "control_type": ControlType.DATETIME,
+            "composite_type": composite_type,
+            "fields": fields,
+            # The span covers every field, so the entity reads as one value
+            # and the gaps between non-adjacent fields are not addressed.
+            "register_address": min(addresses),
+            "register_count": max(field.end_address for field in fields)
+            - min(addresses)
+            + 1,
+        })
+        composite_desc: ModbusDateTimeEntityDescription | None = cast(
+            "ModbusDateTimeEntityDescription | None",
+            self._create_description_instance(
+                ModbusDateTimeEntityDescription,
+                params,
+            ),
+        )
+        return composite_desc
+
+    def _composite_type(
+        self, entity: str, data: dict[str, Any]
+    ) -> CompositeType | None:
+        """Read the composite type, e.g. `type: datetime`"""
+        stored: Any = data.get(COMPOSITE_TYPE)
+        if not isinstance(stored, str):
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s must be one of %s, got %s",
+                entity,
+                COMPOSITE_TYPE,
+                ", ".join(str(member) for member in CompositeType),
+                stored,
+            )
+            return None
+        try:
+            return CompositeType(stored)
+        except ValueError:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s must be one of %s, got %s",
+                entity,
+                COMPOSITE_TYPE,
+                ", ".join(str(member) for member in CompositeType),
+                stored,
+            )
+            return None
+
+    def _composite_data_type(
+        self, entity: str, data: dict[str, Any]
+    ) -> ModbusDataType | None:
+        """Read the Modbus data type the fields live in.
+
+        Only registers can hold a composite: a coil is a single bit, and a
+        discrete input cannot be written.
+        """
+        stored = data.get("data_type", ModbusDataType.HOLDING_REGISTER)
+        if stored not in (
+            ModbusDataType.HOLDING_REGISTER,
+            ModbusDataType.INPUT_REGISTER,
+        ):
+            _LOGGER.warning(
+                "Unable to create entity for %s: data_type must be %s or %s for a "
+                "%s, got %s",
+                entity,
+                ModbusDataType.HOLDING_REGISTER,
+                ModbusDataType.INPUT_REGISTER,
+                COMPOSITE,
+                stored,
+            )
+            return None
+        return ModbusDataType(stored)
+
+    def _composite_fields(
+        self, entity: str, data: dict[str, Any], data_type: ModbusDataType
+    ) -> tuple[ModbusFieldDescription, ...] | None:
+        """Build the field descriptions of a composite entity"""
+        declared = data.get(COMPOSITE_FIELDS)
+        if not isinstance(declared, dict) or not declared:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s needs a %s mapping",
+                entity,
+                COMPOSITE,
+                COMPOSITE_FIELDS,
+            )
+            return None
+
+        fields: list[ModbusFieldDescription] = []
+        for field_name, field_data in declared.items():
+            field = self._composite_field(entity, field_name, field_data)
+            if field is None or not field.validate(data_type):
+                return None
+            fields.append(field)
+        return tuple(fields)
+
+    def _composite_field(
+        self, entity: str, field_name: Any, field_data: Any
+    ) -> ModbusFieldDescription | None:
+        """Build one field description, warning about anything unusable"""
+        if not isinstance(field_data, dict):
+            _LOGGER.warning(
+                "Unable to create entity for %s: field %s should be a dictionary",
+                entity,
+                field_name,
+            )
+            return None
+        if field_data.get(REGISTER_ADDRESS) is None:
+            _LOGGER.warning(
+                "Unable to create entity for %s: field %s is missing %s",
+                entity,
+                field_name,
+                REGISTER_ADDRESS,
+            )
+            return None
+
+        unsupported: list[str] = [
+            key for key in (CONV_MAP, CONV_FLAGS) if field_data.get(key) is not None
+        ]
+        if unsupported:
+            _LOGGER.warning(
+                "Unable to create entity for %s: field %s cannot use %s - a "
+                "date or time part has no set of values to map or flag",
+                entity,
+                field_name,
+                ", ".join(unsupported),
+            )
+            return None
+
+        unknown: list[str] = [key for key in field_data if key not in FIELD_KEYS]
+        if unknown:
+            _LOGGER.warning(
+                "Unable to create entity for %s: field %s has unknown keys %s",
+                entity,
+                field_name,
+                ", ".join(sorted(unknown)),
+            )
+            return None
+
+        try:
+            return ModbusFieldDescription(
+                key=field_name,
+                address=int(field_data[REGISTER_ADDRESS]),
+                size=int(field_data.get(REGISTER_COUNT, 1)),
+                conv_swap=field_data.get(CONV_SWAP),
+                conv_multiplier=field_data.get(CONV_MULTIPLIER),
+                conv_offset=field_data.get(CONV_OFFSET),
+                conv_unavailable_values=field_data.get(CONV_UNAVAILABLE_VALUES),
+                conv_bits=_optional_int(field_data.get(CONV_BITS)),
+                conv_shift_bits=_optional_int(field_data.get(CONV_SHIFT_BITS)),
+                is_signed=field_data.get(IS_SIGNED, False),
+                is_float=field_data.get(IS_FLOAT, False),
+                is_string=field_data.get(IS_STRING, False),
+            )
+        except (TypeError, ValueError) as err:
+            _LOGGER.warning(
+                "Unable to create entity for %s: field %s has a bad address, "
+                "size, %s or %s: %s",
+                entity,
+                field_name,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
+                err,
+            )
+            return None
 
     def get_uom(
         self, data: dict[str, Any], control_type: ControlType

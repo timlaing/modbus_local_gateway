@@ -14,6 +14,7 @@ PLATFORMS: list[Platform] = [
     Platform.SELECT,
     Platform.SWITCH,
     Platform.TEXT,
+    Platform.DATETIME,
 ]
 
 CONF_CONNECTION_TYPES: dict[str, str] = {
