@@ -66,7 +66,8 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
         },
     )
     callback = MagicMock()
-    coordinator = AsyncMock()
+    coordinator = MagicMock()
+    coordinator.client = AsyncMock()
     gw_dev = MagicMock()
     type(coordinator).gateway_device = PropertyMock(return_value=gw_dev)
     identifiers = PropertyMock()
@@ -192,7 +193,7 @@ async def test_set_value() -> None:
     """Setting a value writes it to the client"""
     coordinator = MagicMock(spec=ModbusCoordinator)
     coordinator.client = AsyncMock()
-    coordinator.config_entry = AsyncMock()
+    coordinator.config_entry = MagicMock()
     coordinator.write_function = WriteFunction.SINGLE
 
     ctx = ModbusContext(1, COMPOSITE_DESCRIPTION)

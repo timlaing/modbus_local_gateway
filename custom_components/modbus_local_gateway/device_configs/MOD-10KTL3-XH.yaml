@@ -107,8 +107,8 @@ read_write_word:
       "off": 0
       "on": 1
 
-  # Time-of-use windows 1-9: the end time word of each pair carries the charge
-  # mode in bits 13-14 and the enable flag in bit 15, and the start time word
+  # Time-of-use windows 1-9: the start time word of each pair carries the charge
+  # mode in bits 13-14 and the enable flag in bit 15, and the end time word
   # (one register higher) leaves those bits reserved. All of it is holding
   # registers, so the windows can be set from Home Assistant.
   period1_mode:
