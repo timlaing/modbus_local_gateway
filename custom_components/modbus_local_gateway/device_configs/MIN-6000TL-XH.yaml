@@ -589,3 +589,21 @@ read_only_word:
 read_write_boolean:
 
 read_only_boolean:
+composite:
+  current_time:
+    name: Current Time
+    type: datetime
+    data_type: read_write_word
+    fields:
+      year:
+        address: 45
+      month:
+        address: 46
+      day:
+        address: 47
+      hour:
+        address: 48
+      minute:
+        address: 49
+      second:
+        address: 50
