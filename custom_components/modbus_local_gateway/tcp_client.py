@@ -48,6 +48,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             ModbusDataType.DISCRETE_INPUT: self.read_discrete_inputs,
         }
         self.lock = asyncio.Lock()
+        # Devices that have answered a preset single register write. Silence
+        # from a device outside this set means the function is not implemented
+        # rather than that a response went missing, which is what makes retrying
+        # such a write with preset multiple registers safe.
+        self._devices_answering_fc06: set[int] = set()
         super().__init__(
             host=host, port=port, framer=framer, source_address=source_address, **kwargs
         )
@@ -183,6 +188,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 address, value, device_id, f"it was refused: {result}"
             )
         _LOGGER.debug("Writing successful")
+        self._devices_answering_fc06.add(device_id)
         return result
 
     async def _write_single_register_unanswered(
@@ -190,21 +196,25 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     ) -> ModbusPDU:
         """Deal with a single-register write that never got an answer.
 
-        The request may have reached the device with only the response lost, and
-        writing a register is not idempotent: some registers run a command when
-        written, and repeating the request would run it twice. The register is
-        therefore read back first, and only one that still holds its previous
-        value is written again.
+        A matching read-back is not proof that the write ran - the register may
+        have held the value already - but it does mean the requested state is
+        in place, so the write is reported as done and not repeated.
 
-        A read that fails leaves it unknown whether the write landed, and then
-        nothing is repeated.
+        What a read-back that still shows the old value cannot settle is why
+        nothing came back: a device that does not implement preset single
+        register drops it, while a device that does implement it may have run a
+        command and lost only the response. Repeating the write is safe in the
+        first case and can run a command register twice in the second, so the
+        FC 0x10 retry is limited to devices that have never answered preset
+        single register. A read that cannot be answered leaves it unknown, and
+        then nothing is repeated.
         """
         applied: bool | None = await self._write_was_applied(address, value, device_id)
         if applied:
             _LOGGER.warning(
                 "No answer writing value %d to address %d (%s), but the register "
-                "holds it: the write was carried out and only the response was "
-                "lost",
+                "already holds it, so the write is treated as done and not "
+                "repeated",
                 value,
                 address,
                 exc,
@@ -214,6 +224,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             raise ModbusClientError(
                 f"No answer writing value {value} to address {address} ({exc}) and "
                 "the register could not be read back, so the write is not repeated"
+            )
+        if device_id in self._devices_answering_fc06:
+            raise ModbusClientError(
+                f"No answer writing value {value} to address {address} ({exc}) from "
+                "a device that answers preset single register, so the write is not "
+                "repeated: repeating it could run a command register twice"
             )
         return await self._retry_single_with_multiple_registers(
             address, value, device_id, f"it went unanswered ({exc})"

@@ -11,6 +11,7 @@ from pymodbus.pdu.pdu import ModbusPDU
 from pymodbus.pdu.register_message import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
+    WriteSingleRegisterResponse,
 )
 import pytest
 
@@ -311,6 +312,39 @@ async def test_write_single_register_unanswered_but_applied() -> None:
         assert result is not None
         assert not result.isError()
         mock_logger.warning.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_write_single_register_unanswered_after_fc06_worked() -> None:
+    """Silence from a device that answers FC 0x06 is a lost response.
+
+    The register read back as its old value, which on a device that implements
+    preset single register means the write may have run a command and lost the
+    answer. Repeating it could run the command twice (Pichler register 33
+    executes Reset/Snooze and the device clears it again), so nothing is written
+    a second time.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteSingleRegisterResponse(address=301, registers=[3])
+    )
+    cast(Any, client).write_register.return_value.isError = lambda: False
+    cast(Any, client).read_holding_registers = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[0])
+    )
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    await client._custom_write_registers(address=301, values=[3], device_id=1)
+
+    # a device that answered FC 0x06 is remembered
+    assert 1 in cast(Any, client)._devices_answering_fc06
+
+    cast(Any, client).write_register = AsyncMock(
+        side_effect=ModbusIOException("No response received after 5 retries")
+    )
+    with pytest.raises(ModbusClientError, match="answers preset single register"):
+        await client._custom_write_registers(address=301, values=[3], device_id=1)
+    cast(Any, client).write_registers.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -318,11 +318,13 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
 - **Writes Fail with "No response received after 5 retries"**: some devices only implement
   _Preset Multiple Registers_ (FC `0x10`). A single-value write to them now falls back to
   FC `0x10` on its own, and the log says which attempt failed and why.
-- **A write that never got an answer is not repeated**: because writing a holding register
-  can run a command, a write whose response went missing is read back first. If the register
-  already holds the value, only the response was lost and nothing is written again; if it
-  still holds its old value, the FC `0x10` fallback runs. When the read-back itself fails,
-  the write is reported as failed and repeated by nothing.
+- **A write that never got an answer is not repeated blindly**: because writing a holding
+  register can run a command, a write whose response went missing is read back first. If the
+  register already holds the value the write is treated as done and nothing is written again;
+  if it still holds its old value, the FC `0x10` fallback only runs for devices that have
+  never answered a preset single register write, since for those the function is unimplemented
+  rather than the response lost. When the read-back cannot be answered, the write is reported
+  as failed and nothing is repeated.
 
 ## Supported Devices
 
