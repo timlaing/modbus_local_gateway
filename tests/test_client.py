@@ -1535,9 +1535,10 @@ async def test_read_composite_run_error_raises() -> None:
     error_response = ReadHoldingRegistersResponse(registers=[0])
     cast(Any, error_response).isError = lambda: True
     read = AsyncMock(return_value=error_response)
+    entity = _composite_entity()
 
     with pytest.raises(ModbusClientError, match="Error reading composite clock"):
-        await client._read_composite_runs(_composite_entity(), read, 64)
+        await client._read_composite_runs(entity, read, 64)
 
 
 @pytest.mark.asyncio
@@ -1545,9 +1546,10 @@ async def test_read_composite_no_response_raises() -> None:
     """A missing response must not be reported as a value"""
     client = AsyncModbusTcpClientGateway(host="127.0.0.1")
     read = AsyncMock(return_value=None)
+    entity = _composite_entity()
 
     with pytest.raises(ModbusClientError, match="No response reading composite clock"):
-        await client._read_composite_runs(_composite_entity(), read, 64)
+        await client._read_composite_runs(entity, read, 64)
 
 
 @pytest.mark.asyncio
@@ -1667,15 +1669,16 @@ async def test_write_composite_error_response_aborts_write() -> None:
     cast(Any, client).write_registers = AsyncMock(return_value=error_response)
     cast(Any, client).write_register = AsyncMock(return_value=error_response)
 
+    entity = _composite_entity()
+    value = datetime(2026, 9, 22, 16, 30, 5)
+
     with (
         patch.object(
             AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
         ),
         pytest.raises(ModbusClientError, match="Error writing clock"),
     ):
-        await client.write_data(
-            _composite_entity(), value=datetime(2026, 9, 22, 16, 30, 5)
-        )
+        await client.write_data(entity, value=value)
 
 
 @pytest.mark.asyncio
@@ -1685,18 +1688,18 @@ async def test_write_composite_input_register_is_refused() -> None:
     cast(Any, client).connect = AsyncMock()
     cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
 
+    entity = _composite_entity(
+        fields=(("year", 45), ("month", 46), ("day", 47)),
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    value = datetime(2026, 9, 22, 16, 30, 5)
+
     with (
         patch.object(
             AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
         ),
         pytest.raises(ModbusClientError, match="cannot be written"),
     ):
-        await client.write_data(
-            _composite_entity(
-                fields=(("year", 45), ("month", 46), ("day", 47)),
-                data_type=ModbusDataType.INPUT_REGISTER,
-            ),
-            value=datetime(2026, 9, 22, 16, 30, 5),
-        )
+        await client.write_data(entity, value=value)
 
     cast(Any, client).write_registers.assert_not_called()

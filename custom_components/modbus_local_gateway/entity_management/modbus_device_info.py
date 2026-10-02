@@ -169,26 +169,41 @@ class ModbusDeviceInfo:
         if not self._config or not isinstance(self._config, dict):
             raise DeviceConfigError()
 
-        descriptions = []
+        descriptions: list[DESCRIPTION_TYPE] = []
         for section in (
             ModbusDataType.HOLDING_REGISTER,
             ModbusDataType.INPUT_REGISTER,
             ModbusDataType.COIL,
             ModbusDataType.DISCRETE_INPUT,
         ):
-            if isinstance(self._config.get(section), dict):
-                for entity, entity_data in self._config[section].items():
-                    if isinstance(entity_data, dict) and (
-                        desc := self._create_description(entity, section, entity_data)
-                    ):
-                        descriptions.append(desc)
-        if isinstance(self._config.get(COMPOSITE), dict):
-            for entity, entity_data in self._config[COMPOSITE].items():
-                if isinstance(entity_data, dict) and (
-                    desc := self._create_composite_description(entity, entity_data)
-                ):
-                    descriptions.append(desc)
+            descriptions += [
+                desc
+                for desc in (
+                    self._create_description(entity, section, entity_data)
+                    for entity, entity_data in self._entities_of(section)
+                )
+                if desc
+            ]
+        descriptions += [
+            desc
+            for desc in (
+                self._create_composite_description(entity, entity_data)
+                for entity, entity_data in self._entities_of(COMPOSITE)
+            )
+            if desc
+        ]
         return tuple(descriptions)
+
+    def _entities_of(self, section: str) -> list[tuple[str, dict[str, Any]]]:
+        """The entity definitions of one config section, ignoring unusable ones"""
+        declared = self._config.get(section) if isinstance(self._config, dict) else None
+        if not isinstance(declared, dict):
+            return []
+        return [
+            (entity, entity_data)
+            for entity, entity_data in declared.items()
+            if isinstance(entity_data, dict)
+        ]
 
     def _create_composite_description(
         self, entity: str, data: dict[str, Any]

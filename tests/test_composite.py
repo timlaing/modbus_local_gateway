@@ -176,34 +176,30 @@ def test_from_registers_unavailable_value(conversion: Conversion) -> None:
     """A field the device marks unavailable leaves the entity unavailable"""
     desc = make_description(fields=(("year", 45), ("month", 46), ("day", 47)))
 
+    response = ReadHoldingRegistersResponse(registers=[26, 65535, 47])
+
     with pytest.raises(ValueUnavailable):
-        CompositeConversion.from_registers(
-            desc,
-            ReadHoldingRegistersResponse(registers=[26, 65535, 47]),
-            conversion,
-        )
+        CompositeConversion.from_registers(desc, response, conversion)
 
 
 def test_from_registers_impossible_value(conversion: Conversion) -> None:
     """Fields that cannot form a real date leave the entity unavailable"""
     desc = make_description(fields=(("year", 45), ("month", 46), ("day", 47)))
 
+    response = ReadHoldingRegistersResponse(registers=[26, 13, 47])
+
     with pytest.raises(ValueUnavailable):
-        CompositeConversion.from_registers(
-            desc,
-            ReadHoldingRegistersResponse(registers=[26, 13, 47]),
-            conversion,
-        )
+        CompositeConversion.from_registers(desc, response, conversion)
 
 
 def test_from_registers_missing_registers(conversion: Conversion) -> None:
     """A response too short for a field leaves the entity unavailable"""
     desc = make_description(fields=(("year", 45), ("month", 46), ("day", 47)))
 
+    response = ReadHoldingRegistersResponse(registers=[26, 9])
+
     with pytest.raises(ValueUnavailable):
-        CompositeConversion.from_registers(
-            desc, ReadHoldingRegistersResponse(registers=[26, 9]), conversion
-        )
+        CompositeConversion.from_registers(desc, response, conversion)
 
 
 def test_from_registers_string_field(conversion: Conversion) -> None:
@@ -219,12 +215,10 @@ def test_from_registers_string_field(conversion: Conversion) -> None:
         ),
     )
 
+    response = ReadHoldingRegistersResponse(registers=[0x3031, 0x3233])
+
     with pytest.raises(ValueUnavailable):
-        CompositeConversion.from_registers(
-            desc,
-            ReadHoldingRegistersResponse(registers=[0x3031, 0x3233]),
-            conversion,
-        )
+        CompositeConversion.from_registers(desc, response, conversion)
 
 
 def test_to_field_values_datetime() -> None:

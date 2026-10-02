@@ -453,6 +453,54 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             raise ModbusClientError(f"Composite {desc.key} declares no fields")
         return pdu
 
+    async def _write_holding_registers(
+        self,
+        entity: ModbusContext,
+        value: Any,
+        write_function: WriteFunction,
+    ) -> ModbusPDU | None:
+        """Write one entity's value to its holding registers"""
+        conversion = Conversion(type(self))
+        if entity.desc.conv_bits or entity.desc.conv_shift_bits:
+            # No dependable device-side bit write (FC 0x16 is optional): read the
+            # register, replace this field, write it back. Still inside
+            # `self.lock`, so nothing lands in between.
+            registers = conversion.merge_into_registers(
+                entity.desc,
+                value,
+                await self._read_current_registers(entity),
+            )
+        else:
+            registers = conversion.convert_to_registers(entity.desc, value)
+        _LOGGER.debug(
+            "Raw value after conversion to registers: %s (type: %s)",
+            registers,
+            type(registers).__name__,
+        )
+        if len(registers) != entity.desc.register_count:
+            raise ModbusClientError(
+                "Incorrect number of registers: expected "
+                f"{entity.desc.register_count}, got {len(registers)}"
+            )
+        return await self._custom_write_registers(
+            address=entity.desc.register_address,
+            values=registers,
+            device_id=entity.device_id,
+            write_function=write_function,
+        )
+
+    async def _write_coil(self, entity: ModbusContext, value: Any) -> ModbusPDU:
+        """Write one entity's value to its coil"""
+        if not isinstance(value, bool):
+            raise TypeError(
+                f"Value for COIL must be boolean, got {type(value).__name__}"
+            )
+        return await self.write_coil(
+            address=entity.desc.register_address,
+            value=value,
+            device_id=entity.device_id,
+        )
+
     async def write_data(
         self,
         entity: ModbusContext,
@@ -488,44 +536,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             if isinstance(entity.desc, ModbusCompositeEntityDescription):
                 pdu = await self._write_composite(entity, value, write_function)
             elif entity.desc.data_type == ModbusDataType.HOLDING_REGISTER:
-                conversion = Conversion(type(self))
-                if entity.desc.conv_bits or entity.desc.conv_shift_bits:
-                    # No dependable device-side bit write (FC 0x16 is optional):
-                    # read the register, replace this field, write it back. Still
-                    # inside `self.lock`, so nothing lands in between.
-                    registers = conversion.merge_into_registers(
-                        entity.desc,
-                        value,
-                        await self._read_current_registers(entity),
-                    )
-                else:
-                    registers = conversion.convert_to_registers(entity.desc, value)
-                _LOGGER.debug(
-                    "Raw value after conversion to registers: %s (type: %s)",
-                    registers,
-                    type(registers).__name__,
-                )
-                if len(registers) != entity.desc.register_count:
-                    raise ModbusClientError(
-                        "Incorrect number of registers: expected "
-                        f"{entity.desc.register_count}, got {len(registers)}"
-                    )
-                pdu = await self._custom_write_registers(
-                    address=entity.desc.register_address,
-                    values=registers,
-                    device_id=entity.device_id,
-                    write_function=write_function,
-                )
+                pdu = await self._write_holding_registers(entity, value, write_function)
             elif entity.desc.data_type == ModbusDataType.COIL:
-                if not isinstance(value, bool):
-                    raise TypeError(
-                        f"Value for COIL must be boolean, got {type(value).__name__}"
-                    )
-                pdu = await self.write_coil(
-                    address=entity.desc.register_address,
-                    value=value,
-                    device_id=entity.device_id,
-                )
+                pdu = await self._write_coil(entity, value)
             else:
                 raise ValueError(f"Unsupported data type: {entity.desc.data_type}")
 
