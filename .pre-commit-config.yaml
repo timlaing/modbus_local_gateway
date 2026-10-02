@@ -180,3 +180,9 @@ repos:
           - requirements_all.txt
         files: ^(requirements.*\.txt|\.pre-commit-config\.yaml)$
         pass_filenames: false
+      - id: check-action-refs
+        name: Check workflow action references
+        language: system
+        entry: python3 scripts/check_action_refs.py
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: true
