@@ -11,9 +11,12 @@ import yaml
 
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
+    ModbusDateTimeEntityDescription,
     ModbusSensorEntityDescription,
 )
 from custom_components.modbus_local_gateway.entity_management.const import (
+    CompositeType,
+    ControlType,
     ModbusDataType,
 )
 from custom_components.modbus_local_gateway.entity_management.device_loader import (
@@ -443,3 +446,325 @@ async def test_devices_power_entities_are_measurements(hass: HomeAssistant) -> N
     ]
 
     assert not offenders, f"power entities declared as totals: {offenders}"
+
+
+COMPOSITE_YAML = """device:
+        model: Model
+        manufacturer: Manufacturer
+
+composite:
+  current_time:
+    name: Current Time
+    type: datetime
+    fields:
+      year: {address: 45, offset: 2000}
+      month: {address: 46}
+      day: {address: 47}
+      hour: {address: 48}
+      minute: {address: 49}
+      second: {address: 50}"""
+
+
+def _load(config: dict[str, object]) -> list[modbus_device_info.DESCRIPTION_TYPE]:
+    """Load a device description from a config dict"""
+    with patch(
+        "custom_components.modbus_local_gateway.entity_management."
+        "modbus_device_info.load_yaml",
+        return_value=config,
+    ):
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
+        return list(device.entity_descriptions)
+
+
+def _load_composite(config: dict[str, object]) -> ModbusDateTimeEntityDescription:
+    """Load the one composite entity a config describes"""
+    entities = _load(config)
+    assert len(entities) == 1
+    desc = entities[0]
+    assert isinstance(desc, ModbusDateTimeEntityDescription)
+    return desc
+
+
+def test_composite_entity_load() -> None:
+    """Test composite entity creation"""
+    desc = _load_composite(yaml.full_load(COMPOSITE_YAML))
+    assert desc.key == "current_time"
+    assert desc.name == "Current Time"
+    assert desc.data_type == ModbusDataType.HOLDING_REGISTER
+    assert desc.control_type == ControlType.DATETIME
+    assert desc.composite_type == CompositeType.DATETIME
+    assert desc.register_address == 45
+    assert desc.register_count == 6
+    assert [field.key for field in desc.fields] == [
+        "year",
+        "month",
+        "day",
+        "hour",
+        "minute",
+        "second",
+    ]
+    assert desc.fields[0].conv_offset == 2000
+    assert desc.fields[1].conv_offset is None
+    # one run of adjacent fields, so one read and one write
+    assert desc.runs == (desc.fields,)
+
+
+def test_composite_entity_data_type() -> None:
+    """A composite entity declares the data type its fields live in"""
+    assert (
+        _load_composite({
+            "device": {"manufacturer": "Manufacturer", "model": "Model"},
+            "composite": {
+                "clock": {
+                    "type": "datetime",
+                    "data_type": "read_only_word",
+                    "fields": {
+                        "year": {"address": 1},
+                        "month": {"address": 2},
+                        "day": {"address": 3},
+                        "hour": {"address": 4},
+                        "minute": {"address": 5},
+                    },
+                }
+            },
+        }).data_type
+        == ModbusDataType.INPUT_REGISTER
+    )
+
+
+def test_composite_entity_gapped_fields_group_runs() -> None:
+    """Fields that are not adjacent are grouped into separate runs"""
+    desc = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 10},
+                    "minute": {"address": 11},
+                    "second": {"address": 20},
+                },
+            }
+        },
+    })
+    assert desc.composite_type == CompositeType.TIME
+    assert desc.register_address == 10
+    assert desc.register_count == 11
+    assert [[field.key for field in run] for run in desc.runs] == [
+        ["hour", "minute"],
+        ["second"],
+    ]
+
+
+def test_composite_entity_field_conversion() -> None:
+    """Field conversion options are taken from the field mapping"""
+    fields = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 10, "multiplier": 0.1},
+                    "minute": {
+                        "address": 11,
+                        "signed": True,
+                        "swap": True,
+                        "unavailable_values": [999],
+                    },
+                },
+            }
+        },
+    }).fields
+    assert fields[0].conv_multiplier == 0.1
+    assert fields[1].is_signed
+    assert fields[1].conv_swap
+    assert fields[1].conv_unavailable_values == [999]
+
+
+@pytest.mark.parametrize(
+    ("entity", "expected_log"),
+    [
+        # a packed register is described as separate entities at one address
+        (
+            {
+                "type": "time",
+                "fields": {"hour": {"address": 1, "bits": 4}, "minute": {"address": 2}},
+            },
+            "cannot use bits",
+        ),
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "shift_bits": 4},
+                    "minute": {"address": 2},
+                },
+            },
+            "cannot use shift_bits",
+        ),
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "map": {1: "a"}},
+                    "minute": {"address": 2},
+                },
+            },
+            "cannot use map",
+        ),
+        # a field is not a part of a date or time
+        (
+            {
+                "type": "time",
+                "fields": {"hour": {"address": 1}, "weekday": {"address": 2}},
+            },
+            "is not part of a time",
+        ),
+        # a type that is not a date or time
+        (
+            {
+                "type": "weekday",
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "type must be one of",
+        ),
+        (
+            {"type": 3, "fields": {"hour": {"address": 1}, "minute": {"address": 2}}},
+            "type must be one of",
+        ),
+        # no type at all
+        (
+            {"fields": {"hour": {"address": 1}, "minute": {"address": 2}}},
+            "type must be one of",
+        ),
+        # missing fields, or fields that are not a mapping
+        ({"type": "time"}, "needs a fields mapping"),
+        ({"type": "time", "fields": {}}, "needs a fields mapping"),
+        ({"type": "time", "fields": []}, "needs a fields mapping"),
+        (
+            {"type": "time", "fields": {"hour": 1, "minute": 2}},
+            "should be a dictionary",
+        ),
+        # a field without an address
+        (
+            {
+                "type": "time",
+                "fields": {"hour": {"offset": 1}, "minute": {"address": 2}},
+            },
+            "is missing address",
+        ),
+        # an address or size that is not a number
+        (
+            {
+                "type": "time",
+                "fields": {"hour": {"address": "first"}, "minute": {"address": 2}},
+            },
+            "bad address or size",
+        ),
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "size": "one"},
+                    "minute": {"address": 2},
+                },
+            },
+            "bad address or size",
+        ),
+        # a key that no field understands
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "description": 1},
+                    "minute": {"address": 2},
+                },
+            },
+            "unknown keys description",
+        ),
+        # a field that cannot hold the value
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "float": True},
+                    "minute": {"address": 2},
+                },
+            },
+            "hour",
+        ),
+        # coils cannot hold a date
+        (
+            {
+                "type": "time",
+                "data_type": "read_write_boolean",
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "data_type must be",
+        ),
+        (
+            {
+                "type": "time",
+                "data_type": "read_only_boolean",
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "data_type must be",
+        ),
+    ],
+)
+def test_composite_entity_invalid(
+    entity: dict[str, object], expected_log: str, caplog: LogCaptureFixture
+) -> None:
+    """Test invalid composite entities"""
+
+    with patch(
+        "custom_components.modbus_local_gateway.entity_management."
+        "modbus_device_info.load_yaml",
+        return_value={
+            "device": {"manufacturer": "Manufacturer", "model": "Model"},
+            "composite": {"clock": entity},
+        },
+    ):
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
+        entities = device.entity_descriptions
+
+    assert len(entities) == 0
+    assert expected_log in caplog.text
+
+
+def test_composite_entity_missing_required_field() -> None:
+    """A date needs a year, a month and a day"""
+
+    entities = _load({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "date": {
+                "type": "date",
+                "fields": {"year": {"address": 1}, "month": {"address": 2}},
+            }
+        },
+    })
+
+    assert not entities
+
+
+def test_composite_entity_alongside_other_entities() -> None:
+    """Composite entities are loaded next to the ordinary ones"""
+    entities = _load(
+        yaml.full_load(
+            COMPOSITE_YAML
+            + """
+
+read_write_word:
+  entity_rw:
+    name: Read-Write Entity
+    address: 1
+
+read_only_word: {}
+read_write_boolean: {}
+read_only_boolean: {}"""
+        )
+    )
+
+    assert len(entities) == 2
+    assert {desc.key for desc in entities} == {"current_time", "entity_rw"}

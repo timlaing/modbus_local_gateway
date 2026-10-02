@@ -6,8 +6,12 @@ import builtins
 from collections.abc import Callable
 from dataclasses import dataclass
 import logging
+from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
+from homeassistant.components.datetime import (
+    DateTimeEntityDescription,
+)
 from homeassistant.components.number import NumberEntityDescription, NumberMode
 from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
@@ -16,6 +20,7 @@ from homeassistant.components.text import TextEntityDescription
 from homeassistant.helpers.entity import EntityDescription
 
 from .const import (
+    COMPOSITE_TYPE,
     CONV_BITS,
     CONV_MULTIPLIER,
     CONV_OFFSET,
@@ -30,6 +35,7 @@ from .const import (
     NO_FLAG_VALUE,
     PRECISION,
     REGISTER_COUNT,
+    CompositeType,
     ControlType,
     ModbusDataType,
 )
@@ -377,3 +383,154 @@ class ModbusBinarySensorEntityDescription(
 
     on: bool | int | None = None
     off: bool | int | None = None
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusFieldDescription:
+    """One register, or run of registers, inside a composite entity.
+
+    A field carries the conversion options a single entity carries, so a device
+    that stores the year as an offset from 2000 is described with
+    `offset: 2000` and the composite layer only ever sees 2026.
+    """
+
+    key: str
+    address: int
+    size: int = 1
+    conv_swap: str | None = None
+    conv_multiplier: float | None = None
+    conv_offset: float | None = None
+    conv_unavailable_values: list[int] | None = None
+    is_signed: bool | None = False
+    is_float: bool | None = False
+    is_string: bool | None = False
+
+    def validate(self, data_type: ModbusDataType) -> bool:
+        """Validate the field as the entity description it converts through.
+
+        The field has no `bits` / `shift_bits`: merging one bit run into a
+        multi-register span would rewrite the whole span, so any bit not covered
+        by another field would be zeroed. Registers that pack several logical
+        values are described as separate entities at the same address instead.
+        """
+        return self.as_entity_description(data_type).validate()
+
+    def as_entity_description(
+        self, data_type: ModbusDataType
+    ) -> ModbusEntityDescription:
+        """Return this field as the entity description `Conversion` takes.
+
+        Reusing the entity description is what keeps a field's conversion the
+        same code path an ordinary entity goes through.
+        """
+        # `ModbusEntityDescription` is a dataclass whose `key` comes from the
+        # Home Assistant base class, which pylint cannot see as a parameter.
+        params: dict[str, Any] = {
+            "key": self.key,
+            "register_address": self.address,
+            "register_count": self.size,
+            "data_type": data_type,
+            "conv_swap": self.conv_swap,
+            "conv_multiplier": self.conv_multiplier,
+            "conv_offset": self.conv_offset,
+            "conv_unavailable_values": self.conv_unavailable_values,
+            "is_signed": self.is_signed,
+            "is_float": self.is_float,
+            "is_string": self.is_string,
+        }
+        return ModbusEntityDescription(**params)  # pylint: disable=unexpected-keyword-arg
+
+    @property
+    def end_address(self) -> int:
+        """Address just past the last register this field occupies."""
+        return self.address + max(1, self.size) - 1
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusCompositeEntityDescription(ModbusEntityDescription):
+    """Describes an entity assembled from several registers.
+
+    `register_address` and `register_count` describe the whole span the fields
+    cover, so an entity reads as one value like any other; `fields` say how the
+    registers inside that span turn into a single semantic value.
+    """
+
+    composite_type: CompositeType
+    fields: tuple[ModbusFieldDescription, ...]
+
+    @property
+    def runs(self) -> tuple[tuple[ModbusFieldDescription, ...], ...]:
+        """Fields grouped into runs of adjacent registers.
+
+        A run is written with one preset multiple registers request, and read
+        with one transaction, so the value on the device is never half updated.
+        """
+        ordered: list[ModbusFieldDescription] = sorted(
+            self.fields, key=lambda field: field.address
+        )
+        grouped: list[list[ModbusFieldDescription]] = []
+        for field in ordered:
+            if grouped and field.address == grouped[-1][-1].end_address + 1:
+                grouped[-1].append(field)
+            else:
+                grouped.append([field])
+        return tuple(tuple(run) for run in grouped)
+
+    def validate(self) -> bool:
+        """Validate the composite and every field in it."""
+        if not self.validate_composite():
+            return False
+        return all(field.validate(self.data_type) for field in self.fields)
+
+    def validate_composite(self) -> bool:
+        """Check the field set can form the composite type it declares."""
+        declared: set[str] = {field.key for field in self.fields}
+        if len(declared) != len(self.fields):
+            _LOGGER.warning(
+                "Unable to create entity for %s: a field name is declared twice",
+                self.key,
+            )
+            return False
+
+        allowed: set[str] = set(self.composite_type.required_fields) | set(
+            self.composite_type.optional_fields
+        )
+        unknown: set[str] = declared - allowed
+        if unknown:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s %s is not part of a %s; "
+                "allowed fields are %s",
+                self.key,
+                COMPOSITE_TYPE,
+                ", ".join(sorted(unknown)),
+                self.composite_type,
+                ", ".join(sorted(allowed)),
+            )
+            return False
+
+        missing: set[str] = set(self.composite_type.required_fields) - declared
+        if missing:
+            _LOGGER.warning(
+                "Unable to create entity for %s: a %s needs %s",
+                self.key,
+                self.composite_type,
+                ", ".join(sorted(missing)),
+            )
+            return False
+
+        for run in self.runs:
+            _LOGGER.debug(
+                "Composite %s: run %s covers registers %d-%d",
+                self.key,
+                ", ".join(field.key for field in run),
+                run[0].address,
+                run[-1].end_address,
+            )
+        return True
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusDateTimeEntityDescription(
+    DateTimeEntityDescription, ModbusCompositeEntityDescription
+):
+    """Describes a composite entity exposed as a date/time."""

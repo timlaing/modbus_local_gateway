@@ -23,10 +23,14 @@ from homeassistant.helpers.update_coordinator import (
 )
 from pymodbus.pdu.pdu import ModbusPDU
 
+from .composite import CompositeConversion
 from .const import CONF_PREFIX, OPTIONS_DEFAULT_WRITE_FUNCTION, OPTIONS_WRITE_FUNCTION
 from .context import ModbusContext
 from .conversion import Conversion, ValueUnavailable
-from .entity_management.base import ModbusEntityDescription
+from .entity_management.base import (
+    ModbusCompositeEntityDescription,
+    ModbusEntityDescription,
+)
 from .entity_management.const import WriteFunction
 from .tcp_client import AsyncModbusTcpClientGateway
 
@@ -110,7 +114,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     async def write_data(
         self,
-        value: str | float | bool | None,
+        value: str | float | bool | datetime | None,
     ) -> None:
         """Write data to the Modbus device"""
         try:
@@ -342,16 +346,13 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         )
         data: dict[str, Any] = {}
         failed = False
-        conversion: Conversion = Conversion(type(self.client))
 
         for entity in entities:
             if entity.desc.key in resp:
                 modbus_response: ModbusPDU = resp[entity.desc.key]
                 try:
-                    value: str | float | int | bool | None = (
-                        conversion.convert_from_response(
-                            desc=entity.desc, response=modbus_response
-                        )
+                    value: str | float | int | bool | datetime | None = (
+                        self._convert_value(entity.desc, modbus_response)
                     )
                     data[entity.desc.key] = value
                     self._unavailable_keys.discard(entity.desc.key)
@@ -379,6 +380,19 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         if not data and (not resp or failed):
             raise UpdateFailed()
         return data
+
+    def _convert_value(
+        self, desc: ModbusEntityDescription, response: ModbusPDU
+    ) -> str | float | int | bool | datetime | None:
+        """Convert one entity's registers into the value it publishes.
+
+        A composite entity assembles its fields itself; every other entity hands
+        the response to the register conversion layer unchanged.
+        """
+        conversion: Conversion = Conversion(type(self.client))
+        if isinstance(desc, ModbusCompositeEntityDescription):
+            return CompositeConversion.from_registers(desc, response, conversion)
+        return conversion.convert_from_response(desc=desc, response=response)
 
     async def async_update_entity(self, ctx: ModbusContext) -> None:
         """Update cached data for a specific entity."""
