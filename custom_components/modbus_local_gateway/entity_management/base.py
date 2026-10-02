@@ -197,9 +197,9 @@ class ModbusEntityDescription(
                 CONV_SHIFT_BITS,
             )
             return False
-        return self._validate_bitfield_geometry()
+        return self.validate_bitfield_geometry()
 
-    def _validate_bitfield_geometry(self) -> bool:
+    def validate_bitfield_geometry(self) -> bool:
         """The field must be a real run of bits inside the registers it names."""
         if self.data_type == ModbusDataType.COIL:
             _LOGGER.warning(
@@ -401,19 +401,57 @@ class ModbusFieldDescription:
     conv_multiplier: float | None = None
     conv_offset: float | None = None
     conv_unavailable_values: list[int] | None = None
+    conv_bits: int | None = None
+    conv_shift_bits: int | None = None
     is_signed: bool | None = False
     is_float: bool | None = False
-    is_string: bool | None = False
+    is_string: bool | None = None
+
+    @property
+    def is_bitfield(self) -> bool:
+        """Whether the field claims part of a register rather than all of it."""
+        return self.conv_bits is not None or self.conv_shift_bits is not None
 
     def validate(self, data_type: ModbusDataType) -> bool:
         """Validate the field as the entity description it converts through.
 
-        The field has no `bits` / `shift_bits`: merging one bit run into a
-        multi-register span would rewrite the whole span, so any bit not covered
-        by another field would be zeroed. Registers that pack several logical
-        values are described as separate entities at the same address instead.
+        A bit field is merged into the register it lives in rather than written
+        over it, so the bits it does not cover are left as the device has them:
+        a register that packs a time together with a mode and an enable bit can
+        be described as one `time` composite plus entities for the other fields.
         """
-        return self.as_entity_description(data_type).validate()
+        entity: ModbusEntityDescription = self.as_entity_description(data_type)
+        if not entity.validate():
+            return False
+        if not self.is_bitfield:
+            return True
+        if self.is_signed:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be combined with "
+                "%s or %s on a bit field",
+                self.key,
+                IS_SIGNED,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
+            )
+            return False
+        return entity.validate_bitfield_geometry()
+
+    def bit_ranges(self) -> list[tuple[int, int, int]]:
+        """The `(address, lowest bit, highest bit)` this field claims.
+
+        A field that is not a bit field claims every bit of every register it
+        addresses, which is what makes two of them in one composite an overlap.
+        An empty list means the geometry does not fit, and is rejected elsewhere.
+        """
+        span: int = 16 * max(1, self.size)
+        shift: int = self.conv_shift_bits or 0
+        width: int = self.conv_bits if self.conv_bits is not None else span - shift
+        if width <= 0 or shift < 0 or shift + width > span:
+            return []
+        if self.is_bitfield:
+            return [(self.address + shift // 16, shift % 16, shift % 16 + width - 1)]
+        return [(self.address + offset, 0, 15) for offset in range(max(1, self.size))]
 
     def as_entity_description(
         self, data_type: ModbusDataType
@@ -434,6 +472,8 @@ class ModbusFieldDescription:
             "conv_multiplier": self.conv_multiplier,
             "conv_offset": self.conv_offset,
             "conv_unavailable_values": self.conv_unavailable_values,
+            "conv_bits": self.conv_bits,
+            "conv_shift_bits": self.conv_shift_bits,
             "is_signed": self.is_signed,
             "is_float": self.is_float,
             "is_string": self.is_string,
@@ -464,13 +504,15 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
 
         A run is written with one preset multiple registers request, and read
         with one transaction, so the value on the device is never half updated.
+        Two bit fields in the same register are one run, not two: they are
+        written in the same request, and each merge keeps the other's bits.
         """
         ordered: list[ModbusFieldDescription] = sorted(
             self.fields, key=lambda field: field.address
         )
         grouped: list[list[ModbusFieldDescription]] = []
         for field in ordered:
-            if grouped and field.address == grouped[-1][-1].end_address + 1:
+            if grouped and field.address <= grouped[-1][-1].end_address + 1:
                 grouped[-1].append(field)
             else:
                 grouped.append([field])
@@ -480,7 +522,35 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
         """Validate the composite and every field in it."""
         if not self.validate_composite():
             return False
+        if not self.validate_field_overlap():
+            return False
         return all(field.validate(self.data_type) for field in self.fields)
+
+    def validate_field_overlap(self) -> bool:
+        """Two fields of one composite must not claim the same bits.
+
+        They share the register they live in, so a write would have to decide
+        which of them wins - and the loser's value would be overwritten by the
+        merge of the other.
+        """
+        claimed: dict[int, list[tuple[int, int, str]]] = {}
+        for field in self.fields:
+            for address, low, high in field.bit_ranges():
+                for other_low, other_high, other_key in claimed.get(address, []):
+                    if low <= other_high and other_low <= high:
+                        _LOGGER.warning(
+                            "Unable to create entity for %s: field %s and field "
+                            "%s both claim bits %d-%d of register %d",
+                            self.key,
+                            other_key,
+                            field.key,
+                            max(low, other_low),
+                            min(high, other_high),
+                            address,
+                        )
+                        return False
+                claimed.setdefault(address, []).append((low, high, field.key))
+        return True
 
     def validate_composite(self) -> bool:
         """Check the field set can form the composite type it declares."""

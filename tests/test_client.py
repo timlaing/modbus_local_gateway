@@ -1703,3 +1703,164 @@ async def test_write_composite_input_register_is_refused() -> None:
         await client.write_data(entity, value=value)
 
     cast(Any, client).write_registers.assert_not_called()
+
+
+def _packed_composite_entity(
+    address: int = 3038, data_type: ModbusDataType = ModbusDataType.HOLDING_REGISTER
+) -> ModbusContext:
+    """Build the Growatt period 1 word: minute bits 0-7, hour bits 8-12.
+
+    Bits 13-14 are the charge mode and bit 15 the enable, described by other
+    entities rather than by this composite.
+    """
+    return ModbusContext(
+        device_id=1,
+        desc=ModbusDateTimeEntityDescription(
+            key="period1_end",
+            register_address=address,
+            register_count=1,
+            data_type=data_type,
+            control_type=ControlType.DATETIME,
+            composite_type=CompositeType.TIME,
+            fields=(
+                ModbusFieldDescription(
+                    key="minute", address=address, conv_bits=8, conv_shift_bits=0
+                ),
+                ModbusFieldDescription(
+                    key="hour", address=address, conv_bits=5, conv_shift_bits=8
+                ),
+            ),
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_write_composite_bit_fields_keep_other_bits() -> None:
+    """Writing a packed time leaves the mode and enable bits alone"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    read_holding = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[0xC900])
+    )
+    cast(Any, client).read_holding_registers = read_holding
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    with patch.object(
+        AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+    ):
+        await client.write_data(
+            _packed_composite_entity(),
+            value=datetime(2026, 9, 22, 22, 45),
+        )
+
+    # 0xC900 is mode Grid (bits 13-14) and enabled (bit 15); the merged write
+    # keeps both and only replaces the hour and minute.
+    cast(Any, client).write_registers.assert_called_once_with(
+        address=3038, values=[0xD62D], device_id=1
+    )
+    assert read_holding.call_args.kwargs["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_write_composite_bit_fields_need_no_read_when_none() -> None:
+    """A composite without bit fields is written without reading first"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).read_holding_registers = AsyncMock()
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    with patch.object(
+        AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+    ):
+        await client.write_data(
+            _composite_entity(), value=datetime(2026, 9, 22, 16, 30, 5)
+        )
+
+    cast(Any, client).read_holding_registers.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_composite_bit_field_read_failure_aborts() -> None:
+    """A failed merge read must not write onto a guess"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    error_response = ModbusPDU()
+    cast(Any, error_response).isError = lambda: True
+    cast(Any, client).read_holding_registers = AsyncMock(return_value=error_response)
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    entity = _packed_composite_entity()
+    value = datetime(2026, 9, 22, 22, 45)
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        pytest.raises(ModbusClientError, match="aborting bit field write"),
+    ):
+        await client.write_data(entity, value=value)
+
+    cast(Any, client).write_registers.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_write_composite_bit_fields_span_read_once() -> None:
+    """A composite with a bit field reads its whole span in one transaction"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    read_holding = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[0xC900, 0xC700])
+    )
+    cast(Any, client).read_holding_registers = read_holding
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusDateTimeEntityDescription(
+            key="clock",
+            register_address=3038,
+            register_count=2,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            control_type=ControlType.DATETIME,
+            composite_type=CompositeType.TIME,
+            fields=(
+                ModbusFieldDescription(
+                    key="hour", address=3038, conv_bits=5, conv_shift_bits=8
+                ),
+                ModbusFieldDescription(key="minute", address=3039),
+            ),
+        ),
+    )
+    with patch.object(
+        AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+    ):
+        await client.write_data(entity, value=datetime(2026, 9, 22, 16, 30))
+
+    # The second register is written from the value, the first keeps its mode
+    # and enable bits.
+    cast(Any, client).write_registers.assert_called_once_with(
+        address=3038, values=[0xD000, 30], device_id=1
+    )
+    assert read_holding.call_args.kwargs["count"] == 2
+    cast(Any, client).read_holding_registers.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_write_composite_input_register_bit_fields_refused() -> None:
+    """A read-only composite of bit fields is still refused"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).read_holding_registers = AsyncMock()
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    entity = _packed_composite_entity(data_type=ModbusDataType.INPUT_REGISTER)
+    value = datetime(2026, 9, 22, 22, 45)
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        pytest.raises(ModbusClientError, match="cannot be written"),
+    ):
+        await client.write_data(entity, value=value)
+
+    cast(Any, client).read_holding_registers.assert_not_called()
+    cast(Any, client).write_registers.assert_not_called()

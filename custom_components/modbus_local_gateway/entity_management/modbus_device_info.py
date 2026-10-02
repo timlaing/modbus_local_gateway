@@ -85,10 +85,21 @@ FIELD_KEYS: tuple[str, ...] = (
     CONV_MULTIPLIER,
     CONV_OFFSET,
     CONV_UNAVAILABLE_VALUES,
+    CONV_BITS,
+    CONV_SHIFT_BITS,
     IS_SIGNED,
     IS_FLOAT,
     IS_STRING,
 )
+
+
+def _optional_int(value: Any) -> int | None:
+    """Return an optional integer key as an int, or None when it is absent.
+
+    `bits` and `shift_bits` are read straight from YAML, so a quoted number or a
+    word has to fail here rather than deep inside the geometry check.
+    """
+    return None if value is None else int(value)
 
 
 class DeviceConfigError(HomeAssistantError):
@@ -338,15 +349,12 @@ class ModbusDeviceInfo:
             return None
 
         unsupported: list[str] = [
-            key
-            for key in (CONV_BITS, CONV_SHIFT_BITS, CONV_MAP, CONV_FLAGS)
-            if field_data.get(key) is not None
+            key for key in (CONV_MAP, CONV_FLAGS) if field_data.get(key) is not None
         ]
         if unsupported:
             _LOGGER.warning(
                 "Unable to create entity for %s: field %s cannot use %s - a "
-                "register that packs several values is described as separate "
-                "entities at the same address",
+                "date or time part has no set of values to map or flag",
                 entity,
                 field_name,
                 ", ".join(unsupported),
@@ -372,16 +380,20 @@ class ModbusDeviceInfo:
                 conv_multiplier=field_data.get(CONV_MULTIPLIER),
                 conv_offset=field_data.get(CONV_OFFSET),
                 conv_unavailable_values=field_data.get(CONV_UNAVAILABLE_VALUES),
+                conv_bits=_optional_int(field_data.get(CONV_BITS)),
+                conv_shift_bits=_optional_int(field_data.get(CONV_SHIFT_BITS)),
                 is_signed=field_data.get(IS_SIGNED, False),
                 is_float=field_data.get(IS_FLOAT, False),
                 is_string=field_data.get(IS_STRING, False),
             )
         except (TypeError, ValueError) as err:
             _LOGGER.warning(
-                "Unable to create entity for %s: field %s has a bad address or "
-                "size: %s",
+                "Unable to create entity for %s: field %s has a bad address, "
+                "size, %s or %s: %s",
                 entity,
                 field_name,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
                 err,
             )
             return None

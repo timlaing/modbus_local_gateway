@@ -2,6 +2,7 @@
 
 # pylint: disable=unexpected-keyword-arg, protected-access
 from datetime import datetime
+from unittest.mock import patch
 
 from homeassistant.util import dt as dt_util
 from pymodbus.client import AsyncModbusTcpClient
@@ -249,3 +250,212 @@ def test_to_field_values_declared_fields_only() -> None:
         "month": 9,
         "day": 22,
     }
+
+
+def _packed_time_description(
+    address: int = 3038,
+    data_type: ModbusDataType = ModbusDataType.HOLDING_REGISTER,
+) -> ModbusDateTimeEntityDescription:
+    """Build the Growatt period 1 word: minute bits 0-7, hour bits 8-12.
+
+    Bits 13-14 are the charge mode and bit 15 the enable, which this composite
+    does not describe.
+    """
+    return ModbusDateTimeEntityDescription(
+        key="period1",
+        register_address=address,
+        register_count=1,
+        data_type=data_type,
+        composite_type=CompositeType.TIME,
+        fields=(
+            ModbusFieldDescription(
+                key="minute", address=address, conv_bits=8, conv_shift_bits=0
+            ),
+            ModbusFieldDescription(
+                key="hour", address=address, conv_bits=5, conv_shift_bits=8
+            ),
+        ),
+    )
+
+
+def test_from_registers_bit_fields(conversion: Conversion) -> None:
+    """A time packed into one register is read out of its bits"""
+    desc = _packed_time_description()
+
+    value = CompositeConversion.from_registers(
+        desc,
+        ReadHoldingRegistersResponse(registers=[(9 << 8) | 0]),
+        conversion,
+    )
+
+    assert (value.hour, value.minute) == (9, 0)
+
+
+def test_from_registers_bit_fields_keep_mode_and_enable(conversion: Conversion) -> None:
+    """The bits the composite does not describe do not disturb the value"""
+    desc = _packed_time_description()
+    word = (1 << 15) | (2 << 13) | (22 << 8) | 45
+
+    value = CompositeConversion.from_registers(
+        desc, ReadHoldingRegistersResponse(registers=[word]), conversion
+    )
+
+    assert (value.hour, value.minute) == (22, 45)
+
+
+def test_from_registers_bit_field_unavailable(conversion: Conversion) -> None:
+    """A sentinel inside the bits makes the whole composite unavailable"""
+    desc = _packed_time_description()
+
+    response = ReadHoldingRegistersResponse(registers=[(9 << 8) | 0x3C])
+
+    with pytest.raises(ValueUnavailable):
+        CompositeConversion.from_registers(desc, response, conversion)
+
+
+def test_from_registers_bit_field_with_offset(conversion: Conversion) -> None:
+    """A bit field converts through the same path, offset included"""
+    desc = ModbusDateTimeEntityDescription(
+        key="clock",
+        register_address=45,
+        register_count=1,
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        composite_type=CompositeType.DATE,
+        fields=(
+            ModbusFieldDescription(
+                key="year", address=45, conv_bits=8, conv_offset=2000
+            ),
+            ModbusFieldDescription(key="month", address=46),
+            ModbusFieldDescription(key="day", address=47),
+        ),
+    )
+
+    value = CompositeConversion.from_registers(
+        desc, ReadHoldingRegistersResponse(registers=[26, 9, 22]), conversion
+    )
+
+    assert value.year == 2026
+
+
+def test_bit_fields_share_one_run() -> None:
+    """Two bit fields in one register are written in one request"""
+    desc = _packed_time_description()
+
+    assert desc.runs == (desc.fields,)
+
+
+def test_bit_field_next_to_a_plain_field_is_one_run() -> None:
+    """A bit field and the register beside it are written in one request"""
+    desc = ModbusDateTimeEntityDescription(
+        key="clock",
+        register_address=45,
+        register_count=2,
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        composite_type=CompositeType.TIME,
+        fields=(
+            ModbusFieldDescription(
+                key="hour", address=45, conv_bits=5, conv_shift_bits=8
+            ),
+            ModbusFieldDescription(key="minute", address=46),
+        ),
+    )
+
+    assert [[field.key for field in run] for run in desc.runs] == [
+        ["hour", "minute"],
+    ]
+
+
+def test_fields_with_a_gap_stay_separate() -> None:
+    """Fields that are not adjacent still need a request of their own"""
+    desc = ModbusDateTimeEntityDescription(
+        key="clock",
+        register_address=45,
+        register_count=3,
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        composite_type=CompositeType.TIME,
+        fields=(
+            ModbusFieldDescription(
+                key="hour", address=45, conv_bits=5, conv_shift_bits=8
+            ),
+            ModbusFieldDescription(key="minute", address=47),
+        ),
+    )
+
+    assert [[field.key for field in run] for run in desc.runs] == [["hour"], ["minute"]]
+
+
+def test_overlapping_bit_fields_rejected() -> None:
+    """Two fields cannot claim the same bits"""
+    desc = ModbusDateTimeEntityDescription(
+        key="clock",
+        register_address=45,
+        register_count=1,
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        composite_type=CompositeType.TIME,
+        fields=(
+            ModbusFieldDescription(
+                key="hour", address=45, conv_bits=5, conv_shift_bits=8
+            ),
+            ModbusFieldDescription(
+                key="minute", address=45, conv_bits=8, conv_shift_bits=4
+            ),
+        ),
+    )
+
+    with patch(
+        "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
+    ) as log:
+        assert not desc.validate()
+
+    assert "both claim bits 8-11" in log.call_args.args[0] % log.call_args.args[1:]
+
+
+def test_bit_field_geometry_rejected() -> None:
+    """Bits that do not fit the register are rejected"""
+    desc = ModbusDateTimeEntityDescription(
+        key="clock",
+        register_address=45,
+        register_count=1,
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        composite_type=CompositeType.TIME,
+        fields=(
+            ModbusFieldDescription(
+                key="hour", address=45, conv_bits=20, conv_shift_bits=0
+            ),
+            ModbusFieldDescription(key="minute", address=46),
+        ),
+    )
+
+    with patch(
+        "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
+    ) as log:
+        assert not desc.validate()
+
+    assert (
+        "does not fit the 16 bits it addresses"
+        in log.call_args.args[0] % log.call_args.args[1:]
+    )
+
+
+def test_signed_bit_field_rejected() -> None:
+    """`signed` has no meaning for a field masked out of a register"""
+    desc = ModbusDateTimeEntityDescription(
+        key="clock",
+        register_address=45,
+        register_count=1,
+        data_type=ModbusDataType.HOLDING_REGISTER,
+        composite_type=CompositeType.TIME,
+        fields=(
+            ModbusFieldDescription(
+                key="hour", address=45, conv_bits=5, conv_shift_bits=8, is_signed=True
+            ),
+            ModbusFieldDescription(key="minute", address=46),
+        ),
+    )
+
+    with patch(
+        "custom_components.modbus_local_gateway.entity_management.base._LOGGER.warning"
+    ) as log:
+        assert not desc.validate()
+
+    assert "signed cannot be combined" in log.call_args.args[0] % log.call_args.args[1:]

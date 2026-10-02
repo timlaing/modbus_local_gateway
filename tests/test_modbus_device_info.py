@@ -588,19 +588,42 @@ def test_composite_entity_field_conversion() -> None:
         (
             {
                 "type": "time",
-                "fields": {"hour": {"address": 1, "bits": 4}, "minute": {"address": 2}},
+                "fields": {
+                    "hour": {"address": 1, "bits": 4, "signed": True},
+                    "minute": {"address": 2},
+                },
             },
-            "cannot use bits",
+            "signed cannot be combined",
+        ),
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "bits": 20},
+                    "minute": {"address": 2},
+                },
+            },
+            "does not fit the 16 bits it addresses",
         ),
         (
             {
                 "type": "time",
                 "fields": {
                     "hour": {"address": 1, "shift_bits": 4},
+                    "minute": {"address": 1, "bits": 8},
+                },
+            },
+            "both claim bits",
+        ),
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "bits": "four"},
                     "minute": {"address": 2},
                 },
             },
-            "cannot use shift_bits",
+            "bad address, size, bits or shift_bits",
         ),
         (
             {
@@ -659,7 +682,7 @@ def test_composite_entity_field_conversion() -> None:
                 "type": "time",
                 "fields": {"hour": {"address": "first"}, "minute": {"address": 2}},
             },
-            "bad address or size",
+            "bad address, size, bits or shift_bits",
         ),
         (
             {
@@ -669,7 +692,7 @@ def test_composite_entity_field_conversion() -> None:
                     "minute": {"address": 2},
                 },
             },
-            "bad address or size",
+            "bad address, size, bits or shift_bits",
         ),
         # a key that no field understands
         (
@@ -768,3 +791,58 @@ read_only_boolean: {}"""
 
     assert len(entities) == 2
     assert {desc.key for desc in entities} == {"current_time", "entity_rw"}
+
+
+def test_composite_entity_bit_fields_load() -> None:
+    """A field may claim part of a register"""
+    desc = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "period1_end": {
+                "name": "Period 1 End Time",
+                "type": "time",
+                "data_type": "read_write_word",
+                "fields": {
+                    "minute": {"address": 3038, "bits": 8, "shift_bits": 0},
+                    "hour": {"address": 3038, "bits": 5, "shift_bits": 8},
+                },
+            }
+        },
+    })
+
+    assert [
+        (field.key, field.conv_bits, field.conv_shift_bits) for field in desc.fields
+    ] == [("minute", 8, 0), ("hour", 5, 8)]
+    assert [[field.key for field in run] for run in desc.runs] == [["minute", "hour"]]
+
+
+def test_composite_entity_bit_fields_are_shared_with_other_entities() -> None:
+    """A packed register can carry a composite and separate entities together"""
+    entities = _load({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "period1_end": {
+                "name": "Period 1 End Time",
+                "type": "time",
+                "data_type": "read_write_word",
+                "fields": {
+                    "minute": {"address": 3038, "bits": 8, "shift_bits": 0},
+                    "hour": {"address": 3038, "bits": 5, "shift_bits": 8},
+                },
+            }
+        },
+        "read_write_word": {
+            "period1_enable": {
+                "name": "Period 1 Enable",
+                "address": 3038,
+                "control": "switch",
+                "bits": 1,
+                "shift_bits": 15,
+            }
+        },
+        "read_only_word": {},
+        "read_write_boolean": {},
+        "read_only_boolean": {},
+    })
+
+    assert {desc.key for desc in entities} == {"period1_end", "period1_enable"}

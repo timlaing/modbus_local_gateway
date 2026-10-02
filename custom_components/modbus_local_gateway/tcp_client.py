@@ -18,7 +18,11 @@ from pymodbus.pdu.register_message import (
 from .composite import CompositeConversion
 from .context import ModbusContext
 from .conversion import Conversion
-from .entity_management.base import ModbusCompositeEntityDescription
+from .entity_management.base import (
+    ModbusCompositeEntityDescription,
+    ModbusEntityDescription,
+    ModbusFieldDescription,
+)
 from .entity_management.const import ModbusDataType, WriteFunction
 from .transaction import MyTransactionManager
 
@@ -417,14 +421,18 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         field_values: dict[str, Any] = CompositeConversion.to_field_values(desc, value)
         conversion: Conversion = Conversion(type(self))
+        current: list[int] | None = None
+        if any(field.is_bitfield for field in desc.fields):
+            # A field that claims part of a register has to be merged into what
+            # the device holds, or the bits it does not describe - a mode, an
+            # enable, reserved bits - would be zeroed by the write. The whole
+            # span is read once, in one transaction, inside `self.lock`.
+            current = await self._read_current_registers(entity)
         pdu: ModbusPDU | None = None
         for run in desc.runs:
-            registers: list[int] = []
-            for field in run:
-                registers += conversion.convert_to_registers(
-                    field.as_entity_description(desc.data_type),
-                    field_values[field.key],
-                )
+            registers: list[int] = self._run_registers(
+                desc, run, field_values, conversion, current
+            )
             _LOGGER.debug(
                 "Writing composite %s run %s to address %d",
                 desc.key,
@@ -452,6 +460,53 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         if pdu is None:
             raise ModbusClientError(f"Composite {desc.key} declares no fields")
         return pdu
+
+    def _run_registers(
+        self,
+        desc: ModbusCompositeEntityDescription,
+        run: tuple[ModbusFieldDescription, ...],
+        field_values: dict[str, Any],
+        conversion: Conversion,
+        current: list[int] | None,
+    ) -> list[int]:
+        """Turn one run of fields into the registers to write for it.
+
+        A field is placed at its own offset in the run, because two bit fields
+        of the same register are one run and must end up in the same word. A bit
+        field is merged into what `current` holds, so the bits around it - a
+        mode, an enable, reserved bits - survive; every other register of the
+        run starts from the device value and is overwritten by its field.
+
+        `current` is None only when no field in the composite is a bit field,
+        which is the case where a run can be written outright.
+        """
+        length: int = run[-1].end_address - run[0].address + 1
+        base: int = run[0].address - desc.register_address
+        registers: list[int] = (
+            list(current[base : base + length]) if current is not None else [0] * length
+        )
+        for field in run:
+            field_desc: ModbusEntityDescription = field.as_entity_description(
+                desc.data_type
+            )
+            offset: int = field.address - run[0].address
+            count: int = max(1, field.size)
+            if field.is_bitfield:
+                if current is None:
+                    raise ModbusClientError(
+                        f"Composite {desc.key} field {field.key} is a bit field "
+                        "but no current registers were read"
+                    )
+                registers[offset : offset + count] = conversion.merge_into_registers(
+                    field_desc,
+                    field_values[field.key],
+                    registers[offset : offset + count],
+                )
+            else:
+                registers[offset : offset + count] = conversion.convert_to_registers(
+                    field_desc, field_values[field.key]
+                )
+        return registers
 
     async def _write_holding_registers(
         self,

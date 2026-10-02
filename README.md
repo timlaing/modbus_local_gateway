@@ -292,15 +292,42 @@ composite:
 - `data_type` (optional): `read_write_word` (default, writable) or
   `read_only_word` (read-only). A coil cannot hold a composite.
 - `fields` (required): One entry per part, each an `address` and any of
-  `size`, `swap`, `multiplier`, `offset`, `unavailable_values`, `signed`,
-  `float` and `string`, exactly as for a register entity. A field name that is
-  not a part of `type`, an unknown key, or `bits` / `shift_bits` (describe a
-  packed register as separate entities at the same address) is rejected with a
-  warning and the entity is skipped.
+  `size`, `swap`, `multiplier`, `offset`, `unavailable_values`, `bits`,
+  `shift_bits`, `signed`, `float` and `string`, exactly as for a register
+  entity. A field name that is not a part of `type`, an unknown key, `map` or
+  `flags` is rejected with a warning and the entity is skipped.
 - Fields that are **not adjacent** are grouped: each run of adjacent registers
   is read with its own request, so the registers in between are never touched,
   and written with one `write_registers` per run. A clock in registers 45-50 is
   therefore always updated in one request.
+- A field may claim **part of a register** with `bits` / `shift_bits`, which is
+  how some devices pack a time together with a mode and an enable flag:
+
+  ```yaml
+  composite:
+    period1_end:
+      name: Period 1 End Time
+      type: time
+      fields:
+        minute: { address: 3038, bits: 8, shift_bits: 0 }
+        hour: { address: 3038, bits: 5, shift_bits: 8 }
+
+  read_write_word:
+    period1_mode: # the same register, other bits, as its own entity
+      name: Period 1 Mode
+      address: 3038
+      control: select
+      bits: 2
+      shift_bits: 13
+      options: { 0: Load, 1: Battery, 2: Grid }
+  ```
+
+  The bits the composite does not describe are left as the device has them: a
+  write reads the registers first and merges its fields into them, inside the
+  same lock a poll takes, so the enable and mode bits survive. Two fields of one
+  composite must not claim the same bits, and `signed` is rejected on a bit
+  field.
+
 - A part the device reports as unavailable - or one that cannot form a real
   date or time - makes the entity **unavailable**, rather than publishing an
   error.
