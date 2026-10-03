@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 import logging
+import math
 from os.path import join
 from typing import Any, cast
 
@@ -649,10 +650,14 @@ class ModbusDeviceInfo:
         params["max"] = number_data["max"]
         if "step" in number_data:
             try:
-                params["native_step"] = float(number_data["step"])
+                step = float(number_data["step"])
             except OverflowError, TypeError, ValueError:
                 _LOGGER.warning("Invalid step for number in %s", entity)
                 return None
+            if not math.isfinite(step) or step <= 0:
+                _LOGGER.warning("Invalid step for number in %s", entity)
+                return None
+            params["native_step"] = step
         mode = number_data.get("mode")
         if mode is not None:
             if str(mode).lower() == "slider":

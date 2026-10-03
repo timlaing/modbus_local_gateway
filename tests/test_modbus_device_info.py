@@ -299,8 +299,18 @@ def test_entity_invalid_string_float() -> None:
         assert len(entities) == 0
 
 
-def test_entity_invalid_number_step() -> None:
-    """A non-numeric `number.step` skips the entity instead of raising later."""
+@pytest.mark.parametrize(
+    "step",
+    ["invalid", 0, -1, float("nan"), float("inf"), float("-inf")],
+    ids=["non-numeric", "zero", "negative", "nan", "infinity", "negative-infinity"],
+)
+def test_entity_invalid_number_step(step: object) -> None:
+    """A step that is not a finite positive number skips the entity.
+
+    `float()` accepts zero, negative values and non-finite values, but none of
+    them is a usable step, and they must be rejected here rather than reaching
+    `ModbusNumberEntity`.
+    """
 
     _config = {
         "device": {"manufacturer": "Test Manufacturer", "model": "Test Model"},
@@ -309,7 +319,7 @@ def test_entity_invalid_number_step() -> None:
                 "name": "Title",
                 "address": 1,
                 "control": "number",
-                "number": {"min": 0, "max": 10, "step": "invalid"},
+                "number": {"min": 0, "max": 10, "step": step},
             }
         },
         "read_only_word": {},
