@@ -40,7 +40,6 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
     identifiers = PropertyMock()
     identifiers.return_value = ["a"]
     type(gw_dev).identifiers = identifiers
-    coordinator.device_info = modbus_device_info.ModbusDeviceInfo("test.yaml")
     subentry_id = next(
         iter(entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE))
     ).subentry_id
@@ -74,6 +73,7 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
         patch.object(modbus_device_info.ModbusDeviceInfo, "manufacturer", pm2),
         patch.object(modbus_device_info.ModbusDeviceInfo, "model", pm2),
     ):
+        coordinator.device_info = modbus_device_info.ModbusDeviceInfo("test.yaml")
         await async_setup_entry(hass, entry, callback.add)
 
         callback.add.assert_called_once()
