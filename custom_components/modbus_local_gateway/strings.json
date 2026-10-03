@@ -13,7 +13,7 @@
         },
         "data_description": {
           "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
-          "restore_entity_ids": "Renames the entities this integration named <host>_<key> back to <key>. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
+          "restore_entity_ids": "Moves the entities this integration named after the gateway host back onto the entity id they had before that prefix existed. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
         }
       },
       "reconfigure": {
@@ -28,7 +28,7 @@
         },
         "data_description": {
           "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
-          "restore_entity_ids": "Renames the entities this integration named <host>_<key> back to <key>. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
+          "restore_entity_ids": "Moves the entities this integration named after the gateway host back onto the entity id they had before that prefix existed. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
         }
       }
     },

@@ -19,6 +19,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
@@ -54,6 +55,10 @@ from .helpers import (
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Nothing is configured in YAML: every gateway is a config entry the flow
+# creates. `async_setup` only prepares the entries a previous version wrote.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 # Version 1 was one config entry per device; version 2 is one config entry per
 # gateway connection, holding one config sub-entry per device behind it.
