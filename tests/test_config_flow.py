@@ -8,9 +8,10 @@ from homeassistant.config_entries import (
     SOURCE_USER,
     ConfigSubentryFlow,
 )
-from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
+from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT, Platform
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from pymodbus.framer import FramerType
 import pytest
 from pytest_homeassistant_custom_component.common import HomeAssistant, MockConfigEntry
@@ -19,6 +20,7 @@ import voluptuous as vol
 from custom_components.modbus_local_gateway.config_flow import (
     ConfigFlowHandler,
     DeviceSubentryFlowHandler,
+    _async_move_device,
     _device_schema,
     _dropdown,
 )
@@ -35,6 +37,10 @@ from custom_components.modbus_local_gateway.const import (
     SUBENTRY_TYPE_DEVICE,
 )
 from custom_components.modbus_local_gateway.entity_management.const import WriteFunction
+from custom_components.modbus_local_gateway.helpers import get_device_config
+from custom_components.modbus_local_gateway.tcp_client import (
+    AsyncModbusTcpClientGateway,
+)
 
 from .conftest import device_data, gateway_data, mock_gateway_entry
 
@@ -253,6 +259,51 @@ async def test_gateway_flow_asks_for_the_first_device(
     assert result["next_flow"] != (FlowResultType.ABORT, None)
 
 
+def _reachable_client() -> AsyncMock:
+    """A client whose gateway answers, so a connection can be stored."""
+    client = AsyncMock(spec=AsyncModbusTcpClientGateway)
+    client.connected = True
+    return client
+
+
+@pytest.mark.asyncio
+async def test_async_step_reconfigure_refuses_an_unreachable_gateway(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A gateway that does not answer is not stored as the connection.
+
+    Every device behind the entry reads through that connection, so saving a
+    host and port nothing answers on would make all of them unavailable, and the
+    form is the only place to say so.
+    """
+    entry = mock_gateway_entry()
+    entry.add_to_hass(hass)
+    unreachable = AsyncMock(spec=AsyncModbusTcpClientGateway)
+    unreachable.connected = False
+
+    result = await entry.start_reconfigure_flow(hass)
+    with patch(
+        "custom_components.modbus_local_gateway.config_flow"
+        ".AsyncModbusTcpClientGateway.async_get_client_connection",
+        return_value=unreachable,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={
+                CONF_HOST: "10.0.0.5",
+                CONF_PORT: 502,
+                CONF_CONNECTION_TYPE: "socket",
+                CONF_LEGACY_ENTITY_IDS: True,
+            },
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+    assert result["errors"] == {"base": "Gateway connection"}
+    assert entry.data == gateway_data()
+
+
 @pytest.mark.asyncio
 async def test_async_step_reconfigure(
     hass: HomeAssistant, enable_custom_integrations: None
@@ -272,7 +323,7 @@ async def test_async_step_reconfigure(
     with patch(
         "custom_components.modbus_local_gateway.config_flow"
         ".AsyncModbusTcpClientGateway.async_get_client_connection",
-        return_value=MagicMock(connected=True),
+        return_value=_reachable_client(),
     ):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -333,11 +384,18 @@ async def test_async_step_reconfigure_restores_entity_ids(
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)
-    with patch(
-        "custom_components.modbus_local_gateway.config_flow"
-        ".async_restore_legacy_entity_ids",
-        AsyncMock(),
-    ) as restore:
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.config_flow"
+            ".AsyncModbusTcpClientGateway.async_get_client_connection",
+            return_value=_reachable_client(),
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.config_flow"
+            ".async_restore_legacy_entity_ids",
+            AsyncMock(),
+        ) as restore,
+    ):
         await hass.config_entries.flow.async_configure(
             result["flow_id"],
             user_input={
@@ -363,11 +421,18 @@ async def test_async_step_reconfigure_without_restore_leaves_entity_ids(
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)
-    with patch(
-        "custom_components.modbus_local_gateway.config_flow"
-        ".async_restore_legacy_entity_ids",
-        AsyncMock(),
-    ) as restore:
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.config_flow"
+            ".AsyncModbusTcpClientGateway.async_get_client_connection",
+            return_value=_reachable_client(),
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.config_flow"
+            ".async_restore_legacy_entity_ids",
+            AsyncMock(),
+        ) as restore,
+    ):
         await hass.config_entries.flow.async_configure(
             result["flow_id"],
             user_input={
@@ -621,6 +686,57 @@ async def test_async_step_reconfigure_updates_the_subentry(
 
 
 @pytest.mark.asyncio
+async def test_moving_a_device_renames_the_unique_ids_of_its_entities(
+    hass: HomeAssistant,
+) -> None:
+    """The entities of a moved device follow it.
+
+    Their unique ids carry the prefix and the slave id of the device, so leaving
+    them behind would make Home Assistant create a second set of entities and
+    leave the first one - with the history in it - behind as dead entries.
+    """
+    entry = mock_gateway_entry()
+    entry.add_to_hass(hass)
+    subentry = entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE)[0]
+
+    registry = dr.async_get(hass)
+    device = registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={
+            (DOMAIN, "test-localhost:123:1"),
+            (DOMAIN, "test-localhost:123:1-1"),
+        },
+        name="test slave 1",
+    )
+    entity_registry = er.async_get(hass)
+    entity = entity_registry.async_get_or_create(
+        Platform.SENSOR,
+        DOMAIN,
+        "test-1-firmware_version",
+        config_entry=entry,
+        device_id=device.id,
+        config_subentry_id=subentry.subentry_id,
+    )
+    entity_id = entity.entity_id
+
+    _async_move_device(
+        hass=hass,
+        entry=entry,
+        subentry=subentry,
+        config={
+            **get_device_config(entry, subentry),
+            CONF_PREFIX: "shed",
+            CONF_DEVICE_ID: 2,
+        },
+    )
+
+    moved = entity_registry.async_get(entity_id)
+    assert moved is not None
+    assert moved.unique_id == "shed-2-firmware_version"
+    assert moved.device_id == device.id
+
+
+@pytest.mark.asyncio
 async def test_async_step_reconfigure_keeps_the_device_where_it_is(
     hass: HomeAssistant,
     enable_custom_integrations: None,
@@ -665,7 +781,9 @@ async def test_async_step_reconfigure_keeps_the_device_where_it_is(
         )
         await hass.async_block_till_done()
 
-    assert device.identifiers == {
+    unchanged = registry.async_get(device.id)
+    assert unchanged is not None
+    assert unchanged.identifiers == {
         (DOMAIN, "test-localhost:123:1"),
         (DOMAIN, "test-localhost:123:1-1"),
     }

@@ -99,8 +99,8 @@ def async_setup_entities(
 ) -> None:
     """Set up the entities of every device sub-entry."""
     for subentry in config_entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE):
-        coordinator: ModbusCoordinator | None = config_entry.runtime_data.get(
-            subentry.subentry_id
+        coordinator: ModbusCoordinator | None = (
+            config_entry.runtime_data.coordinators.get(subentry.subentry_id)
         )
         if coordinator is None:
             # The sub-entry was added while the entry was loading; its update

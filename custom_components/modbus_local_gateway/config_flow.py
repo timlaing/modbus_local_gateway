@@ -21,6 +21,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     BooleanSelector,
     NumberSelector,
@@ -254,14 +255,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             if self._async_gateway_exists(host, port, connection_type):
                 return self.async_abort(reason="already_configured")
 
-            self.client = AsyncModbusTcpClientGateway.async_get_client_connection(
-                host=host,
-                port=port,
-                connection_type=connection_type,
-            )
-            await self.client.connect()
-            if self.client.connected:
-                self.client.close()
+            if await self._async_gateway_reachable(host, port, connection_type):
                 data: dict[str, Any] = {
                     CONF_HOST: host,
                     CONF_PORT: port,
@@ -281,6 +275,25 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
             data_schema=_gateway_schema(host, port, connection_type),
             errors=errors,
         )
+
+    async def _async_gateway_reachable(
+        self, host: str, port: int, connection_type: str
+    ) -> bool:
+        """Report whether a gateway answers on the given connection.
+
+        A gateway that cannot be reached is not worth storing: reconfiguring to
+        it would take every device behind the current connection down.
+        """
+        self.client = AsyncModbusTcpClientGateway.async_get_client_connection(
+            host=host,
+            port=port,
+            connection_type=connection_type,
+        )
+        await self.client.connect()
+        if self.client.connected:
+            self.client.close()
+            return True
+        return False
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
@@ -304,7 +317,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 host, port, connection_type, skip=entry.entry_id
             ):
                 errors["base"] = "already_configured"
-            else:
+            elif await self._async_gateway_reachable(host, port, connection_type):
                 if user_input.get(CONF_RESTORE_ENTITY_IDS, False):
                     await async_restore_legacy_entity_ids(self.hass, entry)
 
@@ -325,6 +338,8 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 # The client and the gateway device belong to the connection.
                 self.hass.config_entries.async_schedule_reload(entry.entry_id)
                 return self.async_abort(reason="reconfigure_successful")
+            else:
+                errors["base"] = "Gateway connection"
 
         return self.async_show_form(
             step_id="reconfigure",
@@ -439,7 +454,12 @@ def _device_title(config: Mapping[str, Any]) -> str:
 def _async_move_device(
     hass: Any, entry: ConfigEntry, subentry: ConfigSubentry, config: Mapping[str, Any]
 ) -> None:
-    """Give the device of a sub-entry the identifiers of its new settings."""
+    """Give the device of a sub-entry the identifiers of its new settings.
+
+    The entities of the device follow: their unique ids carry the prefix and the
+    slave id of the device, so leaving them behind would make Home Assistant
+    create a second set of entities instead of keeping these ones.
+    """
     device_registry: dr.DeviceRegistry = dr.async_get(hass)
     identifiers: set[tuple[str, str]] = get_device_identifiers(config)
 
@@ -449,8 +469,44 @@ def _async_move_device(
         if device is not None:
             break
 
-    if device is not None and set(device.identifiers) != identifiers:
-        device_registry.async_update_device(device.id, new_identifiers=identifiers)
+    if device is None or set(device.identifiers) == identifiers:
+        return
+
+    device_registry.async_update_device(device.id, new_identifiers=identifiers)
+    _async_move_entity_unique_ids(
+        hass=hass,
+        device=device,
+        old=_unique_id_head(get_device_config(entry, subentry)),
+        new=_unique_id_head(config),
+    )
+
+
+def _unique_id_head(config: Mapping[str, Any]) -> str:
+    """Return the prefix and slave id an entity unique id starts with."""
+    prefix: str = config.get(CONF_PREFIX) or ""
+    return f"{prefix + '-' if prefix else ''}{config[CONF_DEVICE_ID]}"
+
+
+def _async_move_entity_unique_ids(
+    hass: Any, device: dr.DeviceEntry, old: str, new: str
+) -> None:
+    """Rename the unique ids of the entities of a moved device.
+
+    An entity keeps its entity id and its history: only the part of the unique
+    id that names the device changes, so the registry entry the entity was
+    created under stays the one it is matched against.
+    """
+    entity_registry: er.EntityRegistry = er.async_get(hass)
+    for entity_entry in er.async_entries_for_device(entity_registry, device.id):
+        unique_id: str = entity_entry.unique_id
+        if not unique_id.startswith(f"{old}-"):
+            # Not one of ours, or from a release that named unique ids
+            # differently. Home Assistant mints a new entity for it, which is
+            # what happened to those entities already.
+            continue
+        entity_registry.async_update_entity(
+            entity_entry.entity_id, new_unique_id=f"{new}{unique_id[len(old) :]}"
+        )
 
 
 def _device_schema(devices_data: Mapping[str, str]) -> vol.Schema:

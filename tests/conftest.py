@@ -2,11 +2,12 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.modbus_local_gateway import GatewayRuntime
 from custom_components.modbus_local_gateway.const import (
     CONF_DEVICE_ID,
     CONF_LEGACY_ENTITY_IDS,
@@ -90,6 +91,14 @@ def mock_gateway_entry(
             )
             for slave_id in (slave_ids if slave_ids is not None else [1])
         ],
+    )
+
+
+def mock_runtime(coordinators: dict[str, Any], client: Any = None) -> Any:
+    """Return the runtime a loaded gateway entry holds."""
+    return GatewayRuntime(
+        client=client if client is not None else MagicMock(),
+        coordinators=coordinators,
     )
 
 

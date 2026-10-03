@@ -27,7 +27,7 @@ from custom_components.modbus_local_gateway.switch import (
     async_setup_entry,
 )
 
-from .conftest import mock_gateway_entry
+from .conftest import mock_gateway_entry, mock_runtime
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
     subentry_id = next(
         iter(entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE))
     ).subentry_id
-    entry.runtime_data = {subentry_id: coordinator}
+    entry.runtime_data = mock_runtime({subentry_id: coordinator})
 
     pm1 = PropertyMock(
         return_value=[

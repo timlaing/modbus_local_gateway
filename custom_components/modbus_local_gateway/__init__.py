@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
 import logging
 from types import MappingProxyType
 from typing import Any
@@ -59,6 +60,20 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 # Nothing is configured in YAML: every gateway is a config entry the flow
 # creates. `async_setup` only prepares the entries a previous version wrote.
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+@dataclass(slots=True)
+class GatewayRuntime:
+    """What a loaded gateway entry keeps in memory.
+
+    The client is kept next to the coordinators instead of being looked up
+    again on unload: the settings of the entry can have changed since setup,
+    and a gateway may have no devices at all.
+    """
+
+    client: AsyncModbusTcpClientGateway
+    coordinators: dict[str, ModbusCoordinator] = field(default_factory=dict)
+
 
 # Version 1 was one config entry per device; version 2 is one config entry per
 # gateway connection, holding one config sub-entry per device behind it.
@@ -121,12 +136,23 @@ async def async_setup_entry(
     if connection_type == CONF_DEFAULT_CONNECTION_TYPE:
         gateway_device = _setup_gateway_device(entry, device_registry)
 
-    runtime_data: dict[str, ModbusCoordinator] = {}
+    runtime = GatewayRuntime(client=client)
     for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE):
         config: dict[str, Any] = get_device_config(entry, subentry)
-        device_info = await hass.async_add_executor_job(
-            create_device_info, hass, config[CONF_FILENAME]
-        )
+        try:
+            device_info = await hass.async_add_executor_job(
+                create_device_info, hass, config[CONF_FILENAME]
+            )
+        except FileNotFoundError:
+            # The device file of this device alone is gone. The other devices
+            # behind the gateway are unaffected by that, so this one is skipped
+            # instead of taking the whole gateway down with it.
+            _LOGGER.error(
+                "Device file %s of %s not found, skipping the device",
+                config[CONF_FILENAME],
+                subentry.title,
+            )
+            continue
 
         coordinator = ModbusCoordinator(
             hass=hass,
@@ -139,9 +165,9 @@ async def async_setup_entry(
             device_info=device_info,
         )
         coordinator.max_read_size = device_info.max_read_size
-        runtime_data[subentry.subentry_id] = coordinator
+        runtime.coordinators[subentry.subentry_id] = coordinator
 
-    entry.runtime_data = runtime_data
+    entry.runtime_data = runtime
     _setup_device_devices(entry, device_registry, gateway_device)
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -160,21 +186,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # connection out from under them, so leave everything in place.
         return False
 
-    clients: set[AsyncModbusTcpClientGateway] = {
-        coordinator.client for coordinator in entry.runtime_data.values()
-    }
-    entry.runtime_data.clear()
+    runtime: GatewayRuntime = entry.runtime_data
+    client: AsyncModbusTcpClientGateway = runtime.client
+    runtime.coordinators.clear()
 
     # The client is cached per host/port/framer and shared by every entry
     # pointing at the same gateway, so it can only be closed once no other
     # loaded entry is using it. Leaving it open keeps the socket - and pymodbus'
     # retries - alive after the entry is gone.
-    if clients and clients.isdisjoint(_async_clients_in_use(hass, entry.entry_id)):
-        AsyncModbusTcpClientGateway.close_client_connection(
-            host=entry.data[CONF_HOST],
-            port=entry.data[CONF_PORT],
-            connection_type=get_connection_type(entry.data),
-        )
+    if {client}.isdisjoint(_async_clients_in_use(hass, entry.entry_id)):
+        client.close_cached()
 
     return True
 
@@ -188,11 +209,9 @@ def _async_clients_in_use(
         if other.entry_id == entry_id:
             continue
         runtime_data = getattr(other, "runtime_data", None)
-        if isinstance(runtime_data, Mapping):
+        if isinstance(runtime_data, GatewayRuntime):
             clients.update(
-                coordinator.client
-                for coordinator in runtime_data.values()
-                if isinstance(coordinator, ModbusCoordinator)
+                coordinator.client for coordinator in runtime_data.coordinators.values()
             )
     return clients
 
@@ -230,8 +249,15 @@ def _setup_device_devices(
     entities created later can only find their device by its identifiers.
     """
     for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE):
+        coordinator: ModbusCoordinator | None = entry.runtime_data.coordinators.get(
+            subentry.subentry_id
+        )
+        if coordinator is None:
+            # Setup skipped this device, so there is nothing to register.
+            continue
+
         config: dict[str, Any] = get_device_config(entry, subentry)
-        device_info = entry.runtime_data[subentry.subentry_id].device_info
+        device_info = coordinator.device_info
 
         device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
