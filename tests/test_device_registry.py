@@ -9,6 +9,7 @@ against the real device and entity registries.
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -218,3 +219,30 @@ async def test_no_gateway_device_means_no_parent(
     assert len(devices) == 1
     assert devices[0].via_device_id is None
     assert er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+
+
+@pytest.mark.asyncio
+async def test_child_devices_use_via_device_id_not_the_deprecated_argument(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A child is linked with `via_device_id`, never the deprecated `via_device`.
+
+    Home Assistant deprecated `via_device` in favour of `via_device_id`, and this
+    integration is supported only on releases that know the new spelling, so the
+    old one must not be passed anywhere.
+    """
+    entry = _entry()
+    calls: list[dict[str, Any]] = []
+    original = dr.DeviceRegistry.async_get_or_create
+
+    def _record(registry: dr.DeviceRegistry, **kwargs: Any) -> dr.DeviceEntry:
+        calls.append(kwargs)
+        return original(registry, **kwargs)
+
+    with patch.object(dr.DeviceRegistry, "async_get_or_create", _record):
+        async with _setup(hass, entry):
+            pass
+
+    assert calls
+    assert all("via_device" not in call for call in calls)
+    assert any(call.get("via_device_id") for call in calls)
