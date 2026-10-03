@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import inspect
 import logging
-from typing import Any
+from typing import Any, Final, cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -18,6 +20,30 @@ from .entity_management.device_loader import create_device_info
 from .entity_management.modbus_device_info import ModbusDeviceInfo
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# Home Assistant deprecated the `via_device` argument of
+# `device_registry.async_get_or_create` in favour of `via_device_id` and drops
+# it in 2027.8, but the generation we are tested against - and the one a good
+# many installations still run - only knows `via_device`, which it resolves from
+# an identifier tuple. Asking the registry which of the two it takes keeps both
+# working: the child ends up on the same parent either way, because
+# `via_device` is only ever translated into that parent's id.
+_VIA_DEVICE_ID_SUPPORTED: Final = (
+    "via_device_id"
+    in inspect.signature(dr.DeviceRegistry.async_get_or_create).parameters
+)
+
+
+def via_device(gateway_device: dr.DeviceEntry) -> dict[str, Any]:
+    """Say how the child device hangs off the gateway device.
+
+    `DeviceInfo` is a TypedDict whose keys differ between the two generations,
+    so the result is a plain dict to merge in rather than an assignment that
+    only type checks on one of them.
+    """
+    if _VIA_DEVICE_ID_SUPPORTED:
+        return {"via_device_id": gateway_device.id}
+    return {"via_device": next(iter(gateway_device.identifiers))}
 
 
 def get_gateway_key(entry: ConfigEntry, with_device: bool = True) -> str:
@@ -72,7 +98,10 @@ async def async_setup_entities(
         model=device_info.model,
     )
     if coordinator.gateway_device:
-        device["via_device_id"] = coordinator.gateway_device.id
+        # The parent key is a key on only one of the two generations' TypedDict,
+        # so it goes in through a plain dict view rather than an index that only
+        # type checks against one of them.
+        cast("dict[str, Any]", device).update(via_device(coordinator.gateway_device))
 
     _LOGGER.debug(device)
 
