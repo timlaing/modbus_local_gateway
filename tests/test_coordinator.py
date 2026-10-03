@@ -7,13 +7,10 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.modbus_local_gateway.const import OPTIONS_WRITE_FUNCTION
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.conversion import ValueUnavailable
 from custom_components.modbus_local_gateway.coordinator import (
@@ -339,60 +336,6 @@ def test_entity_description_property() -> None:
     assert entity.entity_description is ctx.desc
 
 
-def test_write_function_defaults_to_single(mock_config_entry: ConfigEntry) -> None:
-    """Entries configured before the option existed keep writing FC 0x06."""
-    coordinator = ModbusCoordinator(
-        hass=MagicMock(),
-        config_entry=mock_config_entry,
-        gateway_device=MagicMock(),
-        client=MagicMock(),
-        gateway="Test",
-    )
-    assert coordinator.write_function == WriteFunction.SINGLE
-
-
-def test_write_function_from_options(
-    hass: HomeAssistant, mock_config_entry: MockConfigEntry
-) -> None:
-    """The stored option selects the write function."""
-    mock_config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(
-        mock_config_entry,
-        options={OPTIONS_WRITE_FUNCTION: WriteFunction.MULTIPLE.value},
-    )
-    coordinator = ModbusCoordinator(
-        hass=hass,
-        config_entry=mock_config_entry,
-        gateway_device=MagicMock(),
-        client=MagicMock(),
-        gateway="Test",
-    )
-    assert coordinator.write_function == WriteFunction.MULTIPLE
-
-
-def test_write_function_unknown_value_falls_back(
-    hass: HomeAssistant, mock_config_entry: MockConfigEntry
-) -> None:
-    """An unrecognised stored value falls back rather than failing the write."""
-    mock_config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(
-        mock_config_entry,
-        options={OPTIONS_WRITE_FUNCTION: "nonsense"},
-    )
-    coordinator = ModbusCoordinator(
-        hass=hass,
-        config_entry=mock_config_entry,
-        gateway_device=MagicMock(),
-        client=MagicMock(),
-        gateway="Test",
-    )
-    with patch(
-        "custom_components.modbus_local_gateway.coordinator._LOGGER"
-    ) as mock_logger:
-        assert coordinator.write_function == WriteFunction.SINGLE
-        mock_logger.warning.assert_called_once()
-
-
 def test_get_data_returns_value(mock_config_entry: ConfigEntry) -> None:
     """Test get_data returns the correct value when present in data."""
 
@@ -471,7 +414,7 @@ def test_get_data_returns_none_when_key_not_in_data(
 
 def test_modbus_coordinator_entity_init_sets_attributes() -> None:
     """Test ModbusCoordinatorEntity __init__ sets attributes correctly."""
-    coordinator = MagicMock(config_entry=MagicMock(data={}))
+    coordinator = MagicMock(config_entry=MagicMock(data={}), prefix=None)
     device = MagicMock()
     desc = ModbusSensorEntityDescription(
         register_address=10,

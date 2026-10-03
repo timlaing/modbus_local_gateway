@@ -10,7 +10,9 @@ from homeassistant.components.datetime import DateTimeEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddConfigEntryEntitiesCallback,
+)
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .entity_management.base import ModbusDateTimeEntityDescription
@@ -21,13 +23,14 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
+    _hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Modbus Local Gateway entities."""
-    await async_setup_entities(
-        hass=hass,
+    # Home Assistant hands the state to every platform setup; the entities of a
+    # device come from the sub-entries the entry already holds.
+    async_setup_entities(
         config_entry=config_entry,
         async_add_entities=async_add_entities,
         control=ControlType.DATETIME,

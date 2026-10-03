@@ -6,9 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from homeassistant.core import HomeAssistant
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.modbus_local_gateway.const import CONF_DEVICE_ID, DOMAIN
+from custom_components.modbus_local_gateway.const import (
+    SUBENTRY_TYPE_DEVICE,
+)
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.coordinator import ModbusCoordinator
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
@@ -26,19 +27,13 @@ from custom_components.modbus_local_gateway.switch import (
     async_setup_entry,
 )
 
+from .conftest import mock_gateway_entry, mock_runtime
+
 
 @pytest.mark.asyncio
 async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test the HA setup function"""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={
-            "host": "127.0.0.1",
-            "port": "1234",
-            CONF_DEVICE_ID: 1,
-            "filename": "test.yaml",
-        },
-    )
+    entry = mock_gateway_entry(host="127.0.0.1", port=1234, filename="test.yaml")
     callback = MagicMock()
     coordinator = AsyncMock()
     gw_dev = MagicMock()
@@ -46,7 +41,10 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
     identifiers = PropertyMock()
     identifiers.return_value = ["a"]
     type(gw_dev).identifiers = identifiers
-    hass.data[DOMAIN] = {"127.0.0.1:1234:1": coordinator}
+    subentry_id = next(
+        iter(entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE))
+    ).subentry_id
+    entry.runtime_data = mock_runtime({subentry_id: coordinator})
 
     pm1 = PropertyMock(
         return_value=[
@@ -78,13 +76,17 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
         patch.object(modbus_device_info.ModbusDeviceInfo, "manufacturer", pm2),
         patch.object(modbus_device_info.ModbusDeviceInfo, "model", pm2),
     ):
+        coordinator.device_info = modbus_device_info.ModbusDeviceInfo("test.yaml")
         await async_setup_entry(hass, entry, callback.add)
 
         callback.add.assert_called_once()
         assert (
             len(callback.add.call_args[0][0]) == 2
         )  # Coil and Holding Register switches
-        assert callback.add.call_args[1] == {"update_before_add": False}
+        assert callback.add.call_args[1] == {
+            "update_before_add": False,
+            "config_subentry_id": subentry_id,
+        }
         pm1.assert_called_once()
 
 

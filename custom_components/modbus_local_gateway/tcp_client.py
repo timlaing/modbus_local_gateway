@@ -62,6 +62,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             ModbusDataType.DISCRETE_INPUT: self.read_discrete_inputs,
         }
         self.lock = asyncio.Lock()
+        # The key this client is cached under, filled in by
+        # `async_get_client_connection` once it knows host, port and framer.
+        self._cache_key: str = ""
         # Devices that have answered a preset single register write. Silence
         # from a device outside this set means the function is not implemented
         # rather than that a response went missing, which is what makes retrying
@@ -816,20 +819,19 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         if key not in cls._CLIENT:
             _LOGGER.debug("Connecting to gateway %s", key)
-            cls._CLIENT[key] = AsyncModbusTcpClientGateway(
+            client = AsyncModbusTcpClientGateway(
                 host=host,
                 port=port,
                 framer=framer_type,
                 timeout=1.5,
                 retries=5,
             )
+            client._cache_key = key
+            cls._CLIENT[key] = client
         return cls._CLIENT[key]
 
-    @classmethod
-    def close_client_connection(
-        cls, host: str, port: int, connection_type: str
-    ) -> None:
-        """Close a cached client and drop it from the cache.
+    def close_cached(self) -> None:
+        """Close this client and drop it from the cache.
 
         Without this the connection to the gateway outlives the config entry:
         the socket stays open and pymodbus keeps retrying on it, so a disabled
@@ -839,9 +841,13 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         Only call this once no loaded entry is still using the client - it is
         shared by every entry with the same host, port and framer.
+
+        The client is closed under the key it was cached under, not under the
+        settings of the entry that is unloading: reconfiguring a gateway
+        changes those, and closing the new key would leave the connection this
+        client actually holds open.
         """
-        key: str = f"{host}:{port}:{connection_type}"
-        client: AsyncModbusTcpClientGateway | None = cls._CLIENT.pop(key, None)
-        if client is not None:
+        key: str = self._cache_key
+        if type(self)._CLIENT.pop(key, None) is not None:
             _LOGGER.debug("Closing connection to gateway %s", key)
-            client.close()
+            self.close()

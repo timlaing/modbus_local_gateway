@@ -1,7 +1,7 @@
 
 coverage>=7.6.8
 fuzzywuzzy>=0.18.0
-homeassistant
+homeassistant>=2026.9,<2026.10
 levenshtein>=0.27.3
 mypy
 prek>=0.4.5
