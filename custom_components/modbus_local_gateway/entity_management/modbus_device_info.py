@@ -648,7 +648,11 @@ class ModbusDeviceInfo:
         params["min"] = number_data["min"]
         params["max"] = number_data["max"]
         if "step" in number_data:
-            params["native_step"] = number_data["step"]
+            try:
+                params["native_step"] = float(number_data["step"])
+            except OverflowError, TypeError, ValueError:
+                _LOGGER.warning("Invalid step for number in %s", entity)
+                return None
         mode = number_data.get("mode")
         if mode is not None:
             if str(mode).lower() == "slider":
