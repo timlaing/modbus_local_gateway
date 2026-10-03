@@ -7,7 +7,6 @@ from homeassistant.components.sensor.const import SensorDeviceClass, SensorState
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 import pytest
-from pytest import LogCaptureFixture
 import yaml
 
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
@@ -300,6 +299,51 @@ def test_entity_invalid_string_float() -> None:
         assert len(entities) == 0
 
 
+@pytest.mark.parametrize(
+    "step",
+    ["invalid", 0, -1, float("nan"), float("inf"), float("-inf")],
+    ids=["non-numeric", "zero", "negative", "nan", "infinity", "negative-infinity"],
+)
+def test_entity_invalid_number_step(step: object) -> None:
+    """A step that is not a finite positive number skips the entity.
+
+    `float()` accepts zero, negative values and non-finite values, but none of
+    them is a usable step, and they must be rejected here rather than reaching
+    `ModbusNumberEntity`.
+    """
+
+    _config = {
+        "device": {"manufacturer": "Test Manufacturer", "model": "Test Model"},
+        "read_write_word": {
+            "test": {
+                "name": "Title",
+                "address": 1,
+                "control": "number",
+                "number": {"min": 0, "max": 10, "step": step},
+            }
+        },
+        "read_only_word": {},
+        "read_write_boolean": {},
+        "read_only_boolean": {},
+    }
+
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.entity_management."
+            "modbus_device_info.load_yaml",
+            return_value=_config,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.entity_management."
+            "modbus_device_info._LOGGER.warning"
+        ) as log,
+    ):
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
+        entities = device.entity_descriptions
+        log.assert_called_once()
+        assert len(entities) == 0
+
+
 def test_entity_invalid_address() -> None:
     """Test entity missing address"""
 
@@ -373,7 +417,7 @@ def test_validate_scan_interval(
     scan_interval: int | None,
     num_entities: int,
     log_message: str,
-    caplog: LogCaptureFixture,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Test _validate_scan_interval with various scan_interval values."""
     _config = {
@@ -737,7 +781,7 @@ def test_composite_entity_field_conversion() -> None:
     ],
 )
 def test_composite_entity_invalid(
-    entity: dict[str, object], expected_log: str, caplog: LogCaptureFixture
+    entity: dict[str, object], expected_log: str, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Test invalid composite entities"""
 
@@ -805,7 +849,7 @@ def test_composite_entity_scan_interval(
     scan_interval: int,
     num_entities: int,
     log_message: str | None,
-    caplog: LogCaptureFixture,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """A composite honours and validates the scan_interval of any other entity"""
     config = yaml.full_load(COMPOSITE_YAML)
@@ -820,7 +864,7 @@ def test_composite_entity_scan_interval(
 
 
 def test_composite_entity_bad_entity_category(
-    caplog: LogCaptureFixture,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """An unusable entity_category warns and is left out"""
     config = yaml.full_load(COMPOSITE_YAML)

@@ -48,20 +48,31 @@ Add devices via the Home Assistant UI:
 3. Or use this button:
    [![Add Integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=modbus_local_gateway)
 
-#### Step 1: Connection Details
+#### Step 1: Gateway Connection Details
+
+A config entry is a gateway: the Modbus TCP server itself.
 
 - **Host**: Gateway IP/hostname (e.g., `192.168.1.100`).
 - **Port**: TCP port (default: `502`).
+- **Connection type**: `Modbus TCP` or `Modbus RTU over TCP`.
+
+#### Step 2: Add the Devices Behind the Gateway
+
+A gateway usually serves more than one device, so the devices are added to a gateway instead of each becoming a config entry of its own. Open the gateway's **Configure** page, choose **Add device**, and fill in:
+
 - **Device ID**: Modbus device ID (e.g., `1`).
 - **Prefix**: Optional device and entity name prefix (e.g., `Device 3`).
+- **Device config**: the YAML file describing the model (e.g., `Eastron SDM-230` for `SDM230.yaml`).
 
-#### Step 2: Device Selection
+Every device becomes a device of its own in Home Assistant, with the gateway as its parent, and can be reconfigured, reloaded or removed on its own. Devices that report the same model twice, on the same gateway, are refused: add the second one with a different prefix instead.
 
-Choose a device type from the dropdown (e.g., `Eastron SDM-230` for `SDM230.yaml`).
+#### Entity IDs
+
+Entities are created once and keep their entity ID from then on: the integration never renames an entity that already exists, so dashboards, automations and history survive an upgrade. Entities created from here on are named with the gateway host in front of the name, so that two gateways on one network cannot hand out the same entity ID. Reconfiguring a gateway can turn that prefix off for entities added later and, if asked for, move the entities of the devices back onto the entity IDs they had before the prefix existed — again by keeping the unique ID and the device, so nothing is re-registered and no history is lost.
 
 ### Modifying Existing Devices
 
-Adjust the **update frequency** (default: 30 seconds) and the **register write function** via "Configure" at the device in **Devices & Services**.
+Use **Configure** on the gateway to add, edit or remove the devices behind it, and **Configure** on a device to change the **update frequency** (default: 30 seconds) or the **register write function** of that device alone.
 
 #### Register Write Function
 

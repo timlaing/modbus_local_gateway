@@ -1,40 +1,92 @@
 {
   "config": {
     "abort": {
-      "already_configured": "Device is already configured"
+      "already_configured": "This gateway is already configured",
+      "reconfigure_successful": "The gateway connection was updated",
+      "unsupported_home_assistant_version": "This version of the integration needs a newer Home Assistant, see the README"
     },
     "error": {
-      "cannot_connect": "Failed to connect",
-      "unknown": "Unexpected error"
+      "Gateway connection": "Cannot connect to the gateway",
+      "already_configured": "This gateway is already configured"
     },
     "step": {
-      "device_type": {
+      "reconfigure": {
         "data": {
-          "filename": "Device"
+          "connection_type": "Connection type",
+          "host": "Host",
+          "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
+          "port": "Port",
+          "restore_entity_ids": "Restore entity ids of this integration"
         },
-        "description": "Select the device type to configure"
+        "data_description": {
+          "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
+          "restore_entity_ids": "Moves the entities this integration named after the gateway host back onto the entity id they had before that prefix existed. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
+        },
+        "description": "Change the connection to your Modbus gateway. The devices behind it keep their entity ids, unique ids and device ids.",
+        "title": "Reconfigure Modbus gateway"
       },
       "user": {
         "data": {
+          "connection_type": "Connection type",
           "host": "Host",
+          "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
           "port": "Port",
-          "device_id": "Device ID",
-          "connection_type": "Connection Type",
-          "prefix": "Prefix (optional)"
+          "restore_entity_ids": "Restore entity ids of this integration"
         },
-        "description": "Configure the connection parameters"
+        "data_description": {
+          "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
+          "restore_entity_ids": "Moves the entities this integration named after the gateway host back onto the entity id they had before that prefix existed. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
+        },
+        "description": "Configure the connection to your Modbus gateway. Devices behind it are added to this connection afterwards.",
+        "title": "Modbus gateway"
       }
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "data": {
-          "refresh": "Update frequency",
-          "write_function": "Register write function"
+  "config_subentries": {
+    "device": {
+      "abort": {
+        "reconfigure_successful": "The device was updated"
+      },
+      "entry_type": "Device",
+      "error": {
+        "device_id_taken": "This device ID is already used by another device of this gateway",
+        "file_not_found": "This device configuration does not exist"
+      },
+      "initiate_flow": {
+        "user": "Add device"
+      },
+      "step": {
+        "reconfigure": {
+          "data": {
+            "device_id": "Device ID (slave id)",
+            "filename": "Device",
+            "prefix": "Prefix (optional)",
+            "refresh": "Update frequency",
+            "write_function": "Register write function"
+          },
+          "data_description": {
+            "device_id": "Changing the device ID moves this device. Its entity ids, unique ids and device id are kept, so history and dashboards follow it."
+          },
+          "description": "Change this device of {gateway}",
+          "title": "Reconfigure device"
         },
-        "description": "Update device parameters"
+        "user": {
+          "data": {
+            "device_id": "Device ID (slave id)",
+            "filename": "Device",
+            "prefix": "Prefix (optional)",
+            "refresh": "Update frequency",
+            "write_function": "Register write function"
+          },
+          "description": "Add a device to {gateway}",
+          "title": "Add device"
+        }
       }
+    }
+  },
+  "exceptions": {
+    "unsupported_home_assistant_version": {
+      "message": "This version of Modbus Local Gateway needs Home Assistant {min_version} or later, but {current_version} is running. Please update Home Assistant."
     }
   }
 }

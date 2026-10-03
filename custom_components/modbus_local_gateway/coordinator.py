@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
 import logging
 from typing import Any, cast
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST
+from homeassistant.config_entries import ConfigEntry, ConfigSubentry
+from homeassistant.const import CONF_HOST, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity import async_generate_entity_id
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -24,7 +23,13 @@ from homeassistant.helpers.update_coordinator import (
 from pymodbus.pdu.pdu import ModbusPDU
 
 from .composite import CompositeConversion
-from .const import CONF_PREFIX, OPTIONS_DEFAULT_WRITE_FUNCTION, OPTIONS_WRITE_FUNCTION
+from .const import (
+    CONF_LEGACY_ENTITY_IDS,
+    CONF_LEGACY_ENTITY_IDS_DEFAULT,
+    CONF_PREFIX,
+    OPTIONS_DEFAULT_WRITE_FUNCTION,
+    OPTIONS_WRITE_FUNCTION,
+)
 from .context import ModbusContext
 from .conversion import Conversion, ValueUnavailable
 from .entity_management.base import (
@@ -32,11 +37,83 @@ from .entity_management.base import (
     ModbusEntityDescription,
 )
 from .entity_management.const import WriteFunction
+from .entity_management.modbus_device_info import ModbusDeviceInfo
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-__all__ = ["ModbusContext", "ModbusCoordinator", "ModbusCoordinatorEntity"]
+__all__ = [
+    "ModbusContext",
+    "ModbusCoordinator",
+    "ModbusCoordinatorEntity",
+    "async_restore_legacy_entity_ids",
+    "get_host_object_id",
+    "get_legacy_entity_id",
+]
+
+
+def get_host_object_id(host: str) -> str:
+    """Return the object id prefix v2026.02.0 forced onto existing entities.
+
+    IP/Host without separators (e.g. 192.168.1.10 -> 192168110).
+    """
+    return str(host).replace(".", "").replace(":", "").replace("-", "").replace(" ", "")
+
+
+def get_legacy_entity_id(entity_id: str, host: str) -> str | None:
+    """Return the entity id v2026.02.0 forced for an entity, if it has one.
+
+    Only an entity id this integration created is recognised, so nothing the
+    user named themselves is ever returned.
+    """
+    domain, _, object_id = entity_id.partition(".")
+    forced_prefix = f"{get_host_object_id(host)}_"
+    if object_id.startswith(forced_prefix):
+        return f"{domain}.{object_id[len(forced_prefix) :]}"
+    return None
+
+
+async def async_restore_legacy_entity_ids(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> int:
+    """Restore the entity ids v2026.02.0 forced onto existing entities.
+
+    Only ever called from a form the user confirmed, never while setting up:
+    #168 is about this integration renaming entities behind the user's back, so
+    changing an entity id has to be their decision. Returns the number of
+    entities that were renamed.
+    """
+    if not entry.data.get(CONF_LEGACY_ENTITY_IDS, CONF_LEGACY_ENTITY_IDS_DEFAULT):
+        return 0
+
+    entity_registry: er.EntityRegistry = er.async_get(hass)
+    restored: int = 0
+    # Renaming moves an entity to another key in the registry, so the entities to
+    # look at are collected before any of them is touched.
+    for entity_entry in tuple(entity_registry.entities.values()):
+        if entity_entry.config_entry_id != entry.entry_id:
+            continue
+        entity_id: str | None = get_legacy_entity_id(
+            entity_entry.entity_id, entry.data[CONF_HOST]
+        )
+        if entity_id is None:
+            continue
+        try:
+            entity_registry.async_update_entity(
+                entity_entry.entity_id, new_entity_id=entity_id
+            )
+        except ValueError:
+            # The old id is taken by another entity: keep what there is.
+            _LOGGER.warning(
+                "Cannot restore entity id of %s, %s is already taken",
+                entity_entry.entity_id,
+                entity_id,
+            )
+            continue
+        _LOGGER.info("Restored entity id %s", entity_id)
+        restored += 1
+
+    return restored
 
 
 class ModbusCoordinatorEntity(CoordinatorEntity):
@@ -60,23 +137,33 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         host_id: str | None = None
 
         if coordinator.config_entry:
-            prefix = coordinator.config_entry.data.get(CONF_PREFIX) or None
+            # The prefix is a per-device setting, so it comes from the sub-entry
+            # rather than the gateway's data.
+            prefix = coordinator.prefix
             host: str | None = coordinator.config_entry.data.get(CONF_HOST)
 
             if host:
-                # IP/Host without separators as requested
-                # (e.g. 192.168.1.10 -> 192168110)
-                host_id = (
-                    str(host)
-                    .replace(".", "")
-                    .replace(":", "")
-                    .replace("-", "")
-                    .replace(" ", "")
-                )
+                host_id = get_host_object_id(host)
 
-        # This is what we WANT as the object_id: <ipnodots>_<yaml_key>
-        if host_id:
-            self._attr_suggested_object_id = f"{host_id}_{ctx.desc.key}"
+        # This is what we WANT as the object_id: <ipnodots>_<yaml_key>. It only
+        # applies to entities created from here on: Home Assistant reads it when
+        # the entity is registered and never touches an entity_id again.
+        # v2026.02.0 turned this suggestion into a forced rename of every existing
+        # entity, which broke automations and made renaming in the UI impossible.
+        # #168 rolled that back, so nothing here may ever rename an entity again,
+        # and an entry that has switched the prefix off (legacy_entity_ids) keeps
+        # the ids of the entities it already has.
+        legacy_entity_ids: bool = bool(
+            coordinator.config_entry
+            and coordinator.config_entry.data.get(
+                CONF_LEGACY_ENTITY_IDS, CONF_LEGACY_ENTITY_IDS_DEFAULT
+            )
+        )
+        control_type: str = str(ctx.desc.control_type)
+        if host_id and not legacy_entity_ids:
+            # Home Assistant derives the suggestion from the entity name, so an
+            # integration asks for a specific object id by setting entity_id.
+            self.entity_id = f"{Platform(control_type)}.{host_id}_{ctx.desc.key}"
 
         # Keep unique_id compatible with previous releases so existing entities
         # can be renamed in-place.
@@ -87,10 +174,6 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             if prefix
             else f"{ctx.device_id}-{ctx.desc.key}"
         )
-
-        # used for migration in async_added_to_hass
-        self._mlg_host_id: str | None = host_id
-        self._mlg_key: str = ctx.desc.key
 
         self._attr_device_info: DeviceInfo | None = device
         self.coordinator: ModbusCoordinator
@@ -159,57 +242,6 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             self._cancel_timer()
             self._cancel_timer = None
 
-    async def _async_migrate_entity_id_if_needed(self) -> None:
-        """Migrate an existing entity_id to <hostid>_<yaml_key>.
-
-        Home Assistant keeps entity_id in the entity registry and will NOT
-        automatically change it when you change names/suggested ids.
-        This migration renames the entity in-place (same unique_id) once.
-        """
-        suggested = getattr(self, "_attr_suggested_object_id", None)
-        if not suggested or not self._mlg_host_id:
-            return
-        if not self.entity_id:
-            return
-
-        domain = self.entity_id.split(".", 1)[0]
-        desired_entity_id = async_generate_entity_id(
-            f"{domain}.{{}}",
-            suggested,
-            hass=self.hass,
-        )
-
-        # Already migrated (or manually renamed to the desired id)
-        if self.entity_id == desired_entity_id:
-            return
-        if self.entity_id.startswith(f"{domain}.{self._mlg_host_id}_"):
-            return
-
-        ent_reg = er.async_get(self.hass)
-        entry = ent_reg.async_get(self.entity_id)
-        if not entry:
-            return
-
-        # Only touch entities that belong to our config entry
-        if (
-            self.coordinator.config_entry
-            and entry.config_entry_id != self.coordinator.config_entry.entry_id
-        ):
-            return
-
-        try:
-            ent_reg.async_update_entity(self.entity_id, new_entity_id=desired_entity_id)
-            _LOGGER.info(
-                "Renamed entity_id %s -> %s", self.entity_id, desired_entity_id
-            )
-        except ValueError as exc:
-            _LOGGER.warning(
-                "Cannot rename entity_id %s -> %s (%s)",
-                self.entity_id,
-                desired_entity_id,
-                exc,
-            )
-
     @callback
     def async_run(self) -> None:
         """Remote start entity."""
@@ -230,7 +262,6 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
         await super().async_added_to_hass()
-        await self._async_migrate_entity_id_if_needed()
         self.async_run()
 
     async def async_will_remove_from_hass(self) -> None:
@@ -258,6 +289,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         client: AsyncModbusTcpClientGateway,
         gateway: str,
         update_interval: int = 30,
+        subentry: ConfigSubentry | None = None,
+        device_info: ModbusDeviceInfo | None = None,
     ) -> None:
         """Initialise the coordinator"""
         self.client: AsyncModbusTcpClientGateway = client
@@ -266,6 +299,10 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self._gateway_device: dr.DeviceEntry | None = gateway_device
         # Entities whose most recent read was not a usable value.
         self._unavailable_keys: set[str] = set()
+        # Settings of the device this coordinator polls, from its sub-entry.
+        self._subentry_data: Mapping[str, Any] = dict(subentry.data) if subentry else {}
+        # Definition of the device this coordinator polls, from its YAML file.
+        self._device_info: ModbusDeviceInfo | None = device_info
 
         super().__init__(
             hass,
@@ -276,6 +313,26 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             update_method=self.async_update,
             always_update=True,
         )
+
+    @property
+    def device_info(self) -> ModbusDeviceInfo:
+        """Return the definition of the device this coordinator polls."""
+        assert self._device_info is not None
+        return self._device_info
+
+    @property
+    def config(self) -> Mapping[str, Any]:
+        """Return the settings of the device this coordinator polls.
+
+        These live in the sub-entry: the gateway owns host and port, so the
+        prefix that identifies this device is not on the config entry.
+        """
+        return self._subentry_data
+
+    @property
+    def prefix(self) -> str | None:
+        """Return the prefix this device's entities and ids carry, if any."""
+        return self._subentry_data.get(CONF_PREFIX) or None
 
     @property
     def gateway_device(self) -> dr.DeviceEntry | None:
@@ -305,9 +362,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         installation used before the option existed. An unrecognised stored
         value falls back to that default rather than failing the write.
         """
-        if self.config_entry is None:
-            return WriteFunction(OPTIONS_DEFAULT_WRITE_FUNCTION)
-        stored: Any = self.config_entry.options.get(
+        stored: Any = self._subentry_data.get(
             OPTIONS_WRITE_FUNCTION, OPTIONS_DEFAULT_WRITE_FUNCTION
         )
         try:
