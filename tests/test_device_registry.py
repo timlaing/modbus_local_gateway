@@ -5,20 +5,12 @@ else reaches `device_registry.async_get_or_create` - which is exactly where an
 argument the installed Home Assistant does not know about becomes a TypeError
 for every entity on every platform. These tests set the integration up for real
 against the real device and entity registries.
-
-The link back to the gateway is written with whichever of `via_device_id` and
-`via_device` the installed HA accepts, so which argument these run through
-depends on the version under test: the legacy one here, the current one on the
-HA dev workflow. The unit tests at the end cover both branches on either.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from types import SimpleNamespace
-from typing import cast
 from unittest.mock import AsyncMock, patch
 
-import getmac
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -26,43 +18,29 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway.const import (
-    CONF_CONNECTION_TYPE,
     CONF_DEVICE_ID,
     CONF_PREFIX,
     DOMAIN,
+    SUBENTRY_TYPE_DEVICE,
 )
-from custom_components.modbus_local_gateway.helpers import via_device
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
 )
 
+from .conftest import gateway_data
+
 HOST = "127.0.0.1"
 PORT = 502
 DEVICE_ID = 1
-# The coordinator keys on host, port and device id; the gateway device is
-# registered once per host and port.
-GATEWAY_KEY = f"test-{HOST}:{PORT}"
-GATEWAY_IDENTIFIER = (DOMAIN, f"ModbusGateway-{GATEWAY_KEY}")
-CHILD_KEY = f"{GATEWAY_KEY}:{DEVICE_ID}"
-GATEWAY_DEVICE_ID = "0123456789abcdef0123456789abcdef"
-
-
-def _gateway_device() -> dr.DeviceEntry:
-    """A parent device as the registry hands it out.
-
-    Only the two fields `via_device` reads are given, rather than constructing a
-    `DeviceEntry`: that is an attrs class whose keyword arguments differ between
-    the two Home Assistant generations, and this test has to build one on
-    either.
-    """
-    return cast(
-        dr.DeviceEntry,
-        SimpleNamespace(id=GATEWAY_DEVICE_ID, identifiers={GATEWAY_IDENTIFIER}),
-    )
+FILENAME = "MOD-6000TL-X.yaml"
+# The config entry is the connection, so its device carries no prefix and no
+# slave id. Devices behind it are keyed by prefix, connection and slave id.
+GATEWAY_IDENTIFIER = (DOMAIN, f"ModbusGateway-{HOST}:{PORT}")
+CHILD_KEY = f"test-{HOST}:{PORT}:{DEVICE_ID}"
 
 
 @asynccontextmanager
-async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> AsyncIterator[None]:
+async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> AsyncGenerator[None]:
     """Set the config entry up the way Home Assistant does, not by hand."""
     client = AsyncMock(spec=AsyncModbusTcpClientGateway)
     client.connected = True
@@ -81,25 +59,36 @@ async def _setup(hass: HomeAssistant, entry: MockConfigEntry) -> AsyncIterator[N
             "async_get_client_connection",
             return_value=client,
         ),
-        patch.object(getmac, "get_mac_address", return_value="aa:bb:cc:dd:ee:ff"),
     ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         yield
 
 
-def _entry(connection_type: str | None = None) -> MockConfigEntry:
-    """A config entry pointing at a device config we ship."""
-    data: dict[str, object] = {
-        "host": HOST,
-        "port": PORT,
-        CONF_DEVICE_ID: DEVICE_ID,
-        CONF_PREFIX: "test",
-        "filename": "MOD-6000TL-X.yaml",
-    }
-    if connection_type is not None:
-        data[CONF_CONNECTION_TYPE] = connection_type
-    return MockConfigEntry(domain=DOMAIN, data=data, version=1)
+def _entry(
+    connection_type: str = "socket", slave_ids: tuple[int, ...] = (DEVICE_ID,)
+) -> MockConfigEntry:
+    """A config entry for a gateway with one device behind it per slave id."""
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data=gateway_data(HOST, PORT, connection_type),
+        version=2,
+        subentries_data=[
+            {
+                "subentry_type": SUBENTRY_TYPE_DEVICE,
+                "title": f"slave {slave_id}",
+                "unique_id": f"test-{HOST}:{PORT}:{slave_id}",
+                "data": {
+                    CONF_PREFIX: "test",
+                    CONF_DEVICE_ID: slave_id,
+                    "filename": FILENAME,
+                    "refresh": 30,
+                    "write_function": 1,
+                },
+            }
+            for slave_id in slave_ids
+        ],
+    )
 
 
 def _devices(hass: HomeAssistant, entry: MockConfigEntry) -> list[dr.DeviceEntry]:
@@ -138,9 +127,31 @@ async def test_entities_hang_off_the_gateway_device(
         (DOMAIN, f"{CHILD_KEY}-{DEVICE_ID}"),
     }
 
-    # Adding the entity is what registers the device, so this is where an
-    # argument the installed HA does not know fails every entity at once.
-    assert er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+    # The device belongs to the sub-entry, and the entities with it.
+    assert child.config_subentry_id in entry.subentries
+    entities = er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+    assert entities
+    assert all(
+        entity.config_subentry_id == child.config_subentry_id for entity in entities
+    )
+
+
+@pytest.mark.asyncio
+async def test_gateway_device_belongs_to_the_entry_not_a_subentry(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """The gateway device is the connection's, so no sub-entry owns it."""
+    entry = _entry()
+    async with _setup(hass, entry):
+        pass
+
+    gateway = next(
+        device
+        for device in _devices(hass, entry)
+        if GATEWAY_IDENTIFIER in device.identifiers
+    )
+    assert gateway.config_subentry_id is None
+    assert gateway.config_entries == {entry.entry_id}
 
 
 @pytest.mark.asyncio
@@ -149,9 +160,9 @@ async def test_reload_leaves_the_devices_alone(
 ) -> None:
     """An upgrade reloads the entry without duplicating devices or re-parenting.
 
-    Both arguments end up in the same stored `via_device_id`, and devices are
-    matched on their identifiers, so loading over an existing installation finds
-    the entries it made last time rather than making new ones.
+    Devices are matched on their identifiers and entities on their unique ids, so
+    loading over an existing installation finds the entries it made last time
+    rather than making new ones.
     """
     entry = _entry()
     async with _setup(hass, entry):
@@ -161,6 +172,37 @@ async def test_reload_leaves_the_devices_alone(
 
     assert _devices_by_identifier(hass, entry) == before
     assert len(before) == 2
+
+
+@pytest.mark.asyncio
+async def test_every_sub_entry_gets_its_own_device(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """Two devices behind one gateway are two devices, with one shared client."""
+    entry = _entry(slave_ids=(1, 2))
+
+    client = AsyncMock(spec=AsyncModbusTcpClientGateway)
+    client.connected = True
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "async_get_client_connection",
+            return_value=client,
+        ),
+    ):
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    identifiers = {frozenset(device.identifiers) for device in _devices(hass, entry)}
+    assert identifiers == {
+        frozenset({GATEWAY_IDENTIFIER}),
+        frozenset({(DOMAIN, CHILD_KEY), (DOMAIN, f"{CHILD_KEY}-1")}),
+        frozenset({
+            (DOMAIN, f"test-{HOST}:{PORT}:2"),
+            (DOMAIN, f"test-{HOST}:{PORT}:2-2"),
+        }),
+    }
 
 
 @pytest.mark.asyncio
@@ -176,19 +218,3 @@ async def test_no_gateway_device_means_no_parent(
     assert len(devices) == 1
     assert devices[0].via_device_id is None
     assert er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
-
-
-def test_via_device_id_is_used_when_the_registry_takes_it() -> None:
-    """On the current HA the child is given the parent's device id."""
-    with patch(
-        "custom_components.modbus_local_gateway.helpers._VIA_DEVICE_ID_SUPPORTED", True
-    ):
-        assert via_device(_gateway_device()) == {"via_device_id": GATEWAY_DEVICE_ID}
-
-
-def test_via_device_identifiers_are_used_when_it_does_not() -> None:
-    """On the older HA the child is given the parent's identifier instead."""
-    with patch(
-        "custom_components.modbus_local_gateway.helpers._VIA_DEVICE_ID_SUPPORTED", False
-    ):
-        assert via_device(_gateway_device()) == {"via_device": GATEWAY_IDENTIFIER}

@@ -2,43 +2,91 @@
   "config": {
     "step": {
       "user": {
-        "description": "Configure the connection parameters",
+        "title": "Modbus gateway",
+        "description": "Configure the connection to your Modbus gateway. Devices behind it are added to this connection afterwards.",
         "data": {
           "host": "[%key:common::config_flow::data::host%]",
           "port": "[%key:common::config_flow::data::port%]",
-          "device_id": "Device ID",
-          "connection_type": "Connection Type",
-          "prefix": "Prefix (optional)"
+          "connection_type": "Connection type",
+          "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
+          "restore_entity_ids": "Restore entity ids of this integration"
+        },
+        "data_description": {
+          "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
+          "restore_entity_ids": "Renames the entities this integration named <host>_<key> back to <key>. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
         }
       },
-      "device_type": {
-        "description": "Select the device type to configure",
+      "reconfigure": {
+        "title": "Reconfigure Modbus gateway",
+        "description": "Change the connection to your Modbus gateway. The devices behind it keep their entity ids, unique ids and device ids.",
         "data": {
-          "filename": "Device"
+          "host": "[%key:common::config_flow::data::host%]",
+          "port": "[%key:common::config_flow::data::port%]",
+          "connection_type": "Connection type",
+          "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
+          "restore_entity_ids": "Restore entity ids of this integration"
+        },
+        "data_description": {
+          "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
+          "restore_entity_ids": "Renames the entities this integration named <host>_<key> back to <key>. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
         }
       }
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "Gateway connection": "Cannot connect to the gateway",
+      "already_configured": "This gateway is already configured"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "This gateway is already configured",
+      "reconfigure_successful": "The gateway connection was updated",
+      "unsupported_home_assistant_version": "This version of the integration needs a newer Home Assistant, see the README"
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "description": "Update device parameters",
-        "data": {
-          "refresh": "Update frequency",
-          "write_function": "Register write function"
+  "config_subentries": {
+    "device": {
+      "entry_type": "Device",
+      "initiate_flow": {
+        "user": "Add device"
+      },
+      "step": {
+        "user": {
+          "title": "Add device",
+          "description": "Add a device to {gateway}",
+          "data": {
+            "device_id": "Device ID (slave id)",
+            "filename": "Device",
+            "prefix": "Prefix (optional)",
+            "refresh": "Update frequency",
+            "write_function": "Register write function"
+          }
+        },
+        "reconfigure": {
+          "title": "Reconfigure device",
+          "description": "Change this device of {gateway}",
+          "data": {
+            "device_id": "Device ID (slave id)",
+            "filename": "Device",
+            "prefix": "Prefix (optional)",
+            "refresh": "Update frequency",
+            "write_function": "Register write function"
+          },
+          "data_description": {
+            "device_id": "Changing the device ID moves this device. Its entity ids, unique ids and device id are kept, so history and dashboards follow it."
+          }
         }
+      },
+      "error": {
+        "device_id_taken": "This device ID is already used by another device of this gateway",
+        "file_not_found": "This device configuration does not exist"
+      },
+      "abort": {
+        "reconfigure_successful": "The device was updated"
       }
-    },
-    "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+    }
+  },
+  "exceptions": {
+    "unsupported_home_assistant_version": {
+      "message": "This version of Modbus Local Gateway needs Home Assistant {min_version} or later, but {current_version} is running. Please update Home Assistant."
     }
   }
 }

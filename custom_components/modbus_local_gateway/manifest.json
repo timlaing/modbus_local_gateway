@@ -6,6 +6,7 @@
   ],
   "config_flow": true,
   "documentation": "https://github.com/timlaing/modbus_local_gateway",
+  "homeassistant": "2026.9.0",
   "integration_type": "device",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/timlaing/modbus_local_gateway",
@@ -13,8 +14,7 @@
     "ModbusLocalGateway"
   ],
   "requirements": [
-    "pymodbus>=3.11.1",
-    "getmac"
+    "pymodbus>=3.11.1"
   ],
   "version": "2025.9.0"
 }

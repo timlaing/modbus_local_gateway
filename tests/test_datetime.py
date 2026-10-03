@@ -8,9 +8,10 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.modbus_local_gateway.const import CONF_DEVICE_ID, DOMAIN
+from custom_components.modbus_local_gateway.const import (
+    SUBENTRY_TYPE_DEVICE,
+)
 from custom_components.modbus_local_gateway.context import ModbusContext
 from custom_components.modbus_local_gateway.coordinator import ModbusCoordinator
 from custom_components.modbus_local_gateway.datetime import (
@@ -28,6 +29,8 @@ from custom_components.modbus_local_gateway.entity_management.const import (
     ModbusDataType,
     WriteFunction,
 )
+
+from .conftest import mock_gateway_entry
 
 COMPOSITE_DESCRIPTION: ModbusDateTimeEntityDescription = (
     ModbusDateTimeEntityDescription(
@@ -56,15 +59,7 @@ COMPOSITE_DESCRIPTION: ModbusDateTimeEntityDescription = (
 async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test the HA setup function"""
 
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={
-            "host": "127.0.0.1",
-            "port": "1234",
-            CONF_DEVICE_ID: 1,
-            "filename": "test.yaml",
-        },
-    )
+    entry = mock_gateway_entry(host="127.0.0.1", port=1234, filename="test.yaml")
     callback = MagicMock()
     coordinator = MagicMock()
     coordinator.client = AsyncMock()
@@ -73,7 +68,11 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
     identifiers = PropertyMock()
     identifiers.return_value = ["a"]
     type(gw_dev).identifiers = identifiers
-    hass.data[DOMAIN] = {"127.0.0.1:1234:1": coordinator}
+    coordinator.device_info = modbus_device_info.ModbusDeviceInfo("test.yaml")
+    subentry_id = next(
+        iter(entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE))
+    ).subentry_id
+    entry.runtime_data = {subentry_id: coordinator}
 
     pm1 = PropertyMock(return_value=[COMPOSITE_DESCRIPTION])
     pm2 = PropertyMock(return_value="")
@@ -95,7 +94,10 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
 
         callback.add.assert_called_once()
         assert len(callback.add.call_args[0][0]) == 1
-        assert callback.add.call_args[1] == {"update_before_add": False}
+        assert callback.add.call_args[1] == {
+            "update_before_add": False,
+            "config_subentry_id": subentry_id,
+        }
         pm1.assert_called_once()
         pm2.assert_called()
 

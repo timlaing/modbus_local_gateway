@@ -91,12 +91,11 @@ repos:
         language: python
         additional_dependencies:
           # BEGIN GENERATED REQUIREMENTS
-          - getmac>=0.9.5
           - pycryptodome>=3.23.0
           - pymodbus>=3.13.1
           - coverage>=7.6.8
           - fuzzywuzzy>=0.18.0
-          - homeassistant
+          - homeassistant>=2026.9,<2026.10
           - levenshtein>=0.27.3
           - mypy
           - prek>=0.4.5
@@ -121,12 +120,11 @@ repos:
         language: python
         additional_dependencies:
           # BEGIN GENERATED REQUIREMENTS
-          - getmac>=0.9.5
           - pycryptodome>=3.23.0
           - pymodbus>=3.13.1
           - coverage>=7.6.8
           - fuzzywuzzy>=0.18.0
-          - homeassistant
+          - homeassistant>=2026.9,<2026.10
           - levenshtein>=0.27.3
           - mypy
           - prek>=0.4.5
@@ -153,12 +151,11 @@ repos:
         pass_filenames: false
         additional_dependencies:
           # BEGIN GENERATED REQUIREMENTS
-          - getmac>=0.9.5
           - pycryptodome>=3.23.0
           - pymodbus>=3.13.1
           - coverage>=7.6.8
           - fuzzywuzzy>=0.18.0
-          - homeassistant
+          - homeassistant>=2026.9,<2026.10
           - levenshtein>=0.27.3
           - mypy
           - prek>=0.4.5

@@ -8,7 +8,9 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddConfigEntryEntitiesCallback,
+)
 
 from .coordinator import ModbusContext, ModbusCoordinator, ModbusCoordinatorEntity
 from .entity_management.base import ModbusNumberEntityDescription
@@ -19,13 +21,14 @@ _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
+    _hass: HomeAssistant,
     config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Modbus Local Gateway entities."""
-    await async_setup_entities(
-        hass=hass,
+    # Home Assistant hands the state to every platform setup; the entities of a
+    # device come from the sub-entries the entry already holds.
+    async_setup_entities(
         config_entry=config_entry,
         async_add_entities=async_add_entities,
         control=ControlType.NUMBER,
@@ -46,26 +49,21 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):
     ) -> None:
         """Initialize a PVOutput number."""
         super().__init__(coordinator, ctx=ctx, device=device)
-        if isinstance(ctx.desc, ModbusNumberEntityDescription):
-            self._attr_native_max_value = ctx.desc.max
-            self._attr_native_min_value = ctx.desc.min
-            self._attr_native_step = (
-                ctx.desc.native_step
-                if ctx.desc.native_step is not None
-                else (
-                    ctx.desc.conv_multiplier
-                    if ctx.desc.conv_multiplier is not None
-                    else 1.0
-                )
-            )
-        else:
+        if not isinstance(ctx.desc, ModbusNumberEntityDescription):
             raise TypeError()
-        self._attr_mode = (
-            ctx.desc.mode
-            if isinstance(ctx.desc, ModbusNumberEntityDescription)
-            and ctx.desc.mode is not None
-            else NumberMode.BOX
-        )
+
+        self._attr_native_max_value = ctx.desc.max
+        self._attr_native_min_value = ctx.desc.min
+        # The step of an entity is what one press of the control changes: a
+        # conversion multiplier says how much the register is worth, which is
+        # the step unless the config asks for one of its own.
+        step: float = 1.0
+        if ctx.desc.conv_multiplier is not None:
+            step = float(ctx.desc.conv_multiplier)
+        if ctx.desc.native_step is not None:
+            step = float(ctx.desc.native_step)
+        self._attr_native_step = step
+        self._attr_mode = ctx.desc.mode if ctx.desc.mode is not None else NumberMode.BOX
 
     @callback
     def _handle_coordinator_update(self) -> None:
