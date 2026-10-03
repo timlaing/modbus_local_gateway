@@ -11,7 +11,6 @@ from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
-    FlowType,
     OptionsFlow,
 )
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
@@ -203,8 +202,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         *,
         reason: str,
         description_placeholders: Mapping[str, str] | None = None,
-        translation_domain: str | None = None,
-        next_flow: tuple[FlowType, str] | None = None,
+        **kwargs: Any,
     ) -> ConfigFlowResult:
         """Aborting the setup"""
         if self.client:
@@ -212,8 +210,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         return super().async_abort(
             reason=reason,
             description_placeholders=description_placeholders,
-            translation_domain=translation_domain,
-            next_flow=next_flow,
+            **kwargs,
         )
 
     def async_show_progress_done(self, *, next_step_id: str) -> ConfigFlowResult:

@@ -1,11 +1,12 @@
 """Tests for the Modbus Local Gateway config flow."""
 # pylint: disable=unexpected-keyword-arg, protected-access
 
-from typing import cast
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, FlowType
 from homeassistant.const import CONF_FILENAME, CONF_HOST, CONF_PORT
+from homeassistant.data_entry_flow import FlowResultType
 from pymodbus.framer import FramerType
 import pytest
 from pytest_homeassistant_custom_component.common import HomeAssistant, MockConfigEntry
@@ -176,6 +177,36 @@ async def test_async_abort(hass: HomeAssistant, mock_client: AsyncMock) -> None:
     assert "type" in result
     assert result["type"] == "abort"
 
+    mock_client.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"next_flow": (FlowType.CONFIG_FLOW, DOMAIN)},
+        {"translation_domain": "modbus_local_gateway"},
+    ],
+    ids=["reason_only", "next_flow", "translation_domain"],
+)
+@pytest.mark.asyncio
+async def test_async_abort_passes_on_only_what_it_was_given(
+    hass: HomeAssistant, mock_client: AsyncMock, kwargs: dict[str, Any]
+) -> None:
+    """The handler adds no keyword arguments of its own to the abort."""
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+    flow.client = mock_client
+
+    with patch.object(
+        ConfigFlow, "async_abort", return_value={"type": FlowResultType.ABORT}
+    ) as base_abort:
+        result: ConfigFlowResult = flow.async_abort(reason="test", **kwargs)
+
+    base_abort.assert_called_once_with(
+        reason="test", description_placeholders=None, **kwargs
+    )
+    assert result["type"] == "abort"
     mock_client.close.assert_called_once()
 
 
