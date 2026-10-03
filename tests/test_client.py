@@ -2,6 +2,7 @@
 """Tcp Client tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
+import asyncio
 from datetime import datetime
 from typing import Any, cast
 from unittest.mock import AsyncMock, PropertyMock, patch
@@ -2078,3 +2079,103 @@ async def test_update_device_reuses_only_within_one_cycle() -> None:
     assert list(first["value"].registers) == [1]
     # the write in between is not shadowed by the first poll's answer
     assert list(second["value"].registers) == [2]
+
+
+def _single_holding_entity(key: str = "value") -> ModbusContext:
+    """A one-register entity, for the resync tests."""
+    return ModbusContext(
+        device_id=1,
+        desc=ModbusSensorEntityDescription(
+            key=key,
+            register_address=1,
+            register_count=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_device_serialises_concurrent_polls() -> None:
+    """Two polls of one gateway never have two requests in flight.
+
+    A gateway that bridges TCP to a shared serial bus cannot answer two
+    requests at once, so the client must keep a second poll waiting rather
+    than interleave its requests with the first.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    active = 0
+    high_water = 0
+
+    async def _slow_read(*args: Any, **kwargs: Any) -> ModbusPDU:
+        nonlocal active, high_water
+        active += 1
+        high_water = max(high_water, active)
+        await asyncio.sleep(0.01)
+        active -= 1
+        return ReadHoldingRegistersResponse(registers=[7])
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", _slow_read),
+    ):
+        results = await asyncio.gather(
+            client.update_device([_single_holding_entity()], 64),
+            client.update_device([_single_holding_entity()], 64),
+        )
+
+    assert high_water == 1
+    assert all(result["value"].registers == [7] for result in results)
+
+
+@pytest.mark.asyncio
+async def test_failed_read_resynchronises_the_connection() -> None:
+    """A read with no usable answer clears the stream before the next request.
+
+    This is the TCP-to-RTU bridge case: bytes left over from a request that
+    was already retried must not be matched against the next one.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    client.ctx.recv_buffer = b"stale frame"
+    read_data = AsyncMock(return_value=None)
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+    ):
+        data = await client.update_device([_single_holding_entity()], 64)
+
+    assert data == {}
+    assert cast(Any, client)._resyncs == 1
+    assert client.ctx.recv_buffer == b""
+
+
+@pytest.mark.asyncio
+async def test_read_exception_resynchronises_the_connection() -> None:
+    """A read that raised clears the stream and is counted as a resync."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    client.ctx.recv_buffer = b"stale frame"
+    read_data = AsyncMock(side_effect=ModbusIOException("No response"))
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+    ):
+        data = await client.update_device([_single_holding_entity()], 64)
+
+    assert data == {}
+    assert cast(Any, client)._resyncs == 1
+    assert client.ctx.recv_buffer == b""

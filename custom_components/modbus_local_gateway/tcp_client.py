@@ -47,6 +47,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
     _CLIENT: dict[str, AsyncModbusTcpClientGateway] = {}
 
+    # Diagnostics: how often a read did not leave the stream in a usable state
+    # and the connection had to be resynchronised before the next request. A
+    # count that keeps climbing names the TCP-to-RTU bridge, not the device.
+    _resyncs: int = 0
+
     def __init__(
         self,
         host: str,
@@ -82,6 +87,24 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             trace_packet=self.ctx.trace_packet,
             trace_pdu=self.ctx.trace_pdu,
         )
+        self._resyncs = 0
+
+    def _resync_transport(self) -> None:
+        """Drop anything still buffered so a late answer cannot answer the next request.
+
+        A gateway that bridges TCP to a shared serial bus answers late under
+        load, and pymodbus matches answers by transaction id: a response to a
+        request that was already retried is skipped rather than used, but it is
+        still consumed from the same stream the next request reads. Discarding
+        whatever is left when a read did not produce a usable answer means the
+        next transaction starts from a clean stream instead of walking through
+        frames that belong to a request this client has given up on.
+        """
+        self._resyncs += 1
+        ctx = getattr(self, "ctx", None)
+        if ctx is None:
+            return
+        ctx.recv_buffer = b""
 
     async def read_data(
         self,
@@ -789,14 +812,24 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             if modbus_response and not modbus_response.isError():
                 data[entity.desc.key] = modbus_response
             else:
-                _LOGGER.debug("Error reading %s", entity.desc.key)
+                self._resync_transport()
+                _LOGGER.debug(
+                    "No usable response for %s on device %d, resynchronising "
+                    "the connection (resyncs: %d)",
+                    entity.desc.key,
+                    entity.device_id,
+                    self._resyncs,
+                )
 
         except ModbusException, TimeoutError:
+            self._resync_transport()
             if idx == 0:
                 _LOGGER.warning(
-                    "Device not available %s [%d]",
+                    "Device not available %s [%d]; connection resynchronised "
+                    "%d time(s)",
                     self,
                     entity.device_id,
+                    self._resyncs,
                 )
                 return
             _LOGGER.debug(

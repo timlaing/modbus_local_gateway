@@ -429,6 +429,22 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
   never answered a preset single register write, since for those the function is unimplemented
   rather than the response lost. When the read-back cannot be answered, the write is reported
   as failed and nothing is repeated.
+- **"request ask for transaction_id ... but got id ..." or "extra data" in the logs**: this is
+  the bridge, not the integration. A gateway that bridges TCP to a shared serial bus answers
+  late when the bus is busy, so the response to a request that was already retried arrives
+  while the next request is in flight. pymodbus matches responses by transaction id, skips the
+  one that does not match, and the integration then discards whatever is left on the stream
+  before the next request, so a late answer is never attributed to the next one. The warning is
+  reported once per failed poll with a running resync count, and the count names the bridge
+  rather than the device. Devices behind one gateway are polled one request at a time and each
+  device keeps its own update frequency, so a slow device does not have its traffic mixed with
+  another's. If the messages persist, reduce how often the devices are polled, check the bridge's
+  TCP time-out and max-connection settings, or update its firmware; a serial bus shared with
+  another master (a second integration, or the vendor's own tool) produces the same symptom.
+- **A device answers with an exception the config does not explain**: check the device's own
+  documentation for the function code and exception code in the log. Some devices answer a
+  function they do not implement with an exception whose code is `0`, which the device reports
+  as a failure rather than an error in the configuration.
 
 ## Supported Devices
 

@@ -2,6 +2,7 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 
 from asyncio import InvalidStateError
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 from pymodbus.exceptions import ModbusIOException
@@ -47,8 +48,11 @@ async def test_data_received_error() -> None:
         "TransactionManager.data_received"
     ) as data_rec:
         data_rec.side_effect = ModbusIOException()
+        ctx = cast(MyTransactionManager, client.ctx)
+        assert ctx.suppressed_errors == 0
         client.ctx.data_received(b"123")
         data_rec.assert_called_once()
+        assert ctx.suppressed_errors == 1
 
 
 @pytest.mark.asyncio
@@ -60,8 +64,10 @@ async def test_data_received_error_state() -> None:
         "TransactionManager.data_received"
     ) as data_rec:
         data_rec.side_effect = InvalidStateError()
+        ctx = cast(MyTransactionManager, client.ctx)
         client.ctx.data_received(b"123")
         data_rec.assert_called_once()
+        assert ctx.suppressed_errors == 1
 
 
 @pytest.mark.asyncio
@@ -72,5 +78,7 @@ async def test_data_received() -> None:
         "custom_components.modbus_local_gateway.transaction."
         "TransactionManager.data_received"
     ) as data_rec:
+        ctx = cast(MyTransactionManager, client.ctx)
         client.ctx.data_received(b"123")
         data_rec.assert_called_once()
+        assert ctx.suppressed_errors == 0
