@@ -545,6 +545,9 @@ def _async_normalise_gateway_devices(
         if keeper is None:
             keeper = device
             continue
+        for child in candidates:
+            if child.via_device_id == device.id:
+                device_registry.async_update_device(child.id, via_device_id=keeper.id)
         _async_merge_gateway_device(device_registry, entity_registry, keeper, device)
 
     if keeper is None:

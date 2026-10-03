@@ -656,3 +656,49 @@ async def test_migration_merges_the_gateway_devices_of_one_connection(
     ]
     assert len(gateway_devices) == 1
     assert registry.async_get(second_gateway_id) is None
+
+
+@pytest.mark.asyncio
+async def test_migration_moves_a_child_onto_the_kept_gateway_device(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A child of a duplicate gateway follows it onto the device that is kept.
+
+    Home Assistant clears `via_device_id` of every device whose parent is
+    removed. A child whose device file is gone is not registered again by setup,
+    so the parent link has to be moved before the duplicate gateway is removed.
+    """
+    first = _v1_entry("a" * 26, slave_id=1, prefix="test", filename="MOD-6000TL-X.yaml")
+    second = _v1_entry("b" * 26, slave_id=2, prefix="shed", filename="missing.yaml")
+    first.add_to_hass(hass)
+    second.add_to_hass(hass)
+
+    registry = dr.async_get(hass)
+    keeper_gateway = registry.async_get_or_create(
+        config_entry_id=first.entry_id,
+        identifiers={(DOMAIN, "ModbusGateway-test-localhost:123")},
+        name="Modbus Gateway (test)",
+    )
+    duplicate_gateway = registry.async_get_or_create(
+        config_entry_id=second.entry_id,
+        identifiers={(DOMAIN, "ModbusGateway-shed-localhost:123")},
+        name="Modbus Gateway (shed)",
+    )
+    child = registry.async_get_or_create(
+        config_entry_id=second.entry_id,
+        identifiers={(DOMAIN, "shed-localhost:123:2")},
+        name="Shed device",
+        via_device_id=duplicate_gateway.id,
+    )
+    child_id = child.id
+
+    with patch(
+        "custom_components.modbus_local_gateway.AsyncModbusTcpClientGateway"
+        ".async_get_client_connection",
+        return_value=MagicMock(connected=True),
+    ):
+        assert await async_setup(hass, {}) is True
+
+    moved_child = registry.async_get(child_id)
+    assert isinstance(moved_child, dr.DeviceEntry)
+    assert moved_child.via_device_id == keeper_gateway.id

@@ -651,7 +651,7 @@ class ModbusDeviceInfo:
         if "step" in number_data:
             try:
                 step = float(number_data["step"])
-            except OverflowError, TypeError, ValueError:
+            except (OverflowError, TypeError, ValueError):  # fmt: skip
                 _LOGGER.warning("Invalid step for number in %s", entity)
                 return None
             if not math.isfinite(step) or step <= 0:
