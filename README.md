@@ -432,7 +432,7 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
 - **"request ask for transaction_id ... but got id ..." or "extra data" in the logs**: this is
   the bridge, not the integration. A gateway that bridges TCP to a shared serial bus answers late
   when the bus is busy, and once a request has timed out its answer is still on the way, so the
-  next request collects it before its own: from then on the gateway is one response ahead for good.
+  next request collects it before its own: from then on, the gateway is one response ahead for good.
   The integration counts the answers that belong to a request nobody is waiting for, and when a
   read fails while such answers are in flight it treats the bridge as out of step — the poll ends
   there and the next poll starts on a renewed connection, which drops what the bridge had queued.

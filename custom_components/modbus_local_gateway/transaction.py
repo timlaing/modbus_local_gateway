@@ -68,6 +68,10 @@ class MyTransactionManager(TransactionManager):
         is in step with the gateway.
         """
         offset: int = 0
+        # One request has one answer, so a second frame that matches the request
+        # in flight is an answer to something else even though the future for the
+        # first has not been resolved yet.
+        answered: bool = self.response_future.done()
         while offset < len(data):
             used_len, dev_id, tid, frame = self.framer.decode(data[offset:])
             if not used_len or not frame:
@@ -81,8 +85,10 @@ class MyTransactionManager(TransactionManager):
                 and tid != self.request_transaction_id
             ):
                 self.mismatched_frames += 1
-            elif self.response_future.done():
+            elif answered:
                 self.unsolicited_frames += 1
+            else:
+                answered = True
 
     def pdu_send(self, pdu: ModbusPDU, addr: tuple[str, int] | None = None) -> None:
         """Initialize the recv buffer before each send to prevent duplication of data"""

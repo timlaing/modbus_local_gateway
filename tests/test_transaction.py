@@ -143,3 +143,18 @@ async def test_callback_data_ignores_a_matched_frame() -> None:
     assert ctx.mismatched_frames == 0
     assert ctx.unsolicited_frames == 0
     assert not ctx.desynced
+
+
+@pytest.mark.asyncio
+async def test_callback_data_counts_a_second_answer_to_one_request() -> None:
+    """A gateway that answers the same request twice is not in step"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    ctx = cast(MyTransactionManager, client.ctx)
+    ctx.request_dev_id = 1
+    ctx.request_transaction_id = 5
+
+    ctx.callback_data(_socket_frame(tid=5) + _socket_frame(tid=5))
+
+    assert ctx.unsolicited_frames == 1
+    assert ctx.mismatched_frames == 0
+    assert ctx.desynced
