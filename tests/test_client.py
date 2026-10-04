@@ -2311,3 +2311,29 @@ async def test_a_coil_response_of_whole_bytes_is_accepted_at_the_upper_bound() -
         )
         is not None
     )
+
+
+@pytest.mark.asyncio
+async def test_a_failed_renewal_stays_pending() -> None:
+    """A renewal that did not happen is still owed to the next attempt"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    connect = AsyncMock(side_effect=[False, True])
+    cast(Any, client).connect = connect
+    cast(Any, client).close = MagicMock()
+    cast(Any, client)._needs_reconnect = True
+    cast(Any, client.ctx).mismatched_frames = 3
+
+    with patch.object(
+        AsyncModbusTcpClientGateway,
+        "connected",
+        PropertyMock(return_value=True),
+    ):
+        assert await client._ensure_connection() is False
+        assert cast(Any, client)._needs_reconnect is True
+        assert cast(Any, client.ctx).mismatched_frames == 3
+
+        assert await client._ensure_connection() is True
+
+    assert connect.await_count == 2
+    assert cast(Any, client)._needs_reconnect is False
+    assert cast(Any, client.ctx).mismatched_frames == 0

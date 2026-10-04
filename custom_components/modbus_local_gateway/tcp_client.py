@@ -64,8 +64,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     # count that keeps climbing names the TCP-to-RTU bridge, not the device.
     _resyncs: int = 0
     # Set when a transaction failed while the gateway was answering out of
-    # order: the connection has answers queued for a request nobody is waiting
-    # for, and only a new connection gets rid of them.
+    # order: only a new connection gets rid of the queued answers.
     _needs_reconnect: bool = False
 
     def __init__(
@@ -124,8 +123,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         Returns whether the connection has to be renewed. Only a failure
         together with out-of-order answers means the bridge is holding
         responses nobody is waiting for: a failure on its own is a device that
-        did not answer, and a read that comes back matched is a stream that is
-        still in step, so neither of those justifies dropping the connection.
+        did not answer, so it does not justify dropping the connection.
         """
         if not self.desynced:
             return False
@@ -136,10 +134,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         """Connect, and renew the connection when the last transaction lost step.
 
         A gateway that bridges TCP to a serial bus keeps answering a request
-        after the client has stopped waiting for it. Once one request has timed
-        out, its answer is still on the way, and the next request collects it
-        before its own. Renewing the connection drops what the bridge has
-        queued, which is the only way back into step with it.
+        after the client has stopped waiting for it, so the next request collects
+        that answer before its own. Renewing the connection drops what the bridge
+        has queued, which is the only way back into step with it.
         """
         if not self.connected:
             await self.connect()
@@ -149,7 +146,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         if not self._needs_reconnect:
             return True
 
-        self._needs_reconnect = False
         _LOGGER.warning(
             "Gateway %s answered requests that were no longer waiting, renewing "
             "the connection to drop the queued answers",
@@ -157,21 +153,21 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         )
         self.close()
         if not await self.connect():
+            # Left pending, so the next attempt renews rather than taking the
+            # plain connection it would otherwise make and reading on a gateway
+            # that is still out of step.
             _LOGGER.warning("Failed to reconnect to gateway - %s", self)
             return False
         self._clear_desync()
+        self._needs_reconnect = False
         return True
 
     def _resync_transport(self) -> None:
-        """Drop anything still buffered so a late answer cannot answer the next request.
+        """Drop anything still buffered, and count the resynchronisation.
 
-        A gateway that bridges TCP to a shared serial bus answers late under
-        load, and pymodbus matches answers by transaction id: a response to a
-        request that was already retried is skipped rather than used, but it is
-        still consumed from the same stream the next request reads. Discarding
-        whatever is left when a read did not produce a usable answer means the
-        next transaction starts from a clean stream instead of walking through
-        frames that belong to a request this client has given up on.
+        Defensive rather than remedial: `pdu_send` already clears `recv_buffer`
+        before every send, and clearing what has been received cannot unqueue an
+        answer the gateway still owes. What does that is `_ensure_connection`.
         """
         self._resyncs += 1
         ctx = getattr(self, "ctx", None)
