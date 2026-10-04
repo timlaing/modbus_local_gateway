@@ -9,8 +9,14 @@ import logging
 from typing import Any, cast
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
-from homeassistant.const import CONF_HOST, Platform
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import CONF_HOST, EVENT_HOMEASSISTANT_STARTED, Platform
+from homeassistant.core import (
+    CALLBACK_TYPE,
+    CoreState,
+    Event,
+    HomeAssistant,
+    callback,
+)
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -38,9 +44,17 @@ from .entity_management.base import (
 )
 from .entity_management.const import WriteFunction
 from .entity_management.modbus_device_info import ModbusDeviceInfo
+from .exceptions import ModbusNoResponseError
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# A poll that has not finished by now is abandoned. This is a backstop, not the
+# mechanism that bounds a poll: a device that stops answering ends its cycle at
+# the first unanswered read, which is a handful of seconds. What is left to
+# catch is a poll waiting on the shared client lock for longer than any real
+# device could need, which would otherwise hold that lock indefinitely.
+_POLL_BACKSTOP: float = 120.0
 
 __all__ = [
     "ModbusContext",
@@ -244,9 +258,15 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     @callback
     def async_run(self) -> None:
-        """Remote start entity."""
+        """Remote start entity.
+
+        Deliberately does not read this entity. Home Assistant waits for the work
+        that setup starts, and a read of a device that is not answering costs a
+        timeout sequence per attempt, so one read per entity is what held startup
+        up on a gateway with a powered-off device behind it. The device is read
+        once as a whole instead, by `ModbusCoordinator`, after HA has started.
+        """
         self._async_cancel_update_polling()
-        self._async_schedule_future_update(0.1)
         if (
             self.coordinator_context.desc.scan_interval
             and self.coordinator_context.desc.scan_interval > 0
@@ -256,8 +276,6 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
                 self._async_update_if_not_in_progress,
                 timedelta(seconds=self.coordinator_context.desc.scan_interval),
             )
-        self._attr_available = True
-        self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
         """Handle entity which will be added."""
@@ -272,8 +290,13 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     @property
     def available(self) -> bool:
-        """Unavailable while the device is reporting a non-value for this entity."""
+        """Unavailable before the first poll, and while reporting a non-value."""
         if not super().available:
+            return False
+        if not self.coordinator.initial_poll_done:
+            # Nothing has been read yet, so there is no value behind this entity.
+            # Reporting availability before the first poll shows it as an unknown
+            # value rather than as a device that has not answered.
             return False
         return not self.coordinator.is_unavailable(self.coordinator_context)
 
@@ -299,6 +322,18 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self._gateway_device: dr.DeviceEntry | None = gateway_device
         # Entities whose most recent read was not a usable value.
         self._unavailable_keys: set[str] = set()
+        # The first poll of a device covers every entity, including the ones that
+        # poll on their own `scan_interval`: waiting for that timer would leave
+        # them without a value until it first fires.
+        self._poll_all_entities: bool = False
+        self._initial_poll_done: bool = False
+        self._initial_poll_scheduled: bool = False
+        self._initial_poll_task: asyncio.Task[None] | None = None
+        self._unsubscribe_start: CALLBACK_TYPE | None = None
+        # One poll of a device at a time. The client lock only serialises the
+        # devices behind one gateway; this keeps two polls of this device from
+        # queueing up behind each other.
+        self._poll_lock = asyncio.Lock()
         # Settings of the device this coordinator polls, from its sub-entry.
         self._subentry_data: Mapping[str, Any] = dict(subentry.data) if subentry else {}
         # Definition of the device this coordinator polls, from its YAML file.
@@ -376,61 +411,174 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             )
             return WriteFunction(OPTIONS_DEFAULT_WRITE_FUNCTION)
 
-    async def async_update(self) -> dict[str, Any]:
-        """Fetch updated data for all registered entities"""
-        entities: list[ModbusContext] = sorted(
-            self.async_contexts(), key=lambda x: x.device_id
+    @property
+    def initial_poll_done(self) -> bool:
+        """Whether the device has been read at least once."""
+        return self._initial_poll_done
+
+    @callback
+    def async_schedule_initial_poll(self) -> None:
+        """Read the device once, after Home Assistant has finished starting.
+
+        A read of a device that is not answering takes a timeout sequence, and
+        Home Assistant waits for the work a setup starts. That is why this does
+        not happen while the entry is being set up: entities are registered by
+        then, so the whole device can be read once - rather than one entity at a
+        time, which is what held startup up - and the read can wait until startup
+        is over.
+        """
+        if self._initial_poll_scheduled:
+            return
+        self._initial_poll_scheduled = True
+        if self.hass.state is CoreState.running:
+            # Set up, or reloaded, while Home Assistant is already up: there is
+            # no startup left to stay out of.
+            self._async_launch_initial_poll()
+            return
+        _LOGGER.debug(
+            "Deferring the first poll of %s until Home Assistant has started", self.name
         )
-        entities = [ctx for ctx in entities if ctx.desc.scan_interval is None]
-        if not entities:
-            # Every entity has its own scan_interval and polls on its own timer,
-            # so there is nothing for the shared refresh to fetch.
-            _LOGGER.debug("No entities to refresh for %s", self.name)
+        self._unsubscribe_start = self.hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STARTED, self._async_launch_initial_poll
+        )
+
+    @callback
+    def _async_launch_initial_poll(self, _event: Event | None = None) -> None:
+        """Run the deferred first poll as a task Home Assistant does not wait for."""
+        self._unsubscribe_start = None
+        if self._initial_poll_task is not None:
+            return
+        self._initial_poll_task = self.hass.async_create_background_task(
+            self._async_initial_poll(),
+            f"Modbus initial poll {self.name}",
+            # This is called from `async_schedule_initial_poll()`, which runs
+            # during setup. Starting the task on the next pass of the event loop
+            # keeps a read out of the caller's stack entirely.
+            eager_start=False,
+        )
+
+    @callback
+    def async_cancel_initial_poll(self) -> None:
+        """Drop the pending first poll, so an unloaded entry leaves nothing behind."""
+        if self._unsubscribe_start is not None:
+            self._unsubscribe_start()
+            self._unsubscribe_start = None
+        if self._initial_poll_task is not None:
+            self._initial_poll_task.cancel()
+            self._initial_poll_task = None
+        self._initial_poll_scheduled = False
+
+    async def _async_initial_poll(self) -> None:
+        """Read every entity of the device once."""
+        _LOGGER.debug("Reading %s for the first time", self.name)
+        self._poll_all_entities = True
+        await self.async_refresh()
+
+    async def async_update(self) -> dict[str, Any]:
+        """Fetch updated data for all registered entities.
+
+        One poll per device at a time: a refresh that arrives while one is running
+        is answered from it. That refresh is already asking for data newer than it
+        was asked for, so the interval after it picks up anything that changes in
+        between, and a slow device cannot be made slower by piling refreshes on it.
+        """
+        if self._poll_lock.locked():
+            _LOGGER.debug(
+                "Poll of %s already running, skipping this refresh", self.name
+            )
             return self.data or {}
-        return await self._update_device(entities=entities)
+        async with self._poll_lock:
+            try:
+                if self._poll_all_entities:
+                    self._poll_all_entities = False
+                    return await self._update_device(entities=self._all_contexts())
+                entities = [
+                    ctx
+                    for ctx in self._all_contexts()
+                    if ctx.desc.scan_interval is None
+                ]
+                if not entities:
+                    # Every entity has its own scan_interval and polls on its own
+                    # timer, so there is nothing for the shared refresh to fetch.
+                    _LOGGER.debug("No entities to refresh for %s", self.name)
+                    return self.data or {}
+                return await self._update_device(entities=entities)
+            finally:
+                self._initial_poll_done = True
+
+    def _all_contexts(self) -> list[ModbusContext]:
+        """Every registered entity of this device, in a stable order."""
+        return sorted(self.async_contexts(), key=lambda ctx: ctx.device_id)
 
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         """Update data for a list of entities.
 
-        Raises `UpdateFailed` when the poll was unsound - the device did not
-        reply, or a conversion failed unexpectedly and left nothing usable.
+        Raises `UpdateFailed` when the poll was unsound - nothing at all came back,
+        or a conversion failed unexpectedly and left nothing usable.
         """
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
-        resp: dict[str, ModbusPDU] = await self.client.update_device(
-            entities, max_read_size=self._max_read_size
-        )
-        data: dict[str, Any] = {}
         failed = False
+        try:
+            async with asyncio.timeout(_POLL_BACKSTOP):
+                resp: dict[str, ModbusPDU] = await self.client.update_device(
+                    entities, max_read_size=self._max_read_size
+                )
+        except ModbusNoResponseError as err:
+            # The device went quiet part way through the cycle. What was read
+            # before that is still good data, and the rest of the cycle is no
+            # longer worth asking for.
+            _LOGGER.debug("%s stopped answering: %s", self.name, err)
+            resp = err.partial
+        except TimeoutError:
+            _LOGGER.warning(
+                "Reading %s did not finish within %s seconds",
+                self.name,
+                _POLL_BACKSTOP,
+            )
+            raise UpdateFailed(
+                f"Reading {self.name} did not finish within {_POLL_BACKSTOP} seconds"
+            ) from None
+        data: dict[str, Any] = {}
 
         for entity in entities:
-            if entity.desc.key in resp:
-                modbus_response: ModbusPDU = resp[entity.desc.key]
-                try:
-                    value: str | float | int | bool | datetime | None = (
-                        self._convert_value(entity.desc, modbus_response)
-                    )
-                    data[entity.desc.key] = value
-                    self._unavailable_keys.discard(entity.desc.key)
-                    _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
-                except ValueUnavailable as err:
-                    # Deliberately not added to `data`: the platforms' "is not None"
-                    # guard then skips the update, and availability comes from
-                    # ModbusCoordinatorEntity.available.
-                    _LOGGER.debug(
-                        "%s is unavailable: %s (%s)",
-                        entity.desc.key,
-                        err.reason,
-                        err.value,
-                    )
-                    self._unavailable_keys.add(entity.desc.key)
-                except Exception:  # pylint: disable=broad-exception-caught
-                    failed = True
-                    _LOGGER.debug(
-                        "Data not available for key: %s (%d)",
-                        entity.desc.key,
-                        entity.device_id,
-                        exc_info=True,
-                    )
+            if entity.desc.key not in resp:
+                # This poll did not fetch it: the device stopped answering, or the
+                # read came back unusable. There is no fresh value either way, and
+                # the entity becomes unavailable rather than holding the last one.
+                _LOGGER.debug(
+                    "No value for key %s in this poll of %s",
+                    entity.desc.key,
+                    self.name,
+                )
+                self._unavailable_keys.add(entity.desc.key)
+                continue
+            modbus_response: ModbusPDU = resp[entity.desc.key]
+            try:
+                value: str | float | int | bool | datetime | None = self._convert_value(
+                    entity.desc, modbus_response
+                )
+                data[entity.desc.key] = value
+                self._unavailable_keys.discard(entity.desc.key)
+                _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
+            except ValueUnavailable as err:
+                # Deliberately not added to `data`: the platforms' "is not None"
+                # guard then skips the update, and availability comes from
+                # ModbusCoordinatorEntity.available.
+                _LOGGER.debug(
+                    "%s is unavailable: %s (%s)",
+                    entity.desc.key,
+                    err.reason,
+                    err.value,
+                )
+                self._unavailable_keys.add(entity.desc.key)
+            except Exception:  # pylint: disable=broad-exception-caught
+                failed = True
+                _LOGGER.debug(
+                    "Data not available for key: %s (%d)",
+                    entity.desc.key,
+                    entity.device_id,
+                    exc_info=True,
+                )
 
         if not data and (not resp or failed):
             raise UpdateFailed()
@@ -459,6 +607,13 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             if self.data is None:
                 self.data = {}
             self.data[ctx.desc.key] = data[ctx.desc.key]
+            # The device answered this entity, so it is not down - even if the
+            # shared poll that last failed said otherwise. Availability of the
+            # other entities comes from the keys that poll did not reach, not
+            # from this flag. `async_set_updated_data` would also do this, at
+            # the cost of restarting the shared refresh timer on every read of
+            # an entity that polls on its own.
+            self.last_update_success = True
 
     def is_unavailable(self, ctx: ModbusContext) -> bool:
         """Whether this entity's last read was a declared non-value."""

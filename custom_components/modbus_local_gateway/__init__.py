@@ -171,6 +171,12 @@ async def async_setup_entry(
     _setup_device_devices(entry, device_registry, gateway_device)
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    for coordinator in runtime.coordinators.values():
+        # Only now are the entities registered with their coordinator, so this is
+        # the first point where the device can be read as a whole. Reading it any
+        # earlier would be Home Assistant waiting, during setup, for the reads of
+        # devices that may well be switched off.
+        coordinator.async_schedule_initial_poll()
     return True
 
 
@@ -188,6 +194,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     runtime: GatewayRuntime = entry.runtime_data
     client: AsyncModbusTcpClientGateway = runtime.client
+    for coordinator in runtime.coordinators.values():
+        # The first poll is still outstanding for every device that has not been
+        # read yet, and it is holding on to the client: drop it before the client
+        # goes away.
+        coordinator.async_cancel_initial_poll()
     runtime.coordinators.clear()
 
     # The client is cached per host/port/framer and shared by every entry

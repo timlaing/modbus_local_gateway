@@ -45,17 +45,35 @@ async def test_setup_entry(hass: HomeAssistant) -> None:
     """Test the HA setup function"""
     mock_config_entry = mock_gateway_entry()
     mock_config_entry.add_to_hass(hass)
-    with patch(
-        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
-        return_value=True,
+    # The devices are read once setup is over, so the connection a setup asks for
+    # is not one a test should let out onto the network.
+    with (
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusTcpClientGateway.async_get_client_connection",
+            return_value=MagicMock(spec=AsyncModbusTcpClientGateway),
+        ),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            return_value=True,
+        ),
+        patch.object(ModbusCoordinator, "async_schedule_initial_poll"),
     ):
         await async_setup_entry(hass, mock_config_entry)
 
     rtu_entry = mock_gateway_entry(connection_type="rtu")
     rtu_entry.add_to_hass(hass)
-    with patch(
-        "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
-        return_value=True,
+    with (
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusTcpClientGateway.async_get_client_connection",
+            return_value=MagicMock(spec=AsyncModbusTcpClientGateway),
+        ),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            return_value=True,
+        ),
+        patch.object(ModbusCoordinator, "async_schedule_initial_poll"),
     ):
         await async_setup_entry(hass, rtu_entry)
 
@@ -165,6 +183,62 @@ async def test_setup_entry_skips_a_device_whose_file_is_gone(
 
     assert list(entry.runtime_data.coordinators) == [subentries[0].subentry_id]
     assert "gone.yaml" in str(error.call_args)
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_reads_the_devices_after_setup(hass: HomeAssistant) -> None:
+    """Setup schedules the first read of every device; it does not wait for it.
+
+    Home Assistant waits for the work that setup starts, and a read of a device
+    that is not answering takes a timeout sequence per attempt - so the devices
+    are read once each, after the platforms are up and after startup is over.
+    """
+    entry = mock_gateway_entry(slave_ids=[1, 2])
+    entry.add_to_hass(hass)
+    client = MagicMock(spec=AsyncModbusTcpClientGateway)
+
+    with (
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusTcpClientGateway.async_get_client_connection",
+            return_value=client,
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.create_device_info",
+            return_value=MagicMock(model="Model", manufacturer="Manufacturer"),
+        ),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            return_value=True,
+        ),
+        patch.object(ModbusCoordinator, "async_schedule_initial_poll") as schedule,
+    ):
+        await async_setup_entry(hass, entry)
+
+        # Once per device behind the gateway, and nothing was read while doing it.
+        assert schedule.call_count == 2
+        client.update_device.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_unload_entry_drops_the_pending_first_read(
+    hass: HomeAssistant,
+) -> None:
+    """Unloading must not leave a first read waiting to touch a closed client."""
+    entry = mock_gateway_entry()
+    client = MagicMock(spec=AsyncModbusTcpClientGateway)
+    coordinator = _coordinator(client)
+    entry.runtime_data = mock_runtime({"sub": coordinator}, client)
+
+    with (
+        patch.object(
+            hass.config_entries, "async_unload_platforms", AsyncMock(return_value=True)
+        ),
+        patch.object(hass.config_entries, "async_loaded_entries", return_value=[entry]),
+    ):
+        assert await async_unload_entry(hass, entry) is True
+
+    coordinator.async_cancel_initial_poll.assert_called_once()
 
 
 def _coordinator(client: MagicMock) -> MagicMock:

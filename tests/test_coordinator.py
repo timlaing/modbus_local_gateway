@@ -603,8 +603,12 @@ def test_async_cancel_update_polling() -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_run_sets_available_and_schedules() -> None:
-    """Test async_run schedules update and sets available."""
+async def test_async_run_does_not_read_and_schedules_the_interval() -> None:
+    """async_run leaves the first read to the coordinator.
+
+    A read per entity is what held startup up on a gateway with a device that is
+    switched off, so the entity does not read on its own here.
+    """
     coordinator = MagicMock()
     desc = ModbusSensorEntityDescription(
         register_address=1,
@@ -625,23 +629,17 @@ async def test_async_run_sets_available_and_schedules() -> None:
             ".async_track_time_interval",
         ) as mock_track_time_interval,
     ):
-        cast(Any, entity).async_write_ha_state = MagicMock()
         cast(Any, entity)._async_cancel_update_polling = MagicMock()
 
         entity.async_run()
-        assert entity._attr_available is True
         assert entity._cancel_timer is not None
-        assert entity._cancel_call is not None
 
-        mock_call_later.assert_called_once_with(
-            entity.hass, 0.1, entity._async_update_if_not_in_progress
-        )
+        mock_call_later.assert_not_called()
         mock_track_time_interval.assert_called_once_with(
             entity.hass,
             entity._async_update_if_not_in_progress,
             timedelta(seconds=float(1)),
         )
-        cast(Any, entity).async_write_ha_state.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -744,6 +742,52 @@ async def test_async_update_entity(mock_config_entry: ConfigEntry) -> None:
     cast(Any, coordinator)._update_device.return_value = {"test2": "value3"}
     await coordinator.async_update_entity(ctx2)
     assert coordinator.data == {"test1": "value1", "test2": "value3"}
+
+
+@pytest.mark.asyncio
+async def test_an_entity_read_restores_coordinator_success(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """A device that answers one entity again is no longer unavailable."""
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.last_update_success = False
+    coordinator.data = {}
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test1",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    cast(Any, coordinator)._update_device = AsyncMock(return_value={"test1": "value1"})
+
+    await coordinator.async_update_entity(ctx)
+
+    assert coordinator.last_update_success is True
+    assert coordinator.data == {"test1": "value1"}
+
+
+@pytest.mark.asyncio
+async def test_a_failed_entity_read_leaves_coordinator_success_alone(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """An entity that got nothing back does not claim the device answered."""
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.last_update_success = False
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test1",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    cast(Any, coordinator)._update_device = AsyncMock(side_effect=UpdateFailed())
+
+    await coordinator.async_update_entity(ctx)
+
+    assert coordinator.last_update_success is False
 
 
 @pytest.mark.asyncio
@@ -934,6 +978,10 @@ def test_entity_unavailable_for_declared_value(mock_config_entry: ConfigEntry) -
     entity = ModbusCoordinatorEntity(coordinator, ctx, DeviceInfo(identifiers=set()))
     entity._attr_available = True
 
+    # Nothing read yet: there is no value behind the entity to report as available.
+    assert entity.available is False
+
+    coordinator._initial_poll_done = True
     assert entity.available is True
 
     coordinator._unavailable_keys.add("test_key")
@@ -941,3 +989,6 @@ def test_entity_unavailable_for_declared_value(mock_config_entry: ConfigEntry) -
 
     coordinator._unavailable_keys.discard("test_key")
     assert entity.available is True
+
+    coordinator.last_update_success = False
+    assert entity.available is False
