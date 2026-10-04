@@ -437,7 +437,7 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
   read fails while such answers are in flight it treats the bridge as out of step — the poll ends
   there and the next poll starts on a renewed connection, which drops what the bridge had queued.
   A read that comes back matched clears the count, so a gateway that is only a moment behind is
-  never disconnected. The warning for a failed poll carries the running count. Devices behind one
+  never disconnected. The warning for a failed poll carries the number of times the connection had to be resynchronised; the count of out-of-order answers is on the connection. Devices behind one
   gateway are polled one request at a time and each device keeps its own update frequency. If the
   messages persist, reduce how often the devices are polled, check the bridge's TCP time-out and
   max-connection settings, or update its firmware; a serial bus shared with another master (a

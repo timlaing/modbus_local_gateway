@@ -2283,3 +2283,31 @@ async def test_a_matched_read_clears_the_desync() -> None:
 
     assert cast(Any, client.ctx).mismatched_frames == 0
     assert cast(Any, client)._needs_reconnect is False
+
+
+@pytest.mark.asyncio
+async def test_a_coil_response_for_more_bits_than_requested_is_rejected() -> None:
+    """An answer to a larger request is not this request's answer"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    func = AsyncMock(return_value=ReadCoilsResponse(bits=[True] * 16))
+
+    assert (
+        await client.read_data(
+            func=func, address=1, count=2, device_id=1, max_read_size=8
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_coil_response_of_whole_bytes_is_accepted_at_the_upper_bound() -> None:
+    """Padding the last byte is the only slack a coil response is allowed"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    func = AsyncMock(return_value=ReadCoilsResponse(bits=[True] * 8))
+
+    assert (
+        await client.read_data(
+            func=func, address=1, count=5, device_id=1, max_read_size=8
+        )
+        is not None
+    )

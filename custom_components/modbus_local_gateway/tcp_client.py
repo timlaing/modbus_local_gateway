@@ -29,6 +29,17 @@ from .transaction import MyTransactionManager
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+
+def _padded_bit_count(read_count: int) -> int:
+    """The number of bits a response to a request for ``read_count`` carries.
+
+    Coils and discrete inputs are transmitted a byte at a time, so a request for
+    up to eight of them is answered with eight bits, and so on. pymodbus decodes
+    every bit of those bytes, which makes this the length of a well-formed answer.
+    """
+    return ((read_count + 7) // 8) * 8
+
+
 # What one read of a poll cycle is remembered by: the device it went to, the
 # bank it came from, and the range it covered.
 ReadKey = tuple[int, ModbusDataType, int, int]
@@ -182,8 +193,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         id, so what is left to check is how much of it there is: a gateway that
         answers a request late hands back the answer to another one, and that
         shows up here as an answer of the wrong length. Coils come back in
-        whole bytes, so a coil response may be longer than the request but
-        never shorter.
+        whole bytes, so the bits of a coil response span whole bytes: an answer
+        may be longer than the request by up to the padding of the last byte,
+        but no longer than that.
         """
         if not hasattr(response, "registers" if is_register_func else "bits"):
             _LOGGER.error("Invalid response received from Device ID %d", device_id)
@@ -193,7 +205,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             len(response.registers) != read_count
             if is_register_func
             else isinstance(response, (ReadCoilsResponse, ReadDiscreteInputsResponse))
-            and len(response.bits) < read_count
+            and not read_count <= len(response.bits) <= _padded_bit_count(read_count)
         )
         if not wrong_count:
             return True

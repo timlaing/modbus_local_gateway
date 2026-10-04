@@ -73,6 +73,7 @@
     "pytype",
     "pyupgrade",
     "salda",
-    "sonarqube"
+    "sonarqube",
+    "unqueue"
   ]
 }
