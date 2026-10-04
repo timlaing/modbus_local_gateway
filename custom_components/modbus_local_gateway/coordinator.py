@@ -565,7 +565,9 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Every registered entity of this device, in a stable order."""
         return sorted(self.async_contexts(), key=lambda ctx: ctx.device_id)
 
-    async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
+    async def _update_device(
+        self, entities: list[ModbusContext], whole_device: bool = True
+    ) -> dict[str, Any]:
         """Update data for a list of entities.
 
         A device that is not answering is not a failure to raise: it is reported
@@ -573,6 +575,11 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         unavailable. `UpdateFailed` is for a poll that was unsound for a reason the
         device cannot be blamed for - a conversion that failed, or a poll that never
         finished - because that is what leaves the coordinator retrying.
+
+        `whole_device` is False for a read of one entity on its own `scan_interval`.
+        A register that times out then says nothing about the rest of the device, so
+        such a read marks the device as answering when it comes back and otherwise
+        only speaks for the entity it read.
         """
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
         if not entities:
@@ -603,7 +610,15 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             raise UpdateFailed(
                 f"Reading {self.name} did not finish within {_POLL_BACKSTOP} seconds"
             ) from None
-        self._report_device_state(device_id, online=not silent)
+        if resp:
+            # Something came back, so the device is answering whatever else this
+            # poll asked it for and it did not answer.
+            self._report_device_state(device_id, online=True)
+        elif whole_device and silent:
+            # Nothing at all came back from a read that reached the device. A poll
+            # that never got that far - the gateway itself did not answer - is the
+            # gateway's line to say, not this device's.
+            self._report_device_state(device_id, online=False)
         data: dict[str, Any] = {}
 
         for entity in entities:
@@ -669,7 +684,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     async def async_update_entity(self, ctx: ModbusContext) -> None:
         """Update cached data for a specific entity."""
         try:
-            data = await self._update_device(entities=[ctx])
+            data = await self._update_device(entities=[ctx], whole_device=False)
         except UpdateFailed:
             return None
         if data:

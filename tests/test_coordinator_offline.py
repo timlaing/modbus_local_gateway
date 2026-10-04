@@ -60,6 +60,26 @@ def _answers(key: str = "test_key") -> Any:
     return _read
 
 
+def _returns(data: dict[str, Any]) -> Any:
+    """A read that came back with what it had to say."""
+
+    async def _read(*_: Any, **__: Any) -> dict[str, Any]:
+        return data
+
+    return _read
+
+
+def _partial(*answered: ModbusContext) -> Any:
+    """A read that went quiet part way through, keeping what it had read."""
+
+    async def _read(*_: Any, **__: Any) -> ModbusNoResponseError:
+        raise ModbusNoResponseError(
+            "stopped answering", partial={ctx.desc.key: MagicMock() for ctx in answered}
+        )
+
+    return _read
+
+
 def _silent(*_: Any, **__: Any) -> Any:
     """A read that never gets an answer, as the client reports it."""
 
@@ -160,6 +180,82 @@ async def test_going_offline_again_is_reported_again(
         await coordinator._update_device([_entity()])
 
     assert caplog.text.count("stopped answering") == 1
+
+
+@pytest.mark.asyncio
+async def test_a_device_that_answers_some_of_it_stays_online(
+    mock_config_entry: ConfigEntry, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Answering 3 out of 5 is answering. The 2 that did not are marked unavailable.
+
+    The device is on the bus and the values that did come back are worth having, so
+    it has not gone offline and nothing is said about it. Only the entities with no
+    response go unavailable.
+    """
+    coordinator = _coordinator(mock_config_entry)
+    answered, silent_ctx = _entity("answered"), _entity("silent")
+    cast(Any, coordinator.client).update_device.side_effect = _partial(answered)
+
+    with (
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+        patch(_CONVERT_FROM_RESPONSE, return_value=42),
+    ):
+        await coordinator._update_device([answered, silent_ctx])
+
+    assert caplog.text == ""
+    assert coordinator.device_online is True
+    assert coordinator.is_unavailable(answered) is False
+    assert coordinator.is_unavailable(silent_ctx) is True
+
+
+@pytest.mark.asyncio
+async def test_a_gateway_that_will_not_connect_is_not_a_device_answering_again(
+    mock_config_entry: ConfigEntry, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An unreachable gateway says nothing about the device; it has its own line."""
+    coordinator = _coordinator(mock_config_entry)
+    cast(Any, coordinator.client).update_device.side_effect = _silent()
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        await coordinator._update_device([_entity()])
+    assert coordinator.device_online is False
+
+    # The gateway is not reachable, so there is no read to make and nothing comes
+    # back - but no device read was answered either, so it has not started answering.
+    cast(Any, coordinator.client).update_device.side_effect = _returns({})
+    caplog.clear()
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        assert await coordinator._update_device([_entity()]) == {}
+
+    assert caplog.text == ""
+    assert coordinator.device_online is False
+    assert coordinator.is_unavailable(_entity()) is True
+
+
+@pytest.mark.asyncio
+async def test_one_register_not_answering_does_not_take_the_device_offline(
+    mock_config_entry: ConfigEntry, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A read on one entity's own timer says nothing about the rest of the device."""
+    coordinator = _coordinator(mock_config_entry)
+    ctx = _entity()
+    cast(Any, coordinator.client).update_device.side_effect = _silent()
+
+    with caplog.at_level(logging.INFO, logger=_LOGGER_NAME):
+        await coordinator.async_update_entity(ctx)
+
+    assert caplog.text == ""
+    assert coordinator.device_online is True
+    assert coordinator.is_unavailable(ctx) is True
+
+    # A read that comes back marks the device as answering again, as before.
+    cast(Any, coordinator.client).update_device.side_effect = _answers()
+    with (
+        caplog.at_level(logging.INFO, logger=_LOGGER_NAME),
+        patch(_CONVERT_FROM_RESPONSE, return_value=42),
+    ):
+        await coordinator.async_update_entity(ctx)
+
+    assert coordinator.is_unavailable(ctx) is False
 
 
 @pytest.mark.asyncio
