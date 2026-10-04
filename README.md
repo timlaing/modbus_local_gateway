@@ -133,11 +133,11 @@ Each file requires a `device` section and optional register/coil sections:
   - `model` (required): String.
   - `max_register_read` (optional): Max registers per read (default: 8).
   - `probe_key` (optional): The entity name a
-    [recovery probe](#a-device-that-is-off-is-not-polled-every-cycle) reads when checking whether
-    the device is back. Use it for a device whose first entity is an expensive read, or one that
-    answers slowly while it is waking up: name an entity the device answers as long as it is
-    powered at all, such as a status word. The name has to be an entity of that device; anything
-    else is logged and the first entity is used.
+    [recovery probe](#troubleshooting) reads when checking whether the device is back. Use it for
+    a device whose first entity is an expensive read, or one that answers slowly while it is
+    waking up: name an entity the device answers as long as it is powered at all, such as a status
+    word. The name has to be an entity of that device; anything else is logged and the first entity
+    is used.
 
 - **Register/Coil Sections** (optional):
   - `read_write_word`: Holding registers (read/write).
@@ -468,12 +468,13 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
 - **One answer brings a device back, and the rest of it comes with it**: the refresh after a
   deadline reads one entity to ask whether the device is back - the entity named by `probe_key`, or
   the device's first entity - and one usable answer is enough to bring its entities back. The rest
-  of the poll carries on in that same read, so every entity is fresh at once rather than one now
-  and the others whenever their own timer next comes round. An answer that came back but could not
-  be used does not count as recovery, which is what stops a device that wakes up mid-read from
-  being written off again. A device that answers the probe and then goes quiet again is on the bus,
-  so it is treated as back: the values it did answer are kept, the entities that had no usable
-  response are warned about as usual, and it is polled normally from the next cycle.
+  of the poll carries on in that same read, so everything the device does answer is fresh at once
+  rather than one entity now and the others whenever their own timer next comes round. An answer
+  that came back but could not be used does not count as recovery, which is what stops a device that
+  wakes up mid-read from being written off again. A device that answers the probe and then goes quiet
+  again is on the bus, so it is treated as back: the values it did answer are kept, the entities
+  that had no usable response are warned about as usual, and it is polled normally from the next
+  cycle.
 - **A gateway that will not connect is left alone too**: a gateway that cannot be reached is
   retried after 2, 5, 15, 30 and then 60 seconds rather than once per device per refresh. Writes
   are not held back by either backoff: a write is asked for by a person waiting for it, and is
