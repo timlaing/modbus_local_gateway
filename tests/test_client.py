@@ -5,7 +5,7 @@
 import asyncio
 from datetime import datetime
 from typing import Any, cast
-from unittest.mock import AsyncMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from pymodbus.exceptions import ModbusException, ModbusIOException
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
@@ -2179,3 +2179,107 @@ async def test_read_exception_resynchronises_the_connection() -> None:
     assert data == {}
     assert cast(Any, client)._resyncs == 1
     assert client.ctx.recv_buffer == b""
+
+
+@pytest.mark.asyncio
+async def test_a_short_coil_response_is_rejected() -> None:
+    """Fewer bits than asked for is an answer to another request"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    func = AsyncMock(return_value=ReadCoilsResponse(bits=[]))
+
+    assert (
+        await client.read_data(
+            func=func, address=1, count=2, device_id=1, max_read_size=8
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_coil_response_of_whole_bytes_is_accepted() -> None:
+    """A coil response may be longer than the request, pymodbus pads to bytes"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    func = AsyncMock(return_value=ReadCoilsResponse(bits=[True, False]))
+
+    assert (
+        await client.read_data(
+            func=func, address=1, count=2, device_id=1, max_read_size=8
+        )
+        is not None
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_failed_read_on_a_desynced_gateway_ends_the_poll() -> None:
+    """The rest of the poll would be read out of step, so it is left to the next one"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock(return_value=True)
+    read_data = AsyncMock(side_effect=ModbusIOException("No response"))
+    cast(Any, client.ctx).mismatched_frames = 1
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+    ):
+        data = await client.update_device(
+            [_single_holding_entity("first"), _single_holding_entity("second")], 64
+        )
+
+    assert data == {}
+    assert read_data.call_count == 1
+    assert cast(Any, client)._needs_reconnect is True
+
+
+@pytest.mark.asyncio
+async def test_the_next_poll_renews_the_connection_after_a_desync() -> None:
+    """A new connection is the only way to drop what the bridge has queued"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    connect = AsyncMock(return_value=True)
+    close = MagicMock()
+    cast(Any, client).connect = connect
+    cast(Any, client).close = close
+    cast(Any, client)._needs_reconnect = True
+    cast(Any, client.ctx).mismatched_frames = 2
+    read_data = AsyncMock(return_value=ReadHoldingRegistersResponse(registers=[7]))
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+    ):
+        data = await client.update_device([_single_holding_entity()], 64)
+
+    close.assert_called_once()
+    connect.assert_awaited_once()
+    assert cast(Any, client.ctx).mismatched_frames == 0
+    assert cast(Any, client)._needs_reconnect is False
+    assert list(data["value"].registers) == [7]
+
+
+@pytest.mark.asyncio
+async def test_a_matched_read_clears_the_desync() -> None:
+    """A read that came back matched proves the gateway is in step again"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock(return_value=True)
+    cast(Any, client.ctx).mismatched_frames = 1
+    read_data = AsyncMock(return_value=ReadHoldingRegistersResponse(registers=[7]))
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+    ):
+        await client.update_device([_single_holding_entity()], 64)
+
+    assert cast(Any, client.ctx).mismatched_frames == 0
+    assert cast(Any, client)._needs_reconnect is False
