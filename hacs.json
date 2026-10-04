@@ -1,6 +1,6 @@
 {
   "hide_default_branch": true,
-  "homeassistant": "2025.9.0",
+  "homeassistant": "2026.9.0",
   "name": "Integration for Modbus TCP Gateways",
   "render_readme": true
 }
