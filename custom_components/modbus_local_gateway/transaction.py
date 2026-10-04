@@ -39,8 +39,10 @@ class MyTransactionManager(TransactionManager):
     def clear_desync(self) -> None:
         """Forget the out-of-order answers seen so far.
 
-        Called once the connection has been renewed, and after a read that
-        came back matched, because either proves the stream is in step again.
+        Called once the connection has been renewed, and after a read that came
+        back matched. A match is not proof of which request produced the answer -
+        over RTU-TCP there is no transaction id to match on - but it is enough
+        to say the gateway is not still answering out of order.
         """
         self.mismatched_frames = 0
         self.unsolicited_frames = 0

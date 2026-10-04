@@ -138,28 +138,28 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         that answer before its own. Renewing the connection drops what the bridge
         has queued, which is the only way back into step with it.
         """
+        if self._needs_reconnect:
+            _LOGGER.warning(
+                "Gateway %s answered requests that were no longer waiting, renewing "
+                "the connection to drop the queued answers",
+                self,
+            )
+            self.close()
+            if not await self.connect():
+                # Left pending, so the next attempt renews rather than taking the
+                # plain connection it would otherwise make and reading on a gateway
+                # that is still out of step.
+                _LOGGER.warning("Failed to reconnect to gateway - %s", self)
+                return False
+            self._clear_desync()
+            self._needs_reconnect = False
+            return True
+
         if not self.connected:
             await self.connect()
         if not self.connected:
             _LOGGER.warning("Failed to connect to gateway - %s", self)
             return False
-        if not self._needs_reconnect:
-            return True
-
-        _LOGGER.warning(
-            "Gateway %s answered requests that were no longer waiting, renewing "
-            "the connection to drop the queued answers",
-            self,
-        )
-        self.close()
-        if not await self.connect():
-            # Left pending, so the next attempt renews rather than taking the
-            # plain connection it would otherwise make and reading on a gateway
-            # that is still out of step.
-            _LOGGER.warning("Failed to reconnect to gateway - %s", self)
-            return False
-        self._clear_desync()
-        self._needs_reconnect = False
         return True
 
     def _resync_transport(self) -> None:
@@ -939,7 +939,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
             if modbus_response and not modbus_response.isError():
                 data[entity.desc.key] = modbus_response
-                # A matched answer proves the stream is in step again.
+                # A matched answer clears the count.
                 self._clear_desync()
             else:
                 self._resync_transport()
