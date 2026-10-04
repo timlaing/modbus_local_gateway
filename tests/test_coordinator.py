@@ -745,6 +745,52 @@ async def test_async_update_entity(mock_config_entry: ConfigEntry) -> None:
 
 
 @pytest.mark.asyncio
+async def test_an_entity_read_restores_coordinator_success(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """A device that answers one entity again is no longer unavailable."""
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.last_update_success = False
+    coordinator.data = {}
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test1",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    cast(Any, coordinator)._update_device = AsyncMock(return_value={"test1": "value1"})
+
+    await coordinator.async_update_entity(ctx)
+
+    assert coordinator.last_update_success is True
+    assert coordinator.data == {"test1": "value1"}
+
+
+@pytest.mark.asyncio
+async def test_a_failed_entity_read_leaves_coordinator_success_alone(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """An entity that got nothing back does not claim the device answered."""
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.last_update_success = False
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test1",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    cast(Any, coordinator)._update_device = AsyncMock(side_effect=UpdateFailed())
+
+    await coordinator.async_update_entity(ctx)
+
+    assert coordinator.last_update_success is False
+
+
+@pytest.mark.asyncio
 async def test_async_update_with_no_coordinator_entities(
     mock_config_entry: ConfigEntry,
 ) -> None:

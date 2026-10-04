@@ -46,7 +46,9 @@ custom integrations. Pre-releases are not listed here.
   bus, so the poll carries on with the next entity and the reason is logged at debug. Only a
   read that got no answer at all is an outage, and it says so once per poll. A device that is
   added or reloaded while Home Assistant is already running is read straight away, and a first
-  read still pending when the entry is unloaded is dropped.
+  read still pending when the entry is unloaded is dropped. An entity with its own
+  `scan_interval` that reads a value back marks the device as answering again, so it does
+  not stay unavailable until the next shared poll succeeds.
 - **A `map:` miss no longer freezes an entity**: `_convert_to_enum` returned `None` for an unmapped value and the platforms skip the update on `None`, so the entity silently kept its previous state — no error, no `unknown`, just a stale reading that looks current. The raw number is returned instead, so the state is either a label or a bare number and the reading is never older than the last poll. The miss is logged at debug.
 - **Failed register writes are reported to Home Assistant**: the write helpers were annotated `-> None` and never returned the PDU they received, so the `if pdu and pdu.isError()` check in `write_data()` was dead code — a Modbus exception response to a write was reported back as a successful write. The PDU is now returned and `write_data()` raises `ModbusException`, which the coordinator entity wraps into `UpdateFailed`. Behaviour change: writes that previously failed silently now raise.
 - **Number writes are read back**: `async_set_native_value` called the client directly, bypassing `ModbusCoordinatorEntity.write_data()` and the re-read that switch, select and text all perform, so the matching sensor stayed stale for a full `scan_interval` after every number write.

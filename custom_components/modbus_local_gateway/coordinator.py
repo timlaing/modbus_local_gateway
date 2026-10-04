@@ -607,6 +607,13 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             if self.data is None:
                 self.data = {}
             self.data[ctx.desc.key] = data[ctx.desc.key]
+            # The device answered this entity, so it is not down - even if the
+            # shared poll that last failed said otherwise. Availability of the
+            # other entities comes from the keys that poll did not reach, not
+            # from this flag. `async_set_updated_data` would also do this, at
+            # the cost of restarting the shared refresh timer on every read of
+            # an entity that polls on its own.
+            self.last_update_success = True
 
     def is_unavailable(self, ctx: ModbusContext) -> bool:
         """Whether this entity's last read was a declared non-value."""
