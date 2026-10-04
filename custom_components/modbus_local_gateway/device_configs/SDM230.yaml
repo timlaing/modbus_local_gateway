@@ -12,9 +12,7 @@ read_write_word:
   com_address:
     name: Communicate address
     address: 20
-    size: 2
     control: number
-    float: true
     icon: mdi:serial-port
     number:
       min: 1
@@ -22,9 +20,7 @@ read_write_word:
   baud_rate:
     name: Baud Rate
     address: 28
-    size: 2
     control: select
-    float: true
     options:
       0: 2400 bps
       1: 4800 bps
