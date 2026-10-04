@@ -23,6 +23,7 @@ MODEL = "model"
 MANUFACTURER = "manufacturer"
 MAX_READ = "max_register_read"
 MAX_READ_DEFAULT = 8
+PROBE_KEY = "probe_key"
 
 NAME = "name"
 CONTROL_TYPE = "control"

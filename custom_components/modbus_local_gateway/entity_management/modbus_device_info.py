@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import cached_property
 import logging
 import math
 from os.path import join
@@ -54,6 +55,7 @@ from .const import (
     NEVER_RESETS,
     NO_FLAG_VALUE,
     PRECISION,
+    PROBE_KEY,
     REGISTER_ADDRESS,
     REGISTER_COUNT,
     STATE_CLASS,
@@ -184,6 +186,62 @@ class ModbusDeviceInfo:
         if self._config and isinstance(self._config, dict) and DEVICE in self._config:
             return cast(int, self._config[DEVICE].get(MAX_READ, MAX_READ_DEFAULT))
         raise DeviceConfigError()
+
+    @cached_property
+    def probe_key(self) -> str | None:
+        """The entity a recovery probe reads, when the device names one.
+
+        A device that has stopped answering is asked one question to find out
+        whether it is back, and the answer should come from an entity the device
+        answers as long as it is powered at all: a status word rather than a
+        history, a register rather than a set of them. Naming it here is how a
+        device whose first entity is not that chooses; without a name the first
+        entity of the poll is used, which is the right answer for most devices.
+
+        A name that is not one of the device's own entities is a warning rather
+        than a failure: the probe falls back to the first entity, which is what it
+        would have done anyway.
+
+        Decided once and kept, because every poll asks for it, and a name that is
+        wrong in a device configuration is worth saying once rather than on every
+        poll that goes on to probe the wrong entity.
+        """
+        device = self._config.get(DEVICE) if isinstance(self._config, dict) else None
+        stored = device.get(PROBE_KEY) if isinstance(device, dict) else None
+        if stored is None:
+            return None
+        if stored not in self._declared_keys():
+            _LOGGER.warning(
+                "%s: %s is %s, which is not an entity of this device, so its "
+                "recovery probe reads the first entity instead",
+                self.fname,
+                PROBE_KEY,
+                stored,
+            )
+            return None
+        return str(stored)
+
+    def _declared_keys(self) -> set[str]:
+        """The entity names the config declares, without building any of them.
+
+        Cheaper than `entity_descriptions`, and enough to tell whether the key
+        named for a probe is one this device actually has.
+        """
+        config: Any = self._config
+        declared: set[str] = set()
+        if not isinstance(config, dict):
+            return declared
+        for section in (
+            ModbusDataType.HOLDING_REGISTER,
+            ModbusDataType.INPUT_REGISTER,
+            ModbusDataType.COIL,
+            ModbusDataType.DISCRETE_INPUT,
+            COMPOSITE,
+        ):
+            section_data: Any = config.get(section)
+            if isinstance(section_data, dict):
+                declared |= {str(name) for name in section_data}
+        return declared
 
     @property
     def entity_descriptions(self) -> tuple[DESCRIPTION_TYPE, ...]:

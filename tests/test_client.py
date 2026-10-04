@@ -598,6 +598,17 @@ async def test_write_multiple_registers_success_individual() -> None:
         )
 
 
+def _outage_state(client: Any) -> None:
+    """Give a stubbed client the state its real `__init__` would have set.
+
+    These tests replace `__init__` to keep a socket out of it, so the fields the
+    outage and connection gates read have to be set here instead.
+    """
+    client._outages = {}
+    client._connect_next_attempt = 0.0
+    client._connect_failures = 0
+
+
 @pytest.mark.asyncio
 async def test_get_client() -> None:
     """test the class helper method"""
@@ -634,6 +645,7 @@ async def test_update_device_not_connected() -> None:
         """Mocked init"""
         self.lock = lock
         self._gateway_reachable = True
+        _outage_state(self)
 
     with (
         patch.object(
@@ -689,6 +701,7 @@ async def test_update_device_connected_no_entities() -> None:
         """Mocked init"""
         self.lock = lock
         self._gateway_reachable = True
+        _outage_state(self)
 
     with (
         patch.object(
@@ -717,8 +730,10 @@ async def test_update_device_connected_no_entities() -> None:
         assert isinstance(resp, dict)
         cast(Any, gateway).connect.assert_not_called()
         warning.assert_not_called()
-        debug.assert_called_once()
-        assert len(lock.mock_calls) == 2
+        # Nothing was asked for, so nothing was read: no connection, and no time
+        # on the lock that every other device behind this gateway queues behind.
+        debug.assert_not_called()
+        assert len(lock.mock_calls) == 0
 
 
 @pytest.mark.asyncio
@@ -2411,14 +2426,26 @@ async def test_a_failed_renewal_stays_pending() -> None:
     cast(Any, client)._needs_reconnect = True
     cast(Any, client.ctx).mismatched_frames = 3
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "connected",
-        PropertyMock(return_value=True),
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client.monotonic",
+            side_effect=[0.0, 0.0, 1.0, 3.0],
+        ),
     ):
         assert await client._ensure_connection() is False
         assert cast(Any, client)._needs_reconnect is True
         assert cast(Any, client.ctx).mismatched_frames == 3
+
+        # Straight away there is nothing to gain by trying again - every device
+        # behind this gateway refreshes on its own timer - but the renewal is
+        # still owed.
+        assert await client._ensure_connection() is False
+        assert connect.await_count == 1
 
         assert await client._ensure_connection() is True
 

@@ -32,6 +32,7 @@ from custom_components.modbus_local_gateway.const import (
     CONF_PREFIX,
     CONF_RESTORE_ENTITY_IDS,
     DOMAIN,
+    OPTIONS_EXPECTED_OFFLINE,
     OPTIONS_REFRESH,
     OPTIONS_WRITE_FUNCTION,
     SUBENTRY_TYPE_DEVICE,
@@ -511,6 +512,41 @@ async def test_async_step_user_creates_a_subentry(
     subentry = subentries[0]
     assert subentry.unique_id == "test-localhost:123:1"
     assert dict(subentry.data) == device_data(1, prefix="test", refresh=10)
+
+
+@pytest.mark.asyncio
+async def test_async_step_user_stores_whether_a_device_is_expected_offline(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A device that switches itself off says so, and the setting is kept.
+
+    It is what tells a solar inverter going quiet at dusk apart from a device
+    that has fallen off the bus, so it has to survive being stored rather than
+    being asked for again on every poll.
+    """
+    entry = mock_gateway_entry(slave_ids=[])
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.modbus_local_gateway.config_flow.create_device_info",
+        MagicMock(),
+    ):
+        result = await hass.config_entries.subentries.async_init(
+            (entry.entry_id, SUBENTRY_TYPE_DEVICE),
+            context={"source": SOURCE_USER},
+        )
+        assert result["type"] == FlowResultType.FORM
+
+        result = await hass.config_entries.subentries.async_configure(
+            result["flow_id"], DEVICE_INPUT | {OPTIONS_EXPECTED_OFFLINE: True}
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    subentry = entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE)[0]
+    assert dict(subentry.data) == device_data(
+        1, prefix="test", refresh=10, expected_offline=True
+    )
 
 
 @pytest.mark.asyncio

@@ -14,6 +14,7 @@ from custom_components.modbus_local_gateway.const import (
     CONF_LEGACY_ENTITY_IDS_DEFAULT,
     CONF_PREFIX,
     DOMAIN,
+    OPTIONS_DEFAULT_EXPECTED_OFFLINE,
     OPTIONS_DEFAULT_REFRESH,
     OPTIONS_DEFAULT_WRITE_FUNCTION,
     SUBENTRY_TYPE_DEVICE,
@@ -55,6 +56,7 @@ def device_data(
         "filename": filename,
         "refresh": OPTIONS_DEFAULT_REFRESH,
         "write_function": OPTIONS_DEFAULT_WRITE_FUNCTION,
+        "expected_offline": OPTIONS_DEFAULT_EXPECTED_OFFLINE,
         **kwargs,
     }
 
