@@ -609,6 +609,59 @@ async def test_the_lock_is_released_when_a_read_of_the_entity_finishes() -> None
 
 
 @pytest.mark.asyncio
+async def test_the_read_back_after_a_write_waits_for_a_read_in_progress() -> None:
+    """A write read-back is not dropped behind a read of the same entity.
+
+    #327: skipping the read of an entity whose lock is held is right for a polling
+    tick - the read holding the lock is about to publish that value - but a write
+    has already put a new value in the device by then, and a read that started
+    before the write has the old one in the cache. Skipping the read-back would
+    leave the entity reporting the old value until the next poll, so the write
+    waits for that read to finish.
+    """
+    coordinator = MagicMock()
+    coordinator.client.write_data = AsyncMock()
+    read_done = asyncio.Event()
+    reads: list[str] = []
+
+    async def read_entity(_ctx: ModbusContext) -> None:
+        """The read that was already in flight when the device was written."""
+        reads.append("in flight")
+        await asyncio.sleep(0.02)
+        read_done.set()
+
+    coordinator.async_update_entity = read_entity
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    entity = ModbusCoordinatorEntity(coordinator, ctx, MagicMock())
+    entity._update_lock = asyncio.Lock()
+    entity.name = "test_entity"
+
+    in_flight = asyncio.create_task(entity._read_data())
+    await asyncio.sleep(0)
+
+    with patch.object(entity, "_handle_coordinator_update") as write_state:
+        write = asyncio.create_task(entity.write_data(1))
+        await asyncio.sleep(0)
+
+        # The read that was already running finishes first...
+        await in_flight
+        # ...and the read-back the write asked for follows it, not lost to the skip.
+        await write
+
+    assert read_done.is_set()
+    assert reads == ["in flight", "in flight"]
+    assert coordinator.client.write_data.await_count == 1
+    write_state.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_async_update_if_not_in_progress_unlocked() -> None:
     """Test _async_update_if_not_in_progress calls update if not locked."""
     coordinator = MagicMock()
