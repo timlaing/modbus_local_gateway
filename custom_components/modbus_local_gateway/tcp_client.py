@@ -8,6 +8,7 @@ from typing import Any, cast
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from pymodbus.framer import FramerType
+from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.pdu import ModbusPDU
 from pymodbus.pdu.register_message import (
     ReadHoldingRegistersResponse,
@@ -28,6 +29,17 @@ from .transaction import MyTransactionManager
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+
+def _padded_bit_count(read_count: int) -> int:
+    """The number of bits a response to a request for ``read_count`` carries.
+
+    Coils and discrete inputs are transmitted a byte at a time, so a request for
+    up to eight of them is answered with eight bits, and so on. pymodbus decodes
+    every bit of those bytes, which makes this the length of a well-formed answer.
+    """
+    return ((read_count + 7) // 8) * 8
+
+
 # What one read of a poll cycle is remembered by: the device it went to, the
 # bank it came from, and the range it covered.
 ReadKey = tuple[int, ModbusDataType, int, int]
@@ -46,6 +58,14 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     """Custom Modbus TCP client with request batching based on device and locking."""
 
     _CLIENT: dict[str, AsyncModbusTcpClientGateway] = {}
+
+    # Diagnostics: how often a read did not leave the stream in a usable state
+    # and the connection had to be resynchronised before the next request. A
+    # count that keeps climbing names the TCP-to-RTU bridge, not the device.
+    _resyncs: int = 0
+    # Set when a transaction failed while the gateway was answering out of
+    # order: only a new connection gets rid of the queued answers.
+    _needs_reconnect: bool = False
 
     def __init__(
         self,
@@ -82,6 +102,119 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             trace_packet=self.ctx.trace_packet,
             trace_pdu=self.ctx.trace_pdu,
         )
+        self._resyncs = 0
+        self._needs_reconnect = False
+
+    @property
+    def desynced(self) -> bool:
+        """Whether the gateway is answering out of request order."""
+        ctx = getattr(self, "ctx", None)
+        return bool(getattr(ctx, "desynced", False))
+
+    def _clear_desync(self) -> None:
+        """Take the connection back out of the desynchronised state."""
+        ctx = getattr(self, "ctx", None)
+        if ctx is not None:
+            ctx.clear_desync()
+
+    def _flag_desync(self) -> bool:
+        """Note a transaction that failed while the gateway was out of step.
+
+        Returns whether the connection has to be renewed. Only a failure
+        together with out-of-order answers means the bridge is holding
+        responses nobody is waiting for: a failure on its own is a device that
+        did not answer, so it does not justify dropping the connection.
+        """
+        if not self.desynced:
+            return False
+        self._needs_reconnect = True
+        return True
+
+    async def _ensure_connection(self) -> bool:
+        """Connect, and renew the connection when the last transaction lost step.
+
+        A gateway that bridges TCP to a serial bus keeps answering a request
+        after the client has stopped waiting for it, so the next request collects
+        that answer before its own. Renewing the connection drops what the bridge
+        has queued, which is the only way back into step with it.
+        """
+        if self._needs_reconnect:
+            _LOGGER.warning(
+                "Gateway %s answered requests that were no longer waiting, renewing "
+                "the connection to drop the queued answers",
+                self,
+            )
+            self.close()
+            if not await self.connect():
+                # Left pending, so the next attempt renews rather than taking the
+                # plain connection it would otherwise make and reading on a gateway
+                # that is still out of step.
+                _LOGGER.warning("Failed to reconnect to gateway - %s", self)
+                return False
+            self._clear_desync()
+            self._needs_reconnect = False
+            return True
+
+        if not self.connected:
+            await self.connect()
+        if not self.connected:
+            _LOGGER.warning("Failed to connect to gateway - %s", self)
+            return False
+        return True
+
+    def _resync_transport(self) -> None:
+        """Drop anything still buffered, and count the resynchronisation.
+
+        Defensive rather than remedial: `pdu_send` already clears `recv_buffer`
+        before every send, and clearing what has been received cannot unqueue an
+        answer the gateway still owes. What does that is `_ensure_connection`.
+        """
+        self._resyncs += 1
+        ctx = getattr(self, "ctx", None)
+        if ctx is None:
+            return
+        ctx.recv_buffer = b""
+
+    def _response_matches_request(
+        self,
+        response: ModbusPDU,
+        is_register_func: bool,
+        device_id: int,
+        address: int,
+        read_count: int,
+    ) -> bool:
+        """Whether the answer carries the registers or bits that were asked for.
+
+        pymodbus has already matched the answer to the request by transaction
+        id, so what is left to check is how much of it there is: a gateway that
+        answers a request late hands back the answer to another one, and that
+        shows up here as an answer of the wrong length. Coils come back in
+        whole bytes, so the bits of a coil response span whole bytes: an answer
+        may be longer than the request by up to the padding of the last byte,
+        but no longer than that.
+        """
+        if not hasattr(response, "registers" if is_register_func else "bits"):
+            _LOGGER.error("Invalid response received from Device ID %d", device_id)
+            return False
+
+        wrong_count: bool = (
+            len(response.registers) != read_count
+            if is_register_func
+            else isinstance(response, (ReadCoilsResponse, ReadDiscreteInputsResponse))
+            and not read_count <= len(response.bits) <= _padded_bit_count(read_count)
+        )
+        if not wrong_count:
+            return True
+
+        _LOGGER.error(
+            (
+                "Invalid response received from Device ID %d, "
+                "address: %d (count does not match)"
+            ),
+            device_id,
+            address,
+        )
+        return False
 
     async def read_data(
         self,
@@ -114,23 +247,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 device_id=device_id,
             )
 
-            if not hasattr(temp_response, "registers" if is_register_func else "bits"):
-                _LOGGER.error("Invalid response received from Device ID %d", device_id)
-                return None
-
-            if (
-                is_register_func
-                and hasattr(temp_response, "registers")
-                and len(temp_response.registers) != read_count
+            if not self._response_matches_request(
+                temp_response, is_register_func, device_id, current_address, read_count
             ):
-                _LOGGER.error(
-                    (
-                        "Invalid response received from Device ID %d, "
-                        "address: %d (count does not match)"
-                    ),
-                    device_id,
-                    current_address,
-                )
                 return None
 
             remaining -= read_count
@@ -577,11 +696,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         """
         pdu: ModbusPDU | None = None
         async with self.lock:
-            if not self.connected:
-                await self.connect()
-                if not self.connected:
-                    _LOGGER.warning("Failed to connect to gateway - %s", self)
-                    return None
+            if not await self._ensure_connection():
+                return None
 
             _LOGGER.debug(
                 "Starting write operation - Device ID: %d, %s (%s): %d, Count: %d",
@@ -627,14 +743,20 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         # same registers are answered from the same transaction.
         cache: dict[ReadKey, ModbusPDU] = {}
         async with self.lock:
-            if not self.connected:
-                await self.connect()
-                if not self.connected:
-                    _LOGGER.warning("Failed to connect to gateway - %s", self)
-                    return data
+            if not await self._ensure_connection():
+                return data
 
             for idx, entity in enumerate(entities):
                 await self._process_entity(entity, data, idx, max_read_size, cache)
+                if self._needs_reconnect:
+                    # The rest of this poll would be read on a connection the
+                    # gateway is not answering in step with, so it is left to
+                    # the next poll, which starts on a renewed connection.
+                    _LOGGER.debug(
+                        "Ending the poll of %s early, the next one reconnects",
+                        self,
+                    )
+                    break
 
             _LOGGER.debug("Update completed %s", self)
 
@@ -739,6 +861,35 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         )
         return response_class(registers=registers)
 
+    def _log_unusable_response(self, entity: ModbusContext) -> None:
+        """Report an answer that came back, but not the one that was asked for."""
+        _LOGGER.debug(
+            "No usable response for %s on device %d, resynchronising the "
+            "connection (resyncs: %d)",
+            entity.desc.key,
+            entity.device_id,
+            self._resyncs,
+        )
+
+    def _log_read_failure(self, entity: ModbusContext, idx: int) -> None:
+        """Report a read that got no answer at all, once per poll."""
+        if idx == 0:
+            _LOGGER.warning(
+                "Device not available %s [%d]; connection resynchronised %d time(s)",
+                self,
+                entity.device_id,
+                self._resyncs,
+            )
+            return
+        _LOGGER.debug(
+            "Unable to retrieve value for Device ID %d, register/coil (%s): "
+            "%d, count: %d",
+            entity.device_id,
+            entity.desc.key,
+            entity.desc.register_address,
+            entity.desc.register_count,
+        )
+
     async def _process_entity(
         self,
         entity: ModbusContext,
@@ -788,25 +939,17 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
             if modbus_response and not modbus_response.isError():
                 data[entity.desc.key] = modbus_response
+                # A matched answer clears the count.
+                self._clear_desync()
             else:
-                _LOGGER.debug("Error reading %s", entity.desc.key)
+                self._resync_transport()
+                if not self._flag_desync():
+                    self._log_unusable_response(entity)
 
         except ModbusException, TimeoutError:
-            if idx == 0:
-                _LOGGER.warning(
-                    "Device not available %s [%d]",
-                    self,
-                    entity.device_id,
-                )
-                return
-            _LOGGER.debug(
-                "Unable to retrieve value for Device ID %d, register/coil (%s): "
-                "%d, count: %d",
-                entity.device_id,
-                entity.desc.key,
-                entity.desc.register_address,
-                entity.desc.register_count,
-            )
+            self._resync_transport()
+            if not self._flag_desync():
+                self._log_read_failure(entity, idx)
 
     @classmethod
     def async_get_client_connection(

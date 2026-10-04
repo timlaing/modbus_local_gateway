@@ -429,6 +429,30 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
   never answered a preset single register write, since for those the function is unimplemented
   rather than the response lost. When the read-back cannot be answered, the write is reported
   as failed and nothing is repeated.
+- **"request ask for transaction_id ... but got id ..." or "extra data" in the logs**: this is
+  the bridge, not the integration. A gateway that bridges TCP to a shared serial bus answers late
+  when the bus is busy, and once a request has timed out its answer is still on the way, so the
+  next request collects it before its own: from then on, the gateway is one response ahead for good.
+  The integration counts the answers that belong to a request nobody is waiting for, and when a
+  read fails while such answers are in flight it treats the bridge as out of step — the poll ends
+  there and the next poll starts on a renewed connection, which drops what the bridge had queued.
+  A read that comes back matched clears the count, so a gateway that is only a moment behind is
+  never disconnected. The warning for a failed poll carries the number of times the connection had to be resynchronised; the count of out-of-order answers is on the connection. Devices behind one
+  gateway are polled one request at a time and each device keeps its own update frequency. If the
+  messages persist, reduce how often the devices are polled, check the bridge's TCP time-out and
+  max-connection settings, or update its firmware; a serial bus shared with another master (a
+  second integration, or the vendor's own tool) produces the same symptom.
+- **A device answers with an exception the config does not explain**: check the device's own
+  documentation for the function code and exception code in the log. Some devices answer a
+  function they do not implement with an exception whose code is `0`, which the device reports
+  as a failure rather than an error in the configuration.
+- **RTU over TCP cannot tell responses apart**: with the RTU connection type the answer to a
+  request carries no transaction id, so a gateway that answers one request late can hand back the
+  previous answer for a _different register of the same device_. A response with the wrong number
+  of registers or bits is detected and rejected, but two reads of the same length cannot be told
+  apart from the bytes alone. If a device only speaks RTU over TCP, keep its update frequency
+  generous; a gateway that answers in Modbus TCP is matched on the transaction id and is not
+  affected.
 
 ## Supported Devices
 

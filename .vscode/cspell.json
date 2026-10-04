@@ -54,6 +54,8 @@
   "words": [
     "altivar",
     "coveragerc",
+    "desync",
+    "desynced",
     "fröling",
     "hacc",
     "hacs",
@@ -71,6 +73,7 @@
     "pytype",
     "pyupgrade",
     "salda",
-    "sonarqube"
+    "sonarqube",
+    "unqueue"
   ]
 }
