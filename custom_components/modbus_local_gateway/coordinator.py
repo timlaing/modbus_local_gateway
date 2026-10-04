@@ -26,6 +26,7 @@ from homeassistant.helpers.update_coordinator import (
     TimestampDataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import dt as dt_util
 from pymodbus.pdu.pdu import ModbusPDU
 
 from .composite import CompositeConversion
@@ -290,13 +291,17 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     @property
     def available(self) -> bool:
-        """Unavailable before the first poll, and while reporting a non-value."""
+        """Unavailable before the first poll, while silent, or on a non-value."""
         if not super().available:
             return False
         if not self.coordinator.initial_poll_done:
             # Nothing has been read yet, so there is no value behind this entity.
             # Reporting availability before the first poll shows it as an unknown
             # value rather than as a device that has not answered.
+            return False
+        if not self.coordinator.device_online:
+            # A device that is not answering has nothing behind this entity, and
+            # the reason it is not answering is already in the log.
             return False
         return not self.coordinator.is_unavailable(self.coordinator_context)
 
@@ -334,6 +339,12 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         # devices behind one gateway; this keeps two polls of this device from
         # queueing up behind each other.
         self._poll_lock = asyncio.Lock()
+        # Whether the device answered its last read. A device that is off is a
+        # state rather than an event: it is polled again every cycle, and none of
+        # those cycles has anything new to say, so it is reported when it changes
+        # and not per cycle.
+        self._device_online: bool = True
+        self._silent_since: datetime | None = None
         # Settings of the device this coordinator polls, from its sub-entry.
         self._subentry_data: Mapping[str, Any] = dict(subentry.data) if subentry else {}
         # Definition of the device this coordinator polls, from its YAML file.
@@ -415,6 +426,50 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     def initial_poll_done(self) -> bool:
         """Whether the device has been read at least once."""
         return self._initial_poll_done
+
+    @property
+    def device_online(self) -> bool:
+        """Whether the device answered its last read."""
+        return self._device_online
+
+    def _silent_seconds(self) -> int | None:
+        """How long the device has been silent, if it is."""
+        if self._silent_since is None:
+            return None
+        return max(0, int((dt_util.utcnow() - self._silent_since).total_seconds()))
+
+    def _report_device_state(self, device_id: int, online: bool) -> None:
+        """Report a device going silent or answering again, once per change.
+
+        Nothing comes back at all from a device that is off, and it is asked again
+        on every cycle, so the state is what is worth logging rather than each
+        cycle that confirms it. The one thing a user watching an offline device
+        wants is when it comes back, and how long it was gone.
+        """
+        if online == self._device_online:
+            return
+        self._device_online = online
+        if online:
+            silent_for: str = (
+                f", silent for {timedelta(seconds=int(silent_seconds))}"
+                if (silent_seconds := self._silent_seconds()) is not None
+                else ""
+            )
+            self._silent_since = None
+            _LOGGER.info(
+                "Device ID %d on %s is answering again%s",
+                device_id,
+                self.name,
+                silent_for,
+            )
+            return
+        self._silent_since = dt_util.utcnow()
+        _LOGGER.info(
+            "Device ID %d on %s stopped answering; it is polled again from here on "
+            "and reported when it answers",
+            device_id,
+            self.name,
+        )
 
     @callback
     def async_schedule_initial_poll(self) -> None:
@@ -513,11 +568,20 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
         """Update data for a list of entities.
 
-        Raises `UpdateFailed` when the poll was unsound - nothing at all came back,
-        or a conversion failed unexpectedly and left nothing usable.
+        A device that is not answering is not a failure to raise: it is reported
+        once, as a change of state, and the entities it did not answer for go
+        unavailable. `UpdateFailed` is for a poll that was unsound for a reason the
+        device cannot be blamed for - a conversion that failed, or a poll that never
+        finished - because that is what leaves the coordinator retrying.
         """
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
+        if not entities:
+            # A device config that no longer declares anything to read. There is
+            # nothing to ask it and nothing to say about it.
+            return {}
+        device_id: int = entities[0].device_id
         failed = False
+        silent = False
         try:
             async with asyncio.timeout(_POLL_BACKSTOP):
                 resp: dict[str, ModbusPDU] = await self.client.update_device(
@@ -529,6 +593,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             # longer worth asking for.
             _LOGGER.debug("%s stopped answering: %s", self.name, err)
             resp = err.partial
+            silent = True
         except TimeoutError:
             _LOGGER.warning(
                 "Reading %s did not finish within %s seconds",
@@ -538,6 +603,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             raise UpdateFailed(
                 f"Reading {self.name} did not finish within {_POLL_BACKSTOP} seconds"
             ) from None
+        self._report_device_state(device_id, online=not silent)
         data: dict[str, Any] = {}
 
         for entity in entities:
@@ -580,7 +646,10 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                     exc_info=True,
                 )
 
-        if not data and (not resp or failed):
+        if not data and failed:
+            # Every entity this cycle read converted to nothing, and not because the
+            # values were declared unavailable. That is a fault in the conversion
+            # rather than a device that is off, so it is reported as a failure.
             raise UpdateFailed()
         return data
 

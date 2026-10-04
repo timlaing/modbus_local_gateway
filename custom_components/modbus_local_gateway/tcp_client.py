@@ -106,6 +106,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         )
         self._resyncs = 0
         self._needs_reconnect = False
+        # Whether the last connection attempt got through. Reported on the change,
+        # not per attempt: every device behind the gateway retries on its own
+        # schedule, so a warning per attempt is a warning every few seconds for as
+        # long as the gateway stays away.
+        self._gateway_reachable: bool = True
 
     @property
     def desynced(self) -> bool:
@@ -151,18 +156,30 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 # Left pending, so the next attempt renews rather than taking the
                 # plain connection it would otherwise make and reading on a gateway
                 # that is still out of step.
-                _LOGGER.warning("Failed to reconnect to gateway - %s", self)
+                self._report_reachable(False)
                 return False
             self._clear_desync()
             self._needs_reconnect = False
+            self._report_reachable(True)
             return True
 
         if not self.connected:
             await self.connect()
         if not self.connected:
-            _LOGGER.warning("Failed to connect to gateway - %s", self)
+            self._report_reachable(False)
             return False
+        self._report_reachable(True)
         return True
+
+    def _report_reachable(self, reachable: bool) -> None:
+        """Report a gateway going away or coming back, once per change."""
+        if reachable == self._gateway_reachable:
+            return
+        self._gateway_reachable = reachable
+        if reachable:
+            _LOGGER.info("Gateway %s is reachable again", self)
+        else:
+            _LOGGER.info("Gateway %s is not reachable", self)
 
     def _resync_transport(self) -> None:
         """Drop anything still buffered, and count the resynchronisation.
@@ -748,6 +765,9 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         # One poll cycle, one answer per register range: entities that read the
         # same registers are answered from the same transaction.
         cache: dict[ReadKey, ModbusPDU] = {}
+        # What this cycle actually asked the device for, so an entity left out by
+        # an early end is not counted as one the device failed to answer.
+        asked: list[ModbusContext] = []
         async with self.lock:
             if not await self._ensure_connection():
                 return data
@@ -760,6 +780,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         f"{len(data)} of {len(entities)} entities",
                         partial=data,
                     )
+                asked.append(entity)
                 if self._needs_reconnect:
                     # The rest of this poll would be read on a connection the
                     # gateway is not answering in step with, so it is left to
@@ -770,9 +791,36 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     )
                     break
 
+            self._report_unusable(asked, data)
             _LOGGER.debug("Update completed %s", self)
 
         return data
+
+    def _report_unusable(
+        self, asked: list[ModbusContext], data: dict[str, ModbusPDU]
+    ) -> None:
+        """Warn about a device that answered some of this cycle and not others.
+
+        The device is on the bus and talking, which is what separates this from a
+        device that is off: it answers some registers and not others, so the values
+        that do come back are worth having while the ones that do not are a fault
+        worth looking at. One warning per cycle, naming what was missed - a line per
+        entity would bury the fault in the entities it affects.
+        """
+        missing: list[str] = [
+            entity.desc.key for entity in asked if entity.desc.key not in data
+        ]
+        if not missing:
+            return
+        _LOGGER.warning(
+            "Device ID %d answered %d of the %d registers asked for this poll; no "
+            "usable response for %s (connection resynchronised %d time(s))",
+            asked[0].device_id,
+            len(data),
+            len(asked),
+            ", ".join(missing),
+            self._resyncs,
+        )
 
     async def _read_once(
         self,
@@ -888,16 +936,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             self._resyncs,
         )
 
-    def _log_no_response(self, entity: ModbusContext, exc: Exception) -> None:
-        """Report a device that stopped answering, once per poll cycle."""
-        _LOGGER.warning(
-            "Device not available %s [%d]: %s; connection resynchronised %d time(s)",
-            self,
-            entity.device_id,
-            exc,
-            self._resyncs,
-        )
-
     async def _process_entity(
         self,
         entity: ModbusContext,
@@ -966,12 +1004,14 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             self._log_unusable_response(entity, err)
             return True
 
-        except (ModbusIOException, ConnectionException, TimeoutError) as err:
+        except ModbusIOException, ConnectionException, TimeoutError:
             # pymodbus raises these only after a device has failed to answer, so
-            # this is the one case that says the device is no longer there.
+            # this is the one case that says the device is no longer there. The
+            # caller reports that once, as a change of state: a device that stays
+            # away is polled every cycle, and a line per cycle is a line every few
+            # seconds for as long as it is off.
             self._resync_transport()
-            if not self._flag_desync():
-                self._log_no_response(entity, err)
+            self._flag_desync()
             return False
 
     @classmethod

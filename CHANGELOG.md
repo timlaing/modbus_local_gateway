@@ -48,7 +48,13 @@ custom integrations. Pre-releases are not listed here.
   added or reloaded while Home Assistant is already running is read straight away, and a first
   read still pending when the entry is unloaded is dropped. An entity with its own
   `scan_interval` that reads a value back marks the device as answering again, so it does
-  not stay unavailable until the next shared poll succeeds.
+  not stay unavailable until the next shared poll succeeds. A device that is off is a state
+  rather than an event, so it is logged as one: an info line when it stops answering, one when
+  it answers again with the time it was gone, and nothing in between however many polls
+  pass. A device that answers some of the registers asked for and not others is a different
+  thing - it is on the bus, and the values that do come back are worth having - so that is
+  warned about on every poll, once per poll and naming the entities that had no usable
+  response, rather than once per entity.
 - **A `map:` miss no longer freezes an entity**: `_convert_to_enum` returned `None` for an unmapped value and the platforms skip the update on `None`, so the entity silently kept its previous state — no error, no `unknown`, just a stale reading that looks current. The raw number is returned instead, so the state is either a label or a bare number and the reading is never older than the last poll. The miss is logged at debug.
 - **Failed register writes are reported to Home Assistant**: the write helpers were annotated `-> None` and never returned the PDU they received, so the `if pdu and pdu.isError()` check in `write_data()` was dead code — a Modbus exception response to a write was reported back as a successful write. The PDU is now returned and `write_data()` raises `ModbusException`, which the coordinator entity wraps into `UpdateFailed`. Behaviour change: writes that previously failed silently now raise.
 - **Number writes are read back**: `async_set_native_value` called the client directly, bypassing `ModbusCoordinatorEntity.write_data()` and the re-read that switch, select and text all perform, so the matching sensor stayed stale for a full `scan_interval` after every number write.

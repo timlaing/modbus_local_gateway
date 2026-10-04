@@ -424,6 +424,11 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
   one per entity, and it never holds up the start. Its entities show as unavailable until it
   answers, the other devices behind the same gateway are unaffected, and a poll that meets a
   device that has gone quiet keeps the values it had already read.
+- **A device that is off says so once**: the log gets one info line when a device stops
+  answering and one when it answers again, with how long it was gone, and nothing in between
+  however many polls pass. A device that answers some of the registers asked for and not others
+  is a different thing and is warned about every poll, naming the entities that had no usable
+  response.
 - **Writes Fail with "No response received after 5 retries"**: some devices only implement
   _Preset Multiple Registers_ (FC `0x10`). A single-value write to them now falls back to
   FC `0x10` on its own, and the log says which attempt failed and why.

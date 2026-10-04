@@ -633,6 +633,7 @@ async def test_update_device_not_connected() -> None:
     def __init__(self: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
+        self._gateway_reachable = True
 
     with (
         patch.object(
@@ -643,6 +644,7 @@ async def test_update_device_not_connected() -> None:
         patch(
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
         ) as warning,
+        patch("custom_components.modbus_local_gateway.tcp_client._LOGGER.info") as info,
         patch(
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
         ) as debug,
@@ -669,8 +671,12 @@ async def test_update_device_not_connected() -> None:
         assert resp is not None
         assert isinstance(resp, dict)
         cast(Any, gateway).connect.assert_called_once()
-        warning.assert_called_once()
+        # An unreachable gateway is a state, not an event: reported once, as info,
+        # rather than a warning on every poll of every device behind it.
+        info.assert_called_once()
+        warning.assert_not_called()
         debug.assert_not_called()
+        assert cast(Any, gateway)._gateway_reachable is False
         assert len(lock.mock_calls) == 2
 
 
@@ -682,6 +688,7 @@ async def test_update_device_connected_no_entities() -> None:
     def __init__(self: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
+        self._gateway_reachable = True
 
     with (
         patch.object(
@@ -890,9 +897,10 @@ async def test_update_device_connected_failed_device_single() -> None:
         assert isinstance(resp, dict)
         assert len(resp) == 0
         cast(Any, gateway).connect.assert_called_once()
-        # The device answered, so this is a question about the data rather than
-        # about the device being there: no warning.
-        warning.assert_not_called()
+        # The device is on the bus and talking, just not about this register: a
+        # warning, once for the cycle, naming what had no usable response.
+        warning.assert_called_once()
+        assert warning.call_args[0][4] == "key"
         assert debug.call_count == 3
         assert len(lock.mock_calls) == 2
 
@@ -971,9 +979,11 @@ async def test_update_device_connected_failed_device_multiple() -> None:
         assert resp["key3"] == response
         assert read_reg.call_count == 3
         cast(Any, gateway).connect.assert_called_once()
-        # The device kept answering for the other entities, so it is not reported
-        # as unavailable.
-        warning.assert_not_called()
+        # The device kept answering for the other entities, so it is not offline.
+        # One entity did not come back, which is the intermittent case: warned
+        # about once for the cycle, naming the entity that was missed.
+        warning.assert_called_once()
+        assert warning.call_args[0][4] == "key2"
         assert debug.call_count == 5
         assert len(lock.mock_calls) == 2
 
@@ -1227,9 +1237,8 @@ async def test_write_data_failed_connection() -> None:
     ):
         result: ModbusPDU | None = await client.write_data(entity, value=123)
         cast(Any, client).connect.assert_called_once()
-        mock_logger.warning.assert_called_with(
-            "Failed to connect to gateway - %s", client
-        )
+        mock_logger.info.assert_called_with("Gateway %s is not reachable", client)
+        mock_logger.warning.assert_not_called()
         assert result is None
 
 
