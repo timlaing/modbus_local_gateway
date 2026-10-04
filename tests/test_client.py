@@ -34,9 +34,12 @@ from custom_components.modbus_local_gateway.entity_management.const import (
     ModbusDataType,
     WriteFunction,
 )
+from custom_components.modbus_local_gateway.exceptions import (
+    ModbusClientError,
+    ModbusNoResponseError,
+)
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
-    ModbusClientError,
 )
 
 
@@ -845,7 +848,7 @@ async def test_update_device_connected_success_device_multiple() -> None:
 
 @pytest.mark.asyncio
 async def test_update_device_connected_failed_device_single() -> None:
-    """Test the update device function"""
+    """A protocol error is not an outage: the poll ends, without a warning."""
     lock = AsyncMock()
 
     with (
@@ -887,14 +890,16 @@ async def test_update_device_connected_failed_device_single() -> None:
         assert isinstance(resp, dict)
         assert len(resp) == 0
         cast(Any, gateway).connect.assert_called_once()
-        warning.assert_called_once()
-        assert debug.call_count == 2
+        # The device answered, so this is a question about the data rather than
+        # about the device being there: no warning.
+        warning.assert_not_called()
+        assert debug.call_count == 3
         assert len(lock.mock_calls) == 2
 
 
 @pytest.mark.asyncio
 async def test_update_device_connected_failed_device_multiple() -> None:
-    """Test the update device function"""
+    """A protocol error on one entity does not end the poll of the device."""
     lock = AsyncMock()
 
     with (
@@ -966,6 +971,8 @@ async def test_update_device_connected_failed_device_multiple() -> None:
         assert resp["key3"] == response
         assert read_reg.call_count == 3
         cast(Any, gateway).connect.assert_called_once()
+        # The device kept answering for the other entities, so it is not reported
+        # as unavailable.
         warning.assert_not_called()
         assert debug.call_count == 5
         assert len(lock.mock_calls) == 2
@@ -1569,15 +1576,15 @@ async def test_process_entity_reads_composite() -> None:
         "read_data",
         AsyncMock(return_value=ReadHoldingRegistersResponse(registers=[2026, 9, 22])),
     ):
-        await client._process_entity(
+        answered: bool = await client._process_entity(
             _composite_entity(fields=(("year", 45), ("month", 46), ("day", 47))),
             data,
-            0,
             64,
             {},
         )
 
     assert list(data["clock"].registers) == [2026, 9, 22]
+    assert answered is True
 
 
 @pytest.mark.asyncio
@@ -1596,16 +1603,18 @@ async def test_process_entity_composite_read_error() -> None:
         ),
         patch("custom_components.modbus_local_gateway.tcp_client._LOGGER") as logger,
     ):
-        await client._process_entity(
+        answered = await client._process_entity(
             _composite_entity(fields=(("year", 45), ("month", 46), ("day", 47))),
             data,
-            0,
             64,
             {},
         )
 
     assert "clock" not in data
-    assert logger.warning.call_count == 1
+    # The device replied, it just could not be used, so the poll carries on and
+    # nothing is reported as unavailable.
+    assert answered is True
+    assert logger.warning.call_count == 0
 
 
 @pytest.mark.asyncio
@@ -2081,13 +2090,15 @@ async def test_update_device_reuses_only_within_one_cycle() -> None:
     assert list(second["value"].registers) == [2]
 
 
-def _single_holding_entity(key: str = "value") -> ModbusContext:
+def _single_holding_entity(
+    key: str = "value", register_address: int = 1, device_id: int = 1
+) -> ModbusContext:
     """A one-register entity, for the resync tests."""
     return ModbusContext(
-        device_id=1,
+        device_id=device_id,
         desc=ModbusSensorEntityDescription(
             key=key,
-            register_address=1,
+            register_address=register_address,
             register_count=1,
             data_type=ModbusDataType.HOLDING_REGISTER,
         ),
@@ -2160,7 +2171,7 @@ async def test_failed_read_resynchronises_the_connection() -> None:
 
 @pytest.mark.asyncio
 async def test_read_exception_resynchronises_the_connection() -> None:
-    """A read that raised clears the stream and is counted as a resync."""
+    """A device that stopped answering clears the stream and ends the poll."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
     client.ctx.recv_buffer = b"stale frame"
@@ -2173,12 +2184,80 @@ async def test_read_exception_resynchronises_the_connection() -> None:
             PropertyMock(return_value=True),
         ),
         patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+        pytest.raises(ModbusNoResponseError) as err,
     ):
-        data = await client.update_device([_single_holding_entity()], 64)
+        await client.update_device([_single_holding_entity()], 64)
 
-    assert data == {}
+    # Nothing was read, so the error carries nothing back.
+    assert err.value.partial == {}
     assert cast(Any, client)._resyncs == 1
     assert client.ctx.recv_buffer == b""
+
+
+@pytest.mark.asyncio
+async def test_a_device_that_stops_answering_ends_the_poll_early() -> None:
+    """One timeout sequence per poll, not one per entity still to be read."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock(return_value=True)
+    first = ReadHoldingRegistersResponse(registers=[7])
+    second = ReadHoldingRegistersResponse(registers=[9])
+    read_data = AsyncMock(side_effect=[first, ModbusIOException("No response"), second])
+    entities = [
+        _single_holding_entity("first", register_address=1),
+        _single_holding_entity("second", register_address=2),
+        _single_holding_entity("third", register_address=3),
+    ]
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+        pytest.raises(ModbusNoResponseError) as err,
+    ):
+        await client.update_device(entities, 64)
+
+    # The entity after the silence was never asked, and what was read before it
+    # still comes back with the error.
+    assert read_data.call_count == 2
+    assert list(err.value.partial["first"].registers) == [7]
+    assert "second" not in err.value.partial
+    assert "third" not in err.value.partial
+
+
+@pytest.mark.asyncio
+async def test_a_silent_device_keeps_polling_the_rest_of_the_gateway() -> None:
+    """The client lock is released, so another device is not held up by this one."""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock(return_value=True)
+    read_data = AsyncMock(
+        side_effect=[
+            ModbusIOException("No response"),
+            ReadHoldingRegistersResponse(registers=[3]),
+        ]
+    )
+    silent = [_single_holding_entity("quiet", device_id=1)]
+    talking = [_single_holding_entity("live", register_address=3, device_id=2)]
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+    ):
+        with pytest.raises(ModbusNoResponseError):
+            await client.update_device(silent, 64)
+
+        # The lock is back in `async with` scope once the error has travelled out.
+        assert not client.lock.locked()
+
+        data = await client.update_device(talking, 64)
+
+    assert list(data["live"].registers) == [3]
 
 
 @pytest.mark.asyncio
@@ -2224,12 +2303,12 @@ async def test_a_failed_read_on_a_desynced_gateway_ends_the_poll() -> None:
             PropertyMock(return_value=True),
         ),
         patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
+        pytest.raises(ModbusNoResponseError),
     ):
-        data = await client.update_device(
+        await client.update_device(
             [_single_holding_entity("first"), _single_holding_entity("second")], 64
         )
 
-    assert data == {}
     assert read_data.call_count == 1
     assert cast(Any, client)._needs_reconnect is True
 

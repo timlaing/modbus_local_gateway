@@ -74,6 +74,7 @@
     "pyupgrade",
     "salda",
     "sonarqube",
-    "unqueue"
+    "unqueue",
+    "unsub"
   ]
 }

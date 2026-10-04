@@ -603,8 +603,12 @@ def test_async_cancel_update_polling() -> None:
 
 
 @pytest.mark.asyncio
-async def test_async_run_sets_available_and_schedules() -> None:
-    """Test async_run schedules update and sets available."""
+async def test_async_run_does_not_read_and_schedules_the_interval() -> None:
+    """async_run leaves the first read to the coordinator.
+
+    A read per entity is what held startup up on a gateway with a device that is
+    switched off, so the entity does not read on its own here.
+    """
     coordinator = MagicMock()
     desc = ModbusSensorEntityDescription(
         register_address=1,
@@ -625,23 +629,17 @@ async def test_async_run_sets_available_and_schedules() -> None:
             ".async_track_time_interval",
         ) as mock_track_time_interval,
     ):
-        cast(Any, entity).async_write_ha_state = MagicMock()
         cast(Any, entity)._async_cancel_update_polling = MagicMock()
 
         entity.async_run()
-        assert entity._attr_available is True
         assert entity._cancel_timer is not None
-        assert entity._cancel_call is not None
 
-        mock_call_later.assert_called_once_with(
-            entity.hass, 0.1, entity._async_update_if_not_in_progress
-        )
+        mock_call_later.assert_not_called()
         mock_track_time_interval.assert_called_once_with(
             entity.hass,
             entity._async_update_if_not_in_progress,
             timedelta(seconds=float(1)),
         )
-        cast(Any, entity).async_write_ha_state.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -934,6 +932,10 @@ def test_entity_unavailable_for_declared_value(mock_config_entry: ConfigEntry) -
     entity = ModbusCoordinatorEntity(coordinator, ctx, DeviceInfo(identifiers=set()))
     entity._attr_available = True
 
+    # Nothing read yet: there is no value behind the entity to report as available.
+    assert entity.available is False
+
+    coordinator._initial_poll_done = True
     assert entity.available is True
 
     coordinator._unavailable_keys.add("test_key")
@@ -941,3 +943,6 @@ def test_entity_unavailable_for_declared_value(mock_config_entry: ConfigEntry) -
 
     coordinator._unavailable_keys.discard("test_key")
     assert entity.available is True
+
+    coordinator.last_update_success = False
+    assert entity.available is False

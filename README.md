@@ -419,6 +419,11 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
       custom_components.modbus_local_gateway: debug
   ```
 - **Connection Issues**: Verify gateway IP, port, and device ID.
+- **A device that is not answering at start-up**: a device behind a gateway is read once after
+  Home Assistant has finished starting, so a device that is switched off costs one timeout, not
+  one per entity, and it never holds up the start. Its entities show as unavailable until it
+  answers, the other devices behind the same gateway are unaffected, and a poll that meets a
+  device that has gone quiet keeps the values it had already read.
 - **Writes Fail with "No response received after 5 retries"**: some devices only implement
   _Preset Multiple Registers_ (FC `0x10`). A single-value write to them now falls back to
   FC `0x10` on its own, and the log says which attempt failed and why.

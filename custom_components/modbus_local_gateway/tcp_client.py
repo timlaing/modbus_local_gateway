@@ -1,12 +1,22 @@
 """TCP Client for Modbus Local Gateway"""
 
+# The read and write paths are one class because they share the connection, the
+# matching of answers to requests and the resynchronisation of a stream that has
+# drifted out of step. Splitting them up is its own piece of work; until then this
+# module is over the line pylint counts with, and not by much.
+# pylint: disable=too-many-lines
+
 import asyncio
 from collections.abc import Callable
 import logging
 from typing import Any, cast
 
 from pymodbus.client import AsyncModbusTcpClient
-from pymodbus.exceptions import ModbusException
+from pymodbus.exceptions import (
+    ConnectionException,
+    ModbusException,
+    ModbusIOException,
+)
 from pymodbus.framer import FramerType
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
 from pymodbus.pdu.pdu import ModbusPDU
@@ -25,6 +35,7 @@ from .entity_management.base import (
     ModbusFieldDescription,
 )
 from .entity_management.const import ModbusDataType, WriteFunction
+from .exceptions import ModbusClientError, ModbusNoResponseError
 from .transaction import MyTransactionManager
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -43,15 +54,6 @@ def _padded_bit_count(read_count: int) -> int:
 # What one read of a poll cycle is remembered by: the device it went to, the
 # bank it came from, and the range it covered.
 ReadKey = tuple[int, ModbusDataType, int, int]
-
-
-class ModbusClientError(ModbusException):
-    """Typed Modbus client error."""
-
-    def __init__(self, string: str) -> None:
-        """Initialize the error."""
-        super().__init__(string)  # type: ignore[no-untyped-call]
-        self.string = string
 
 
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
@@ -737,7 +739,11 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     async def update_device(
         self, entities: list[ModbusContext], max_read_size: int
     ) -> dict[str, ModbusPDU]:
-        """Fetches all values for a single device id"""
+        """Fetch all values for a single device id.
+
+        Raises `ModbusNoResponseError`, carrying what was read before the device
+        stopped answering, so a cycle costs one timeout rather than one per entity.
+        """
         data: dict[str, ModbusPDU] = {}
         # One poll cycle, one answer per register range: entities that read the
         # same registers are answered from the same transaction.
@@ -746,8 +752,14 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             if not await self._ensure_connection():
                 return data
 
-            for idx, entity in enumerate(entities):
-                await self._process_entity(entity, data, idx, max_read_size, cache)
+            for entity in entities:
+                if not await self._process_entity(entity, data, max_read_size, cache):
+                    raise ModbusNoResponseError(
+                        f"Device ID {entity.device_id} stopped answering at "
+                        f"{entity.desc.key}, after "
+                        f"{len(data)} of {len(entities)} entities",
+                        partial=data,
+                    )
                 if self._needs_reconnect:
                     # The rest of this poll would be read on a connection the
                     # gateway is not answering in step with, so it is left to
@@ -861,44 +873,43 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         )
         return response_class(registers=registers)
 
-    def _log_unusable_response(self, entity: ModbusContext) -> None:
-        """Report an answer that came back, but not the one that was asked for."""
+    def _log_unusable_response(
+        self, entity: ModbusContext, err: Exception | None = None
+    ) -> None:
+        """Report an answer that came back, but not the one that was asked for.
+
+        The device is on the bus and talking, so this is a question about the data.
+        """
         _LOGGER.debug(
-            "No usable response for %s on device %d, resynchronising the "
-            "connection (resyncs: %d)",
+            "No usable response for %s on device %d%s, resynchronised %d time(s)",
             entity.desc.key,
             entity.device_id,
+            f": {err}" if err else "",
             self._resyncs,
         )
 
-    def _log_read_failure(self, entity: ModbusContext, idx: int) -> None:
-        """Report a read that got no answer at all, once per poll."""
-        if idx == 0:
-            _LOGGER.warning(
-                "Device not available %s [%d]; connection resynchronised %d time(s)",
-                self,
-                entity.device_id,
-                self._resyncs,
-            )
-            return
-        _LOGGER.debug(
-            "Unable to retrieve value for Device ID %d, register/coil (%s): "
-            "%d, count: %d",
+    def _log_no_response(self, entity: ModbusContext, exc: Exception) -> None:
+        """Report a device that stopped answering, once per poll cycle."""
+        _LOGGER.warning(
+            "Device not available %s [%d]: %s; connection resynchronised %d time(s)",
+            self,
             entity.device_id,
-            entity.desc.key,
-            entity.desc.register_address,
-            entity.desc.register_count,
+            exc,
+            self._resyncs,
         )
 
     async def _process_entity(
         self,
         entity: ModbusContext,
         data: dict[str, ModbusPDU],
-        idx: int,
         max_read_size: int,
         cache: dict[ReadKey, ModbusPDU],
-    ) -> None:
-        """Process a single entity and update the data dictionary"""
+    ) -> bool:
+        """Read one entity, reporting whether the device is still answering.
+
+        False means the device went away: nothing came back at all. Every other
+        outcome means it is talking, and the poll carries on.
+        """
         _LOGGER.debug(
             "Reading Device ID: %d, register/coil (%s): %d, count: %d",
             entity.device_id,
@@ -941,15 +952,27 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 data[entity.desc.key] = modbus_response
                 # A matched answer clears the count.
                 self._clear_desync()
-            else:
-                self._resync_transport()
-                if not self._flag_desync():
-                    self._log_unusable_response(entity)
+                return True
 
-        except ModbusException, TimeoutError:
             self._resync_transport()
             if not self._flag_desync():
-                self._log_read_failure(entity, idx)
+                self._log_unusable_response(entity)
+            return True
+
+        except ModbusClientError as err:
+            # An answer came back and could not be used - an exception response to
+            # a composite read, for instance - so the device is there and the poll
+            # carries on.
+            self._log_unusable_response(entity, err)
+            return True
+
+        except (ModbusIOException, ConnectionException, TimeoutError) as err:
+            # pymodbus raises these only after a device has failed to answer, so
+            # this is the one case that says the device is no longer there.
+            self._resync_transport()
+            if not self._flag_desync():
+                self._log_no_response(entity, err)
+            return False
 
     @classmethod
     def async_get_client_connection(
