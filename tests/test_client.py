@@ -598,6 +598,17 @@ async def test_write_multiple_registers_success_individual() -> None:
         )
 
 
+def _outage_state(client: Any) -> None:
+    """Give a stubbed client the state its real `__init__` would have set.
+
+    These tests replace `__init__` to keep a socket out of it, so the fields the
+    outage and connection gates read have to be set here instead.
+    """
+    client._outages = {}
+    client._connect_next_attempt = 0.0
+    client._connect_failures = 0
+
+
 @pytest.mark.asyncio
 async def test_get_client() -> None:
     """test the class helper method"""
@@ -633,6 +644,8 @@ async def test_update_device_not_connected() -> None:
     def __init__(self: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
+        self._gateway_reachable = True
+        _outage_state(self)
 
     with (
         patch.object(
@@ -643,6 +656,7 @@ async def test_update_device_not_connected() -> None:
         patch(
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.warning"
         ) as warning,
+        patch("custom_components.modbus_local_gateway.tcp_client._LOGGER.info") as info,
         patch(
             "custom_components.modbus_local_gateway.tcp_client._LOGGER.debug"
         ) as debug,
@@ -669,8 +683,12 @@ async def test_update_device_not_connected() -> None:
         assert resp is not None
         assert isinstance(resp, dict)
         cast(Any, gateway).connect.assert_called_once()
-        warning.assert_called_once()
+        # An unreachable gateway is a state, not an event: reported once, as info,
+        # rather than a warning on every poll of every device behind it.
+        info.assert_called_once()
+        warning.assert_not_called()
         debug.assert_not_called()
+        assert cast(Any, gateway)._gateway_reachable is False
         assert len(lock.mock_calls) == 2
 
 
@@ -682,6 +700,8 @@ async def test_update_device_connected_no_entities() -> None:
     def __init__(self: Any, **kwargs: Any) -> None:  # pylint: disable=unused-argument
         """Mocked init"""
         self.lock = lock
+        self._gateway_reachable = True
+        _outage_state(self)
 
     with (
         patch.object(
@@ -710,8 +730,10 @@ async def test_update_device_connected_no_entities() -> None:
         assert isinstance(resp, dict)
         cast(Any, gateway).connect.assert_not_called()
         warning.assert_not_called()
-        debug.assert_called_once()
-        assert len(lock.mock_calls) == 2
+        # Nothing was asked for, so nothing was read: no connection, and no time
+        # on the lock that every other device behind this gateway queues behind.
+        debug.assert_not_called()
+        assert len(lock.mock_calls) == 0
 
 
 @pytest.mark.asyncio
@@ -890,9 +912,10 @@ async def test_update_device_connected_failed_device_single() -> None:
         assert isinstance(resp, dict)
         assert len(resp) == 0
         cast(Any, gateway).connect.assert_called_once()
-        # The device answered, so this is a question about the data rather than
-        # about the device being there: no warning.
-        warning.assert_not_called()
+        # The device is on the bus and talking, just not about this register: a
+        # warning, once for the cycle, naming what had no usable response.
+        warning.assert_called_once()
+        assert warning.call_args[0][4] == "key"
         assert debug.call_count == 3
         assert len(lock.mock_calls) == 2
 
@@ -971,9 +994,11 @@ async def test_update_device_connected_failed_device_multiple() -> None:
         assert resp["key3"] == response
         assert read_reg.call_count == 3
         cast(Any, gateway).connect.assert_called_once()
-        # The device kept answering for the other entities, so it is not reported
-        # as unavailable.
-        warning.assert_not_called()
+        # The device kept answering for the other entities, so it is not offline.
+        # One entity did not come back, which is the intermittent case: warned
+        # about once for the cycle, naming the entity that was missed.
+        warning.assert_called_once()
+        assert warning.call_args[0][4] == "key2"
         assert debug.call_count == 5
         assert len(lock.mock_calls) == 2
 
@@ -1227,9 +1252,8 @@ async def test_write_data_failed_connection() -> None:
     ):
         result: ModbusPDU | None = await client.write_data(entity, value=123)
         cast(Any, client).connect.assert_called_once()
-        mock_logger.warning.assert_called_with(
-            "Failed to connect to gateway - %s", client
-        )
+        mock_logger.info.assert_called_with("Gateway %s is not reachable", client)
+        mock_logger.warning.assert_not_called()
         assert result is None
 
 
@@ -2402,14 +2426,26 @@ async def test_a_failed_renewal_stays_pending() -> None:
     cast(Any, client)._needs_reconnect = True
     cast(Any, client.ctx).mismatched_frames = 3
 
-    with patch.object(
-        AsyncModbusTcpClientGateway,
-        "connected",
-        PropertyMock(return_value=True),
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "connected",
+            PropertyMock(return_value=True),
+        ),
+        patch(
+            "custom_components.modbus_local_gateway.tcp_client.monotonic",
+            side_effect=[0.0, 0.0, 1.0, 3.0],
+        ),
     ):
         assert await client._ensure_connection() is False
         assert cast(Any, client)._needs_reconnect is True
         assert cast(Any, client.ctx).mismatched_frames == 3
+
+        # Straight away there is nothing to gain by trying again - every device
+        # behind this gateway refreshes on its own timer - but the renewal is
+        # still owed.
+        assert await client._ensure_connection() is False
+        assert connect.await_count == 1
 
         assert await client._ensure_connection() is True
 

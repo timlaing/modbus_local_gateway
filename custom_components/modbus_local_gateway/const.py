@@ -38,6 +38,11 @@ OPTIONS_REFRESH = "refresh"
 OPTIONS_DEFAULT_REFRESH = 30
 OPTIONS_WRITE_FUNCTION = "write_function"
 OPTIONS_DEFAULT_WRITE_FUNCTION = WriteFunction.SINGLE.value
+# A device that stops answering on purpose - a solar inverter after dark - is
+# not a fault, so its transitions are logged as information rather than as a
+# warning. It is still probed and still goes unavailable.
+OPTIONS_EXPECTED_OFFLINE = "expected_offline"
+OPTIONS_DEFAULT_EXPECTED_OFFLINE = False
 
 # The config entry is the gateway connection; every device behind it is a
 # config sub-entry of that entry.

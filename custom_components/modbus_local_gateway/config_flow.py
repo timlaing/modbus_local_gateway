@@ -48,8 +48,10 @@ from .const import (
     CONF_RESTORE_ENTITY_IDS,
     CONF_WRITE_FUNCTION_TYPES,
     DOMAIN,
+    OPTIONS_DEFAULT_EXPECTED_OFFLINE,
     OPTIONS_DEFAULT_REFRESH,
     OPTIONS_DEFAULT_WRITE_FUNCTION,
+    OPTIONS_EXPECTED_OFFLINE,
     OPTIONS_REFRESH,
     OPTIONS_WRITE_FUNCTION,
     SUBENTRY_TYPE_DEVICE,
@@ -419,6 +421,9 @@ def _normalise_device_data(user_input: Mapping[str, Any]) -> dict[str, Any]:
         CONF_FILENAME: str(user_input[CONF_FILENAME]),
         OPTIONS_REFRESH: int(user_input[OPTIONS_REFRESH]),
         OPTIONS_WRITE_FUNCTION: str(user_input[OPTIONS_WRITE_FUNCTION]),
+        OPTIONS_EXPECTED_OFFLINE: bool(
+            user_input.get(OPTIONS_EXPECTED_OFFLINE, OPTIONS_DEFAULT_EXPECTED_OFFLINE)
+        ),
     }
 
 
@@ -519,6 +524,9 @@ def _device_schema(devices_data: Mapping[str, str]) -> vol.Schema:
         vol.Required(
             OPTIONS_WRITE_FUNCTION, default=OPTIONS_DEFAULT_WRITE_FUNCTION
         ): _dropdown(CONF_WRITE_FUNCTION_TYPES),
+        vol.Required(
+            OPTIONS_EXPECTED_OFFLINE, default=OPTIONS_DEFAULT_EXPECTED_OFFLINE
+        ): BooleanSelector(),
     })
 
 

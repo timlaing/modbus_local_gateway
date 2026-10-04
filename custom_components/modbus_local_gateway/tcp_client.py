@@ -8,8 +8,10 @@
 
 import asyncio
 from collections.abc import Callable
+from dataclasses import dataclass
 import logging
-from typing import Any, cast
+from time import monotonic
+from typing import Any, NoReturn, cast
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import (
@@ -54,6 +56,75 @@ def _padded_bit_count(read_count: int) -> int:
 # What one read of a poll cycle is remembered by: the device it went to, the
 # bank it came from, and the range it covered.
 ReadKey = tuple[int, ModbusDataType, int, int]
+
+# How long a device that has stopped answering is left alone before it is asked
+# again, in seconds. A solar inverter is off for hours and a device unplugged for
+# the afternoon is no different, so this grows and then stops growing: asked
+# every few seconds it would be a device talking to a device that is not there,
+# and asked once an hour it would be a slow recovery. One step per failed probe,
+# bounded at the last step.
+_PROBE_BACKOFF: tuple[int, ...] = (5, 10, 20, 40, 80, 120)
+
+# The same idea for the gateway itself, on a shorter ladder: a gateway that is not
+# answering is usually back in seconds, and it is retried once per device behind
+# it, so leaving it alone briefly is what keeps a power cycle from being a
+# reconnect storm.
+_CONNECT_BACKOFF: tuple[int, ...] = (2, 5, 15, 30, 60)
+
+
+def _step(backoff: tuple[int, ...], failures: int) -> float:
+    """The wait before the next attempt: one step per failure, bounded by the last."""
+    return float(backoff[min(max(failures, 1) - 1, len(backoff) - 1)])
+
+
+@dataclass
+class _Outage:
+    """What is known about one device that stopped answering.
+
+    Kept per slave id on the client rather than on a coordinator, because every
+    way of asking a device for a value arrives here - a shared refresh, an entity
+    on its own `scan_interval`, a recovery probe - and they all have to obey the
+    same state and say the same thing about it.
+    """
+
+    # How many probes have been asked since the device last answered. The first
+    # is short, the last is bounded: see `_PROBE_BACKOFF`.
+    failures: int = 0
+    # When the next probe is due, on the monotonic clock.
+    next_probe: float = 0.0
+    # When the device stopped answering, on the same clock, for the recovery line.
+    since: float = 0.0
+    # Why it is believed to be away, said once with the transition.
+    reason: str = ""
+
+    @property
+    def due(self) -> bool:
+        """Whether the device is due to be asked again."""
+        return monotonic() >= self.next_probe
+
+
+@dataclass(frozen=True)
+class DevicePolicy:
+    """How a device is polled while it is not answering.
+
+    Passed per poll rather than stored, because it comes from the settings of one
+    device behind a gateway whose client is shared with every other device on it.
+    """
+
+    # Whether this poll is for the whole device, as a shared refresh is, or for
+    # one entity on its own timer. A read of one entity that gets nothing back
+    # says nothing about the rest of the device, so it is not taken as the
+    # device going away.
+    whole_device: bool = True
+    # The entity a recovery probe reads, named by the device's own configuration.
+    # `None` means the first entity of the refresh. A refresh that does not cover
+    # the entity that was named falls back to its own first entity too, and a read
+    # of one entity never probes at all.
+    probe_key: str | None = None
+    # Whether this device is expected to stop answering, e.g. a solar inverter
+    # after dark. Its transitions are logged as information rather than as a
+    # fault; it is still probed and its entities are still unavailable.
+    expected_offline: bool = False
 
 
 class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
@@ -106,6 +177,19 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         )
         self._resyncs = 0
         self._needs_reconnect = False
+        # Whether the last connection attempt got through. Reported on the change,
+        # not per attempt: every device behind the gateway retries on its own
+        # schedule, so a warning per attempt is a warning every few seconds for as
+        # long as the gateway stays away.
+        self._gateway_reachable: bool = True
+        # What is known about each device that has stopped answering, by slave id.
+        # The gateway has its own gate below, because it is a different thing: a
+        # device that is off is asked again, a gateway that is off is connected.
+        self._outages: dict[int, _Outage] = {}
+        # How long the gateway itself is left alone after a failed connection
+        # attempt, and how many have failed.
+        self._connect_next_attempt: float = 0.0
+        self._connect_failures: int = 0
 
     @property
     def desynced(self) -> bool:
@@ -132,14 +216,22 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         self._needs_reconnect = True
         return True
 
-    async def _ensure_connection(self) -> bool:
+    async def _ensure_connection(self, *, gated: bool = True) -> bool:
         """Connect, and renew the connection when the last transaction lost step.
 
         A gateway that bridges TCP to a serial bus keeps answering a request
         after the client has stopped waiting for it, so the next request collects
         that answer before its own. Renewing the connection drops what the bridge
         has queued, which is the only way back into step with it.
+
+        After a failed attempt the gateway is left alone until the next one is
+        due, which is what stops every device behind it retrying the same dead
+        gateway once per refresh interval. `gated` is False for a write, which is
+        asked for by a person waiting for it rather than by a timer.
         """
+        if gated and self._connect_next_attempt > monotonic():
+            self._report_reachable(False)
+            return False
         if self._needs_reconnect:
             _LOGGER.warning(
                 "Gateway %s answered requests that were no longer waiting, renewing "
@@ -151,18 +243,106 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 # Left pending, so the next attempt renews rather than taking the
                 # plain connection it would otherwise make and reading on a gateway
                 # that is still out of step.
-                _LOGGER.warning("Failed to reconnect to gateway - %s", self)
+                self._note_unreachable()
                 return False
             self._clear_desync()
             self._needs_reconnect = False
+            self._note_reachable()
             return True
 
         if not self.connected:
             await self.connect()
         if not self.connected:
-            _LOGGER.warning("Failed to connect to gateway - %s", self)
+            self._note_unreachable()
             return False
+        self._note_reachable()
         return True
+
+    def _note_unreachable(self) -> None:
+        """Record a connection attempt that did not get through.
+
+        The next attempt is put off for a while rather than being made by the next
+        device that refreshes: one gateway that is down is otherwise one failed
+        connect per device per refresh interval.
+        """
+        self._connect_failures += 1
+        self._connect_next_attempt = monotonic() + _step(
+            _CONNECT_BACKOFF, self._connect_failures
+        )
+        self._report_reachable(False)
+
+    def _note_reachable(self) -> None:
+        """Record a connection that got through, and let the next failure start over."""
+        self._connect_failures = 0
+        self._connect_next_attempt = 0.0
+        self._report_reachable(True)
+
+    def _report_reachable(self, reachable: bool) -> None:
+        """Report a gateway going away or coming back, once per change."""
+        if reachable == self._gateway_reachable:
+            return
+        self._gateway_reachable = reachable
+        if reachable:
+            _LOGGER.info("Gateway %s is reachable again", self)
+        else:
+            _LOGGER.info("Gateway %s is not reachable", self)
+
+    def device_online(self, device_id: int) -> bool:
+        """Whether the device answered its last read.
+
+        Read by the coordinator for availability, so a device whose recovery
+        probe succeeds is available again without waiting for a poll that the
+        backoff may still be holding off.
+        """
+        return device_id not in self._outages
+
+    def _note_gone(self, device_id: int, reason: str, expected_offline: bool) -> None:
+        """Record a device that stopped answering, and say so once.
+
+        A device that is off is asked again on every cycle, so a line per cycle
+        is a line every few seconds for as long as it is off. The one thing worth
+        having is the transition, and when it is over: the next probe is put off
+        rather than the next read being skipped forever.
+        """
+        outage: _Outage | None = self._outages.get(device_id)
+        if outage is None:
+            outage = _Outage(since=monotonic(), reason=reason)
+            self._outages[device_id] = outage
+        outage.failures += 1
+        outage.reason = reason
+        outage.next_probe = monotonic() + _step(_PROBE_BACKOFF, outage.failures)
+        if outage.failures > 1:
+            _LOGGER.debug(
+                "Device ID %d on gateway %s still not answering (%s), next probe in "
+                "%d s",
+                device_id,
+                self,
+                reason,
+                int(outage.next_probe - monotonic()),
+            )
+            return
+        _LOGGER.log(
+            logging.INFO if expected_offline else logging.WARNING,
+            "Device ID %d on gateway %s stopped answering (%s); its entities are "
+            "unavailable and it is polled again in %d s",
+            device_id,
+            self,
+            reason,
+            int(outage.next_probe - outage.since),
+        )
+
+    def _note_answering(self, device_id: int) -> None:
+        """Record a device that is answering again, and say so once."""
+        outage: _Outage | None = self._outages.pop(device_id, None)
+        if outage is None:
+            return
+        _LOGGER.info(
+            "Device ID %d on gateway %s is answering again, silent for %d s (%s)",
+            device_id,
+            self,
+            int(monotonic() - outage.since),
+            outage.reason,
+        )
 
     def _resync_transport(self) -> None:
         """Drop anything still buffered, and count the resynchronisation.
@@ -698,7 +878,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         """
         pdu: ModbusPDU | None = None
         async with self.lock:
-            if not await self._ensure_connection():
+            # Not gated: a write is asked for by a person waiting for it, and the
+            # only thing the outage gate does to a write is delay telling them it
+            # did not get through. Nothing written here is replayed on recovery.
+            if not await self._ensure_connection(gated=False):
                 return None
 
             _LOGGER.debug(
@@ -737,42 +920,237 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             return pdu
 
     async def update_device(
-        self, entities: list[ModbusContext], max_read_size: int
+        self,
+        entities: list[ModbusContext],
+        max_read_size: int,
+        policy: DevicePolicy | None = None,
     ) -> dict[str, ModbusPDU]:
         """Fetch all values for a single device id.
 
         Raises `ModbusNoResponseError`, carrying what was read before the device
         stopped answering, so a cycle costs one timeout rather than one per entity.
+
+        While a device is backing off from having stopped answering, this reads
+        nothing at all: the read is due when the next probe is, and until then the
+        device is not talked to. Nothing is awaited while waiting, so the lock this
+        holds is held for the length of one read at most, and a device behind this
+        gateway that is awake keeps polling.
         """
         data: dict[str, ModbusPDU] = {}
+        if not entities:
+            return data
+        device_id: int = entities[0].device_id
+        expected_offline: bool = policy.expected_offline if policy else False
+        whole_device: bool = policy.whole_device if policy else True
         # One poll cycle, one answer per register range: entities that read the
         # same registers are answered from the same transaction.
         cache: dict[ReadKey, ModbusPDU] = {}
+        # What this cycle actually asked the device for, so an entity left out by
+        # an early end is not counted as one the device failed to answer.
+        asked: list[ModbusContext] = []
         async with self.lock:
             if not await self._ensure_connection():
                 return data
 
+            outage: _Outage | None = self._outages.get(device_id)
+            if outage is not None:
+                probe = await self._probe_for_return(
+                    entities, outage, policy, data, cache, max_read_size
+                )
+                if probe is None:
+                    return data
+                asked.append(probe)
+
             for entity in entities:
+                if entity.desc.key in data:
+                    # Already answered by the recovery probe above.
+                    continue
                 if not await self._process_entity(entity, data, max_read_size, cache):
-                    raise ModbusNoResponseError(
-                        f"Device ID {entity.device_id} stopped answering at "
-                        f"{entity.desc.key}, after "
-                        f"{len(data)} of {len(entities)} entities",
-                        partial=data,
+                    self._note_unanswered(
+                        entity, entities, data, asked, whole_device, expected_offline
                     )
+                asked.append(entity)
                 if self._needs_reconnect:
                     # The rest of this poll would be read on a connection the
-                    # gateway is not answering in step with, so it is left to
-                    # the next poll, which starts on a renewed connection.
+                    # gateway is not answering in step with, so it is left to the
+                    # next poll, which starts on a renewed connection.
                     _LOGGER.debug(
                         "Ending the poll of %s early, the next one reconnects",
                         self,
                     )
                     break
 
+            self._note_answering(device_id)
+            self._report_unusable(asked, data)
             _LOGGER.debug("Update completed %s", self)
 
         return data
+
+    def _note_unanswered(
+        self,
+        entity: ModbusContext,
+        entities: list[ModbusContext],
+        data: dict[str, ModbusPDU],
+        asked: list[ModbusContext],
+        whole_device: bool,
+        expected_offline: bool,
+    ) -> NoReturn:
+        """Say what a read that got nothing back means, and end the poll.
+
+        What it means depends on what else the poll has: something already in `data`
+        means the device answered part of this poll, and nothing at all in a poll of
+        the whole device means it has stopped answering. Raises
+        `ModbusNoResponseError` carrying what was read, either way.
+        """
+        device_id: int = entity.device_id
+        reason = f"after {len(data)} of {len(entities)} entities, at {entity.desc.key}"
+        if data:
+            # The device answered part of this poll, so it is on the bus and the
+            # silence is about one read rather than the device. It is warned
+            # about, once per poll, naming what it did not answer, and the next
+            # poll asks again as normal: backing off here would hide a device that
+            # is answering intermittently behind "it has stopped answering", and
+            # would publish the values it did answer as unavailable along with the
+            # one it did not.
+            self._report_unusable(asked + [entity], data)
+        elif whole_device:
+            self._note_gone(device_id, reason, expected_offline)
+        else:
+            # One entity on its own timer got nothing back. It says nothing about
+            # the rest of the device, so the device is not put on a backoff over
+            # it, and it is not warned about every cycle either: the entity is the
+            # one that goes unavailable, and the next read of it decides.
+            _LOGGER.debug(
+                "A read of %s on device ID %d on gateway %s did not answer; the "
+                "rest of the device is untouched",
+                entity.desc.key,
+                device_id,
+                self,
+            )
+        raise ModbusNoResponseError(f"Device ID {device_id} {reason}", partial=data)
+
+    async def _probe_for_return(
+        self,
+        entities: list[ModbusContext],
+        outage: _Outage,
+        policy: DevicePolicy | None,
+        data: dict[str, ModbusPDU],
+        cache: dict[ReadKey, ModbusPDU],
+        max_read_size: int,
+    ) -> ModbusContext | None:
+        """Ask a device that is backing off whether it is back.
+
+        Returns the entity the probe read, so the poll that follows does not read
+        it again, or `None` when this poll is not the one that asks and nothing was
+        read at all. Raises `ModbusNoResponseError` when the probe does not come
+        back with something usable: the device is not back yet, and there is nothing
+        in this poll to give.
+
+        A read of one entity says nothing about whether the device is back, so it is
+        the routine refresh that brings a device back, and only a refresh that
+        covers the whole device. The lock is what makes it the only one: every way
+        of asking a device for a value comes through here, so a shared refresh and
+        an entity on its own scan_interval cannot both ask the same device at once.
+        """
+        device_id: int = entities[0].device_id
+        expected_offline: bool = policy.expected_offline if policy else False
+        if not (policy.whole_device if policy else True):
+            _LOGGER.debug(
+                "Device ID %d on gateway %s is not answering; a read of one entity "
+                "is left to the refresh of the whole device",
+                device_id,
+                self,
+            )
+            return None
+        if not outage.due:
+            _LOGGER.debug(
+                "Device ID %d on gateway %s is not due a probe for another %d s",
+                device_id,
+                self,
+                int(outage.next_probe - monotonic()),
+            )
+            return None
+
+        # Due, so this poll is the one that asks. The entity the device nominates
+        # for the purpose is read first, because a device that is still off is then
+        # found on the cheapest register there is, and because one answer is enough
+        # to know it is back. The rest of the device is read as normal afterwards,
+        # so a device that is back is not left with one fresh value and the rest of
+        # its entities waiting for their own timers.
+        probe = self._probe_entity(entities, policy)
+        _LOGGER.debug(
+            "Probing device ID %d on gateway %s with %s",
+            device_id,
+            self,
+            probe.desc.key,
+        )
+        if not await self._process_entity(probe, data, max_read_size, cache):
+            self._note_gone(
+                device_id, "no response to a recovery probe", expected_offline
+            )
+            raise ModbusNoResponseError(
+                f"Device ID {device_id} did not answer a recovery probe with "
+                f"{probe.desc.key}",
+                partial=data,
+            )
+        if not data:
+            # An answer that came back but could not be used is not proof of
+            # recovery: a device coming up mid-read can answer before its registers
+            # mean anything.
+            self._note_gone(
+                device_id,
+                "no usable answer to a recovery probe",
+                expected_offline,
+            )
+            raise ModbusNoResponseError(
+                f"Device ID {device_id} answered a recovery probe with "
+                f"{probe.desc.key} with nothing usable",
+                partial=data,
+            )
+        self._note_answering(device_id)
+        return probe
+
+    def _probe_entity(
+        self, entities: list[ModbusContext], policy: DevicePolicy | None
+    ) -> ModbusContext:
+        """The entity a recovery probe reads.
+
+        The one the device's own configuration nominates, so a device whose first
+        entity is an expensive read, or one that answers slowly while it is waking
+        up, is asked something it answers as long as it is powered at all. Without
+        a name the first entity of the poll is used, and so is the first entity
+        when a refresh does not cover the one that was named.
+        """
+        probe_key: str | None = policy.probe_key if policy else None
+        return next(
+            (entity for entity in entities if entity.desc.key == probe_key), entities[0]
+        )
+
+    def _report_unusable(
+        self, asked: list[ModbusContext], data: dict[str, ModbusPDU]
+    ) -> None:
+        """Warn about a device that answered some of this cycle and not others.
+
+        The device is on the bus and talking, which is what separates this from a
+        device that is off: it answers some registers and not others, so the values
+        that do come back are worth having while the ones that do not are a fault
+        worth looking at. One warning per cycle, naming what was missed - a line per
+        entity would bury the fault in the entities it affects.
+        """
+        missing: list[str] = [
+            entity.desc.key for entity in asked if entity.desc.key not in data
+        ]
+        if not missing:
+            return
+        _LOGGER.warning(
+            "Device ID %d answered %d of the %d registers asked for this poll; no "
+            "usable response for %s (connection resynchronised %d time(s))",
+            asked[0].device_id,
+            len(data),
+            len(asked),
+            ", ".join(missing),
+            self._resyncs,
+        )
 
     async def _read_once(
         self,
@@ -888,16 +1266,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             self._resyncs,
         )
 
-    def _log_no_response(self, entity: ModbusContext, exc: Exception) -> None:
-        """Report a device that stopped answering, once per poll cycle."""
-        _LOGGER.warning(
-            "Device not available %s [%d]: %s; connection resynchronised %d time(s)",
-            self,
-            entity.device_id,
-            exc,
-            self._resyncs,
-        )
-
     async def _process_entity(
         self,
         entity: ModbusContext,
@@ -966,12 +1334,14 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             self._log_unusable_response(entity, err)
             return True
 
-        except (ModbusIOException, ConnectionException, TimeoutError) as err:
+        except ModbusIOException, ConnectionException, TimeoutError:
             # pymodbus raises these only after a device has failed to answer, so
-            # this is the one case that says the device is no longer there.
+            # this is the one case that says the device is no longer there. The
+            # caller reports that once, as a change of state: a device that stays
+            # away is polled every cycle, and a line per cycle is a line every few
+            # seconds for as long as it is off.
             self._resync_transport()
-            if not self._flag_desync():
-                self._log_no_response(entity, err)
+            self._flag_desync()
             return False
 
     @classmethod

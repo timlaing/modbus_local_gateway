@@ -63,6 +63,9 @@ A gateway usually serves more than one device, so the devices are added to a gat
 - **Device ID**: Modbus device ID (e.g., `1`).
 - **Prefix**: Optional device and entity name prefix (e.g., `Device 3`).
 - **Device config**: the YAML file describing the model (e.g., `Eastron SDM-230` for `SDM230.yaml`).
+- **Expected to be offline at times** (optional): for a device that switches itself off, such as a
+  solar inverter after dark (default: off). See
+  [Devices that are off at times](#devices-that-are-off-at-times).
 
 Every device becomes a device of its own in Home Assistant, with the gateway as its parent, and can be reconfigured, reloaded or removed on its own. Devices that report the same model twice, on the same gateway, are refused: add the second one with a different prefix instead.
 
@@ -73,6 +76,22 @@ Entities are created once and keep their entity ID from then on: the integration
 ### Modifying Existing Devices
 
 Use **Configure** on the gateway to add, edit or remove the devices behind it, and **Configure** on a device to change the **update frequency** (default: 30 seconds) or the **register write function** of that device alone.
+
+#### Devices that are off at times
+
+Some devices are not always there to be read. A solar inverter shuts itself down when there is no
+sun and comes back on its own when there is; a heat pump stops for the night; a device that is only
+switched on while a machine is running is silent for the same reason. For those, a device being
+unavailable is a normal part of its day rather than a fault, so **Expected to be offline at times**
+is set on the device and:
+
+- the change of state is logged as information rather than as a warning, so a night of silence does
+  not wake anybody up for;
+- everything else is unchanged. The device still goes unavailable, is still probed, and its entities
+  still become available again by themselves when it comes back.
+
+Nothing needs to be scheduled or automated around this; the setting only changes how quiet a normal
+absence is.
 
 #### Register Write Function
 
@@ -113,6 +132,12 @@ Each file requires a `device` section and optional register/coil sections:
   - `manufacturer` (required): String.
   - `model` (required): String.
   - `max_register_read` (optional): Max registers per read (default: 8).
+  - `probe_key` (optional): The entity name a
+    [recovery probe](#troubleshooting) reads when checking whether the device is back. Use it for
+    a device whose first entity is an expensive read, or one that answers slowly while it is
+    waking up: name an entity the device answers as long as it is powered at all, such as a status
+    word. The name has to be an entity of that device; anything else is logged and the first entity
+    is used.
 
 - **Register/Coil Sections** (optional):
   - `read_write_word`: Holding registers (read/write).
@@ -424,6 +449,41 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
   one per entity, and it never holds up the start. Its entities show as unavailable until it
   answers, the other devices behind the same gateway are unaffected, and a poll that meets a
   device that has gone quiet keeps the values it had already read.
+- **A device that is off says so once**: the log gets one warning when a device stops answering
+  and one info line when it answers again, with how long it was gone, and nothing in between
+  however many polls pass. A device that answers some of the registers asked for and not others
+  is a different thing and is warned about every poll, naming the entities that had no usable
+  response.
+- **A device that is off is not polled every cycle**: a device that stops answering is put on a
+  backoff of 5, 10, 20, 40, 80 and then 120 seconds, so an inverter that is off for a ten-hour night
+  costs about three hundred reads instead of thousands. Nothing is queued up or timed in the
+  background: each poll that comes round while the device is backing off reads nothing at all and
+  returns immediately, so the other devices behind the same gateway are not held up, and no task is
+  left running to clean up on unload. Entities that read on their own `scan_interval` do not read
+  a device that is off either, for the same reason: the refresh of the whole device is what asks
+  whether it is back, and one read per entity per timer is how a device that is off for the night
+  would fill the bus and the log. So that refresh is what finds it back, and while a device is off
+  it reads the whole device, including the entities that have their own timer - otherwise a device
+  whose entities all poll on their own timers would have nothing left to ask it with.
+- **One answer brings a device back, and the rest of it comes with it**: the refresh after a
+  deadline reads one entity to ask whether the device is back - the entity named by `probe_key`, or
+  the device's first entity - and one usable answer is enough to bring its entities back. The rest
+  of the poll carries on in that same read, so everything the device does answer is fresh at once
+  rather than one entity now and the others whenever their own timer next comes round. An answer
+  that came back but could not be used does not count as recovery, which is what stops a device that
+  wakes up mid-read from being written off again. A device that answers the probe and then goes quiet
+  again is on the bus, so it is treated as back: the values it did answer are kept, the entities
+  that had no usable response are warned about as usual, and it is polled normally from the next
+  cycle.
+- **A gateway that will not connect is left alone too**: a gateway that cannot be reached is
+  retried after 2, 5, 15, 30 and then 60 seconds rather than once per device per refresh. Writes
+  are not held back by either backoff: a write is asked for by a person waiting for it, and is
+  told when it did not get through. Nothing written is ever replayed when a device comes back,
+  because a write can be a command.
+- **A device that is expected to be off** (see
+  [Devices that are off at times](#devices-that-are-off-at-times)): with the setting on, the same
+  transitions are logged as information instead of as warnings, so a device that switches itself off
+  is not reported as a fault.
 - **Writes Fail with "No response received after 5 retries"**: some devices only implement
   _Preset Multiple Registers_ (FC `0x10`). A single-value write to them now falls back to
   FC `0x10` on its own, and the log says which attempt failed and why.

@@ -59,13 +59,15 @@
         "reconfigure": {
           "data": {
             "device_id": "Device ID (slave id)",
+            "expected_offline": "Expected to be offline at times",
             "filename": "Device",
             "prefix": "Prefix (optional)",
             "refresh": "Update frequency",
             "write_function": "Register write function"
           },
           "data_description": {
-            "device_id": "Changing the device ID moves this device. Its entity ids, unique ids and device id are kept, so history and dashboards follow it."
+            "device_id": "Changing the device ID moves this device. Its entity ids, unique ids and device id are kept, so history and dashboards follow it.",
+            "expected_offline": "A device that is switched off by itself, such as a solar inverter after dark, reports being unavailable as information rather than as a fault. It is still read less often while it is off, and its entities are still unavailable."
           },
           "description": "Change this device of {gateway}",
           "title": "Reconfigure device"
@@ -73,10 +75,14 @@
         "user": {
           "data": {
             "device_id": "Device ID (slave id)",
+            "expected_offline": "Expected to be offline at times",
             "filename": "Device",
             "prefix": "Prefix (optional)",
             "refresh": "Update frequency",
             "write_function": "Register write function"
+          },
+          "data_description": {
+            "expected_offline": "A device that is switched off by itself, such as a solar inverter after dark, reports being unavailable as information rather than as a fault. It is still read less often while it is off, and its entities are still unavailable."
           },
           "description": "Add a device to {gateway}",
           "title": "Add device"

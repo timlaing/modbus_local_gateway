@@ -30,10 +30,13 @@ from pymodbus.pdu.pdu import ModbusPDU
 
 from .composite import CompositeConversion
 from .const import (
+    CONF_DEVICE_ID,
     CONF_LEGACY_ENTITY_IDS,
     CONF_LEGACY_ENTITY_IDS_DEFAULT,
     CONF_PREFIX,
+    OPTIONS_DEFAULT_EXPECTED_OFFLINE,
     OPTIONS_DEFAULT_WRITE_FUNCTION,
+    OPTIONS_EXPECTED_OFFLINE,
     OPTIONS_WRITE_FUNCTION,
 )
 from .context import ModbusContext
@@ -45,7 +48,7 @@ from .entity_management.base import (
 from .entity_management.const import WriteFunction
 from .entity_management.modbus_device_info import ModbusDeviceInfo
 from .exceptions import ModbusNoResponseError
-from .tcp_client import AsyncModbusTcpClientGateway
+from .tcp_client import AsyncModbusTcpClientGateway, DevicePolicy
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -290,13 +293,17 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     @property
     def available(self) -> bool:
-        """Unavailable before the first poll, and while reporting a non-value."""
+        """Unavailable before the first poll, while silent, or on a non-value."""
         if not super().available:
             return False
         if not self.coordinator.initial_poll_done:
             # Nothing has been read yet, so there is no value behind this entity.
             # Reporting availability before the first poll shows it as an unknown
             # value rather than as a device that has not answered.
+            return False
+        if not self.coordinator.device_online:
+            # A device that is not answering has nothing behind this entity, and
+            # the reason it is not answering is already in the log.
             return False
         return not self.coordinator.is_unavailable(self.coordinator_context)
 
@@ -338,6 +345,11 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self._subentry_data: Mapping[str, Any] = dict(subentry.data) if subentry else {}
         # Definition of the device this coordinator polls, from its YAML file.
         self._device_info: ModbusDeviceInfo | None = device_info
+        # The slave id of the device this coordinator polls, read from the gateway
+        # so the client can be asked whether it is answering.
+        self._device_id: int | None = (
+            subentry.data.get(CONF_DEVICE_ID) if subentry else None
+        )
 
         super().__init__(
             hass,
@@ -415,6 +427,61 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     def initial_poll_done(self) -> bool:
         """Whether the device has been read at least once."""
         return self._initial_poll_done
+
+    @property
+    def device_online(self) -> bool:
+        """Whether the device answered its last read.
+
+        Asked of the client rather than kept here, because the client is where the
+        answer is: it holds what is known about a device that stopped answering,
+        and its recovery probe can prove the device is back between two polls of
+        this coordinator.
+        """
+        if self._device_id is None:
+            return True
+        return self.client.device_online(self._device_id)
+
+    @property
+    def expected_offline(self) -> bool:
+        """Whether this device is expected to stop answering.
+
+        A solar inverter shuts itself down when there is no sun and comes back when
+        there is, which is a normal part of its day rather than a fault. Such a
+        device still goes unavailable and is still probed; only the level its
+        transitions are logged at differs, so a night of silence is not a warning
+        to wake someone up for.
+        """
+        return bool(
+            self._subentry_data.get(
+                OPTIONS_EXPECTED_OFFLINE, OPTIONS_DEFAULT_EXPECTED_OFFLINE
+            )
+        )
+
+    def _device_policy(self, whole_device: bool) -> DevicePolicy:
+        """How this device is polled while it is not answering.
+
+        The probe entity is named only for a whole-device poll. A read of one entity
+        on its own timer neither probes nor brings the device back: one register on
+        its own says nothing about the rest of the device, and the refresh is what
+        finds it.
+        """
+        return DevicePolicy(
+            whole_device=whole_device,
+            probe_key=self._probe_key if whole_device else None,
+            expected_offline=self.expected_offline,
+        )
+
+    @property
+    def _probe_key(self) -> str | None:
+        """The entity a recovery probe reads, if the device names one.
+
+        From the device's own configuration, so a device whose first entity is an
+        expensive read - or one that a device answers slowly while it is waking up -
+        can nominate a cheap one instead.
+        """
+        if self._device_info is None:
+            return None
+        return self._device_info.probe_key
 
     @callback
     def async_schedule_initial_poll(self) -> None:
@@ -497,7 +564,17 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                     for ctx in self._all_contexts()
                     if ctx.desc.scan_interval is None
                 ]
-                if not entities:
+                if not self.device_online:
+                    # A device that is not answering is asked by this refresh and
+                    # by nothing else: the entities that poll on their own timers
+                    # do not read while it is away. So this refresh covers the
+                    # whole device, because otherwise a device whose entities all
+                    # have their own scan_interval would have nothing to ask it
+                    # with and could never be found to be back. What it costs is
+                    # one read of it when a probe is due, and nothing at all when
+                    # one is not.
+                    entities = self._all_contexts()
+                elif not entities:
                     # Every entity has its own scan_interval and polls on its own
                     # timer, so there is nothing for the shared refresh to fetch.
                     _LOGGER.debug("No entities to refresh for %s", self.name)
@@ -510,23 +587,43 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         """Every registered entity of this device, in a stable order."""
         return sorted(self.async_contexts(), key=lambda ctx: ctx.device_id)
 
-    async def _update_device(self, entities: list[ModbusContext]) -> dict[str, Any]:
+    async def _update_device(
+        self, entities: list[ModbusContext], whole_device: bool = True
+    ) -> dict[str, Any]:
         """Update data for a list of entities.
 
-        Raises `UpdateFailed` when the poll was unsound - nothing at all came back,
-        or a conversion failed unexpectedly and left nothing usable.
+        A device that is not answering is not a failure to raise: the client reports
+        it once, as a change of state, backs off and probes, and the entities it did
+        not answer for go unavailable. `UpdateFailed` is for a poll that was unsound
+        for a reason the device cannot be blamed for - a conversion that failed, or a
+        poll that never finished - because that is what leaves the coordinator
+        retrying.
+
+        `whole_device` is False for a read of one entity on its own `scan_interval`.
+        A register that times out then says nothing about the rest of the device, so
+        such a read marks the device as answering when it comes back and otherwise
+        only speaks for the entity it read.
         """
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
+        if not entities:
+            # A device config that no longer declares anything to read. There is
+            # nothing to ask it and nothing to say about it.
+            return {}
+        if self._device_id is None:
+            self._device_id = entities[0].device_id
         failed = False
         try:
             async with asyncio.timeout(_POLL_BACKSTOP):
                 resp: dict[str, ModbusPDU] = await self.client.update_device(
-                    entities, max_read_size=self._max_read_size
+                    entities,
+                    max_read_size=self._max_read_size,
+                    policy=self._device_policy(whole_device),
                 )
         except ModbusNoResponseError as err:
-            # The device went quiet part way through the cycle. What was read
-            # before that is still good data, and the rest of the cycle is no
-            # longer worth asking for.
+            # The device went quiet part way through the cycle, and the client has
+            # recorded it and put its next probe off. What was read before that is
+            # still good data, and the rest of the cycle is no longer worth asking
+            # for.
             _LOGGER.debug("%s stopped answering: %s", self.name, err)
             resp = err.partial
         except TimeoutError:
@@ -580,7 +677,10 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                     exc_info=True,
                 )
 
-        if not data and (not resp or failed):
+        if not data and failed:
+            # Every entity this cycle read converted to nothing, and not because the
+            # values were declared unavailable. That is a fault in the conversion
+            # rather than a device that is off, so it is reported as a failure.
             raise UpdateFailed()
         return data
 
@@ -598,9 +698,22 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         return conversion.convert_from_response(desc=desc, response=response)
 
     async def async_update_entity(self, ctx: ModbusContext) -> None:
-        """Update cached data for a specific entity."""
+        """Update cached data for a specific entity.
+
+        A device that has stopped answering is left to the refresh of the whole
+        device: its entities have nothing to ask it with, and a read per entity
+        while it is off is one read per entity per timer for as long as it is off.
+        The entity stays unavailable until that refresh finds the device back.
+        """
+        if not self.device_online:
+            _LOGGER.debug(
+                "%s is not answering, leaving %s to the refresh of the device",
+                self.name,
+                ctx.desc.key,
+            )
+            return
         try:
-            data = await self._update_device(entities=[ctx])
+            data = await self._update_device(entities=[ctx], whole_device=False)
         except UpdateFailed:
             return None
         if data:
