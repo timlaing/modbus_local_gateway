@@ -199,18 +199,41 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         self._cancel_timer: Callable[[], None] | None = None
         self._cancel_call: Callable[[], None] | None = None
 
-    async def _read_data(self) -> None:
-        """Update the entity state."""
-        await asyncio.wait_for(self._update_lock.acquire(), 0.1)
-        try:
+    async def _read_data(self) -> bool:
+        """Update the entity state, unless a read of it is already in progress.
+
+        The lock is never waited for. It used to be waited for, with
+        `asyncio.wait_for(self._update_lock.acquire(), 0.1)`, so that a cycle
+        arriving during a read would skip rather than queue a second read - but
+        `wait_for` runs the acquire in a task of its own, and if the deadline
+        cancels this task in the same event loop iteration in which that task has
+        already taken the lock, the cancellation is raised at the await inside
+        `wait_for`, before the `try` that releases it. The lock is then held by
+        nobody, and nothing can release it afterwards. Releasing the lock 10 ms
+        before the deadline reproduced that 4 times in 300 attempts here; every
+        later read of the entity then timed out at 0.1 s, each timeout was logged
+        as "already in progress", and the entity silently stopped updating for the
+        rest of the session. `asyncio.timeout()` around the same acquire does not
+        leak - there is no task boundary for the grant to be lost across - but a
+        read has no reason to wait for the lock at all: whatever holds it is a
+        read of this same entity that is about to publish the value this read
+        would have fetched.
+
+        Returns whether the entity was read, so a skipped read does not go on to
+        write the state machine: the read that holds the lock writes it when it
+        finishes, which is the read whose value this cycle would have had.
+        """
+        if self._update_lock.locked():
+            _LOGGER.debug("Update for entity %s is already in progress", self.name)
+            return False
+        async with self._update_lock:
             await self.coordinator.async_update_entity(self.coordinator_context)
-        finally:
-            self._update_lock.release()
+        return True
 
     async def _async_update_write_state(self) -> None:
-        """Update the entity state and write it to the state machine."""
-        await self._read_data()
-        self._handle_coordinator_update()
+        """Update the entity state, and write it to the state machine if it was read."""
+        if await self._read_data():
+            self._handle_coordinator_update()
 
     async def write_data(
         self,
@@ -229,14 +252,21 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
             )
             raise UpdateFailed from exc
 
-        await self._async_update_if_not_in_progress()
+        async with self._update_lock:
+            # The device has been written, so this read-back cannot be skipped: a
+            # read of this entity that was in flight may have fetched the value
+            # from before the write, and while it holds the lock that stale value
+            # stays in the cache - skip the read-back and the entity keeps
+            # reporting it. So wait here for that read to finish, where it cannot
+            # overlap with this one, and read it under the lock this task holds.
+            # Nothing sets a deadline on this wait, so it is never cancelled with
+            # the lock already taken (see `_read_data`).
+            await self.coordinator.async_update_entity(self.coordinator_context)
+            self._handle_coordinator_update()
 
     async def _async_update_if_not_in_progress(self, _: datetime | None = None) -> None:
         """Update the entity state if not already in progress."""
-        try:
-            await self._async_update_write_state()
-        except TimeoutError:
-            _LOGGER.debug("Update for entity %s is already in progress", self.name)
+        await self._async_update_write_state()
 
     @callback
     def _async_schedule_future_update(self, delay: float) -> None:
