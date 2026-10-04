@@ -199,18 +199,36 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         self._cancel_timer: Callable[[], None] | None = None
         self._cancel_call: Callable[[], None] | None = None
 
-    async def _read_data(self) -> None:
-        """Update the entity state."""
-        await asyncio.wait_for(self._update_lock.acquire(), 0.1)
-        try:
+    async def _read_data(self) -> bool:
+        """Update the entity state, unless a read of it is already in progress.
+
+        The lock is taken without ever waiting for it. It used to be waited for,
+        with `asyncio.wait_for(..., 0.1)` around the acquire, to skip a cycle
+        rather than pile reads up - but a wait that is cancelled once its deadline
+        passes can also cancel an acquire that was granted in that same event loop
+        iteration, and `asyncio.Lock` then keeps the grant: the lock is held, the
+        caller never reached the code that releases it, and nothing can release it
+        afterwards. Every later read of that entity timed out at 0.1 s, the
+        timeout was swallowed as "already in progress", and the entity silently
+        stopped updating until the integration was reloaded. Waiting is also worth
+        nothing here: whatever holds the lock is a read of this same entity that is
+        about to publish the value this read would have fetched.
+
+        Returns whether the entity was read, so a skipped read does not go on to
+        write the state machine: the read that holds the lock writes it when it
+        finishes, which is the read whose value this cycle would have had.
+        """
+        if self._update_lock.locked():
+            _LOGGER.debug("Update for entity %s is already in progress", self.name)
+            return False
+        async with self._update_lock:
             await self.coordinator.async_update_entity(self.coordinator_context)
-        finally:
-            self._update_lock.release()
+        return True
 
     async def _async_update_write_state(self) -> None:
         """Update the entity state and write it to the state machine."""
-        await self._read_data()
-        self._handle_coordinator_update()
+        if await self._read_data():
+            self._handle_coordinator_update()
 
     async def write_data(
         self,
@@ -233,10 +251,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     async def _async_update_if_not_in_progress(self, _: datetime | None = None) -> None:
         """Update the entity state if not already in progress."""
-        try:
-            await self._async_update_write_state()
-        except TimeoutError:
-            _LOGGER.debug("Update for entity %s is already in progress", self.name)
+        await self._async_update_write_state()
 
     @callback
     def _async_schedule_future_update(self, delay: float) -> None:

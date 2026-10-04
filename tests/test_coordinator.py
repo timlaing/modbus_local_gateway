@@ -1,6 +1,6 @@
 """Coordinator tests"""
 
-# pylint: disable=unexpected-keyword-arg, protected-access
+# pylint: disable=too-many-lines, unexpected-keyword-arg, protected-access
 import asyncio
 from datetime import datetime, timedelta
 from typing import Any, cast
@@ -515,6 +515,97 @@ async def test_async_update_if_not_in_progress_locked(
         await entity._async_update_if_not_in_progress()
         coordinator.async_update_entity.assert_not_called()
         assert "Update for entity test_entity is already in progress" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_a_read_that_arrives_during_one_is_skipped_without_waiting(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A tick that lands mid-read is dropped, and does not queue a second read.
+
+    #327: the lock used to be waited for with a 0.1 s deadline, so a tick that
+    arrived just before a slow read finished waited for it and then read the
+    entity a second time - the same value, from the same device, a moment after
+    the read holding the lock was about to publish it. What holding the lock is,
+    is a read of this entity, so there is nothing to wait for.
+    """
+    coordinator = AsyncMock()
+    in_flight = asyncio.Event()
+    reads: list[str] = []
+
+    async def read_entity(_ctx: ModbusContext) -> None:
+        """A read that takes a while, as a read of a slow device does."""
+        reads.append("slow")
+        in_flight.set()
+        await asyncio.sleep(0.05)
+
+    coordinator.async_update_entity = read_entity
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    entity = ModbusCoordinatorEntity(coordinator, ctx, MagicMock())
+    entity._update_lock = asyncio.Lock()
+    entity.name = "test_entity"
+
+    first = asyncio.create_task(entity._read_data())
+    await in_flight.wait()
+
+    with (
+        caplog.at_level("DEBUG"),
+        patch.object(entity, "_handle_coordinator_update") as write_state,
+    ):
+        # This tick arrives while the read above is still in flight.
+        assert await entity._read_data() is False
+
+    await first
+
+    # It neither waited for that read nor read the entity a second time.
+    assert reads == ["slow"]
+    assert "already in progress" in caplog.text
+    write_state.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_the_lock_is_released_when_a_read_of_the_entity_finishes() -> None:
+    """A read can never be left holding the lock with nothing to release it.
+
+    #327: waiting for the lock with a deadline could cancel an acquire that was
+    granted in the same event loop iteration, and `asyncio.Lock` keeps that
+    grant: the lock stayed held, every later read timed out, the timeout was
+    swallowed as "already in progress", and the entity silently stopped updating
+    for the rest of the session. Nothing here waits for the lock at all, so
+    nothing can end up holding it on behalf of nobody - the entity keeps reading
+    on every cycle after a skipped one.
+    """
+    coordinator = AsyncMock()
+    ctx = ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key="test",
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+    entity = ModbusCoordinatorEntity(coordinator, ctx, MagicMock())
+    entity._update_lock = asyncio.Lock()
+    entity.name = "test_entity"
+
+    # A read in flight, a tick that arrives while it holds the lock, and then the
+    # cycles after it: the lock is free between reads and every one of them reads.
+    await entity._update_lock.acquire()
+    assert await entity._read_data() is False
+    entity._update_lock.release()
+
+    for _ in range(3):
+        assert await entity._read_data() is True
+        assert not entity._update_lock.locked()
+
+    assert coordinator.async_update_entity.await_count == 3
 
 
 @pytest.mark.asyncio
