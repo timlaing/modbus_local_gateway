@@ -12,8 +12,6 @@ read_write_word:
   com_address:
     name: Communicate address
     address: 20
-    size: 2
-    float: true
     icon: mdi:serial-port
     control: number
     number:
@@ -22,9 +20,7 @@ read_write_word:
   baud_rate:
     name: Baud Rate
     address: 28
-    size: 2
     control: select
-    float: true
     options:
       0: 2400 bps
       1: 4800 bps
@@ -34,9 +30,7 @@ read_write_word:
   unit_prefix:
     name: Energy Units Prefix
     address: 30
-    size: 2
     control: select
-    float: true
     options:
       0: kWh / Ah
       1: Mwh / kAh

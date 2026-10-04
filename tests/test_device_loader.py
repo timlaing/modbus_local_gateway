@@ -277,3 +277,49 @@ def test_growatt_windows_are_writable_holding_registers(fname: str) -> None:
         for key in (f"period{period}_start", f"period{period}_end"):
             assert entities[key].data_type == ModbusDataType.HOLDING_REGISTER
         assert entities[f"period{period}_start"].register_address == start_address
+
+
+EASTRON_METERS: tuple[str, ...] = ("SDM230.yaml", "SDM630.yaml")
+
+# The meter's own address and baud rate sit one register apart at 0x0014 and
+# 0x001C, each a single register holding a small whole number: the address is a
+# slave id of 1-247, the baud rate an index into the option list. The SDM630
+# keeps its energy unit prefix the same way at 0x001E.
+EASTRON_SINGLE_REGISTER_CONTROLS: tuple[tuple[str, int], ...] = (
+    ("com_address", 20),
+    ("baud_rate", 28),
+)
+
+
+@pytest.mark.parametrize("fname", EASTRON_METERS)
+def test_eastron_controls_are_single_registers(fname: str) -> None:
+    """The meter's own settings are one register each, not a float.
+
+    Declared as two-register floats, writing the address or the baud rate packed
+    the value into two registers and went out as FC 0x10 over the register and
+    the reserved one after it, which the meter refuses; reading them back spanned
+    the same pair and decoded a float out of a register and a reserved one.
+    """
+    entities = {
+        desc.key: desc
+        for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
+    }
+
+    for key, address in EASTRON_SINGLE_REGISTER_CONTROLS:
+        assert entities[key].register_address == address
+        assert entities[key].register_count == 1
+        assert not entities[key].is_float
+
+
+def test_eastron_unit_prefix_is_a_single_register() -> None:
+    """The SDM630 energy unit prefix is one register, like the settings beside it."""
+    entities = {
+        desc.key: desc
+        for desc in modbus_device_info.ModbusDeviceInfo(
+            "SDM630.yaml"
+        ).entity_descriptions
+    }
+
+    assert entities["unit_prefix"].register_address == 30
+    assert entities["unit_prefix"].register_count == 1
+    assert not entities["unit_prefix"].is_float
