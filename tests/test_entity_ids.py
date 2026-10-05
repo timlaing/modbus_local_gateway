@@ -8,11 +8,12 @@ the UI either.
 
 # pylint: disable=unexpected-keyword-arg, protected-access
 
+from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
 from homeassistant.config_entries import SOURCE_USER, SubentryFlowContext
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, valid_entity_id
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 import pytest
@@ -46,6 +47,13 @@ DESCRIPTION = ModbusEntityDescription(
     register_address=1,
     data_type=ModbusDataType.HOLDING_REGISTER,
 )
+
+
+def _description(
+    key: str, control_type: Platform = Platform.SENSOR
+) -> ModbusEntityDescription:
+    """Return a description of an entity named by a yaml key."""
+    return replace(DESCRIPTION, key=key, control_type=control_type)
 
 
 def _entity(
@@ -356,3 +364,71 @@ async def test_subentry_flow_does_not_offer_a_restore(
     assert result["data_schema"] is not None
     fields = {str(key.schema) for key in result["data_schema"].schema}
     assert CONF_RESTORE_ENTITY_IDS not in fields
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("control_type", "key", "expected"),
+    [
+        (
+            Platform.NUMBER,
+            "GridFirstDischargePowerRate",
+            "localhost_gridfirstdischargepowerrate",
+        ),
+        (Platform.SWITCH, "AcChargeEnable", "localhost_acchargeenable"),
+        (Platform.NUMBER, "BatFirstStopSOC", "localhost_batfirststopsoc"),
+        # A key that is already a slug is left exactly as it is, so the ids of
+        # the entities that already exist do not change.
+        (Platform.SENSOR, "firmware_version", "localhost_firmware_version"),
+    ],
+    ids=["number", "switch", "soc", "already_a_slug"],
+)
+async def test_a_camel_case_key_makes_a_valid_entity_id(
+    hass: HomeAssistant,
+    control_type: Platform,
+    key: str,
+    expected: str,
+) -> None:
+    """A yaml key that is not a slug still gives a valid entity id.
+
+    An object id has to be a slug. `GridFirstDischargePowerRate` is not one, and
+    Home Assistant warns for every entity that sets such an id, and stops
+    accepting them in 2027.2.0.
+    """
+    entry = mock_gateway_entry(legacy_entity_ids=False)
+    entry.add_to_hass(hass)
+    entity = ModbusCoordinatorEntity(
+        coordinator=_coordinator(hass, entry),
+        ctx=ModbusContext(
+            device_id=1,
+            desc=_description(key, control_type),
+        ),
+        device=MagicMock(),
+    )
+
+    assert entity.entity_id == f"{control_type}.{expected}"
+    assert valid_entity_id(entity.entity_id)
+
+
+@pytest.mark.asyncio
+async def test_a_camel_case_key_does_not_change_the_unique_id(
+    hass: HomeAssistant,
+) -> None:
+    """The unique id still spells the key as the yaml does.
+
+    The unique id is how an entity is recognised in the registry, so changing it
+    would make every entity of a CamelCase device a new entity, orphaning the one
+    it replaces.
+    """
+    entry = mock_gateway_entry(legacy_entity_ids=False)
+    entry.add_to_hass(hass)
+    entity = ModbusCoordinatorEntity(
+        coordinator=_coordinator(hass, entry),
+        ctx=ModbusContext(
+            device_id=1,
+            desc=_description("GridFirstStopSOC"),
+        ),
+        device=MagicMock(),
+    )
+
+    assert entity.unique_id == "test-1-GridFirstStopSOC"

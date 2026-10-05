@@ -26,6 +26,7 @@ from homeassistant.helpers.update_coordinator import (
     TimestampDataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import slugify
 from pymodbus.pdu.pdu import ModbusPDU
 
 from .composite import CompositeConversion
@@ -180,7 +181,15 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
         if host_id and not legacy_entity_ids:
             # Home Assistant derives the suggestion from the entity name, so an
             # integration asks for a specific object id by setting entity_id.
-            self.entity_id = f"{Platform(control_type)}.{host_id}_{ctx.desc.key}"
+            # The yaml key is slugified because an object id has to be one: a key
+            # like `GridFirstDischargePowerRate` is not a valid entity id, and
+            # Home Assistant warns for every entity that sets one and stops
+            # accepting them in 2027.2.0. Only the object id is slugified, never
+            # the unique id below, so entities already registered under the key's
+            # own spelling keep the entity id they have.
+            self.entity_id = (
+                f"{Platform(control_type)}.{host_id}_{slugify(ctx.desc.key)}"
+            )
 
         # Keep unique_id compatible with previous releases so existing entities
         # can be renamed in-place.
