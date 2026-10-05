@@ -23,6 +23,21 @@ custom integrations. Pre-releases are not listed here.
   rewritten once on setup. Only a title this integration wrote itself is
   rewritten, so a device you have renamed keeps the name you gave it.
 
+- **An entity id built from a CamelCase register key is now valid**: an object
+  id has to be a slug, and a key like `GridFirstDischargePowerRate` is not one,
+  so every entity of a device whose config uses CamelCase keys asked for an
+  invalid entity id. Home Assistant warns for each one at startup - 84 of them on
+  one Growatt - and stops accepting them in 2027.2.0, which would fail the entity.
+  The object id is now slugified, so `number.localhost_GridFirstDischargePowerRate`
+  becomes `number.localhost_gridfirstdischargepowerrate`. It is applied centrally,
+  so every platform benefits, and a key that is already a slug keeps the object
+  id it had. **Only newly created entities are affected**: Home Assistant reads
+  this value when an entity is registered and never touches an entity id again,
+  so an entity that already exists keeps the id you know it by and is not renamed.
+  The `unique_id` is deliberately not slugified - that is what an entity is
+  recognised by in the registry, and changing it would make every affected entity
+  a new entity.
+
 ## [v2026.10.1] - 2026-10-05
 
 ### Added
