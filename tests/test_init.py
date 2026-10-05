@@ -22,6 +22,7 @@ from custom_components.modbus_local_gateway import (
 from custom_components.modbus_local_gateway.const import (
     CONF_DEVICE_ID,
     CONF_LEGACY_ENTITY_IDS,
+    CONF_MIGRATED_LEGACY_ENTITY_IDS,
     CONF_PREFIX,
     DOMAIN,
     SUBENTRY_TYPE_DEVICE,
@@ -478,8 +479,12 @@ async def test_migration_moves_devices_and_entities_into_subentries(
     migrated = entries[0]
     assert migrated.entry_id == entry.entry_id
     assert migrated.version == 2
-    assert migrated.data == gateway_data("localhost", 123)
-    assert migrated.data[CONF_LEGACY_ENTITY_IDS] is True
+    assert migrated.data == gateway_data("localhost", 123, legacy_entity_ids=True)
+    # A migrated gateway is one that was deliberately kept on the entity ids it
+    # had, whatever a gateway added from now on defaults to, and that is also
+    # what keeps it being offered "Restore entity ids of this integration".
+    assert migrated.data[CONF_LEGACY_ENTITY_IDS] is CONF_MIGRATED_LEGACY_ENTITY_IDS
+    assert CONF_MIGRATED_LEGACY_ENTITY_IDS is True
     assert migrated.options == {}
 
     subentries = migrated.get_subentries_of_type(SUBENTRY_TYPE_DEVICE)

@@ -17,15 +17,15 @@ custom integrations. Pre-releases are not listed here.
   of `type: date` as a `date` entity, instead of both being `datetime` entities.
   A time used to carry today's date, which the device never reported.
 
+### Changed
+
+- **A gateway added from now on names its entities after the gateway**: `legacy_entity_ids` defaulted to on, so a gateway set up from scratch had every entity it would ever create keep an unprefixed name that does not say which gateway it is on — `sensor.pool_temperature` rather than `sensor.shed_pool_temperature`. The setting exists to protect entities that already exist, and a new gateway has none, so the default is now off. Only gateways added from now on are affected, and **nothing is renamed**: entities that already exist keep their IDs whether or not the switch is touched, and a gateway set up before one-entry-per-gateway is migrated onto `legacy_entity_ids: true` explicitly rather than following this default, which is also what keeps it being offered **Restore entity ids of this integration** — the one-click way back to the IDs it had. The setting itself is unchanged and can still be switched on for entities added later.
+
 ### Fixed
 
-- On upgrade, a composite entity that moves to the `time` or `date` platform is
-  moved in the entity registry rather than left behind as a `datetime` entity
-  that nothing writes to. It keeps its object id, so `datetime.test_period1_end`
-  becomes `time.test_period1_end`; history stays with the old entity id, and
-  automations naming it have to be updated.
-- A `datetime` value reaching a `date` entity is ignored rather than offered as
-  a date without its time.
+- **The buttons on the integration page say what they add**: the gateway button said "Add device", the same as the button that adds a device behind a gateway, so it was not possible to tell which was which. The gateway button now says "Add gateway". A Home Assistant release that added device sub-entries to this integration also named it a device itself, which is where the wrong button came from.
+
+- **Devices behind a gateway are named after the device id they answer to**: the list of devices behind a gateway said "slave 2" or "test slave 1", which is the raw id of the device rather than the name it goes by in the rest of Home Assistant. A device is now named "Device ID: 2", with the prefix when it has one: "Device ID: 1 (test)". Reconfiguring a device renames it, so a device that was renamed keeps the name of the settings it has now, and the device registry, its area, its history and the cards pointing at it are untouched. New devices get this name; devices that already exist keep theirs, since the name is only in the list of devices and not in any entity id.
 
 ## [v2026.10.0] - 2026-10-04
 

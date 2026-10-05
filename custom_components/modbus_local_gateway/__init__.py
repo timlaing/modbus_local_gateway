@@ -31,7 +31,7 @@ from .const import (
     CONF_DEFAULT_CONNECTION_TYPE,
     CONF_DEVICE_ID,
     CONF_LEGACY_ENTITY_IDS,
-    CONF_LEGACY_ENTITY_IDS_DEFAULT,
+    CONF_MIGRATED_LEGACY_ENTITY_IDS,
     CONF_PREFIX,
     DOMAIN,
     MIN_HOMEASSISTANT_VERSION,
@@ -55,6 +55,7 @@ from .helpers import (
     get_device_config,
     get_device_identifiers,
     get_device_key,
+    get_device_title,
     get_gateway_device_identifier,
     is_supported_home_assistant,
 )
@@ -487,7 +488,7 @@ async def _async_migrate_group(
             CONF_HOST: parent.data[CONF_HOST],
             CONF_PORT: parent.data[CONF_PORT],
             CONF_CONNECTION_TYPE: get_connection_type(parent.data),
-            CONF_LEGACY_ENTITY_IDS: CONF_LEGACY_ENTITY_IDS_DEFAULT,
+            CONF_LEGACY_ENTITY_IDS: CONF_MIGRATED_LEGACY_ENTITY_IDS,
         },
         options={},
         title=f"Modbus Gateway ({get_connection_key(parent.data)})",
@@ -531,18 +532,12 @@ def _async_add_device_subentry(
     subentry = ConfigSubentry(
         data=MappingProxyType(_device_data(entry)),
         subentry_type=SUBENTRY_TYPE_DEVICE,
-        title=_device_title(config),
+        title=get_device_title(config),
         unique_id=unique_id,
     )
     hass.config_entries.async_add_subentry(parent, subentry)
     parent = hass.config_entries.async_get_entry(parent.entry_id) or parent
     return parent, subentry
-
-
-def _device_title(config: Mapping[str, Any]) -> str:
-    """Return the title of a device sub-entry."""
-    prefix: str = config.get(CONF_PREFIX) or ""
-    return f"{prefix + ' ' if prefix else ''}slave {config[CONF_DEVICE_ID]}"
 
 
 def _entry_owns_nothing(
