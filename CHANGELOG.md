@@ -9,7 +9,7 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
-## [v2026.10.4] - 2026-10-05
+## [Unreleased]
 
 ### Added
 
