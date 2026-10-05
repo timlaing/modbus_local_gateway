@@ -53,13 +53,20 @@ read_write_word:
       8: Hungarian
   com_address:
     name: Communicate address
-    address: 3085
+    address: 30
     control: number
     icon: mdi:serial-port
     precision: 0
     number:
       min: 1
       max: 254
+  baud_rate:
+    name: Baud Rate
+    address: 22
+    control: select
+    options:
+      0: 9600 bps
+      1: 38400 bps
   GridFirstDischargePowerRate:
     name: Discharge Power Rate (Grid First)
     address: 3036
@@ -559,7 +566,9 @@ read_only_word:
     state_class: total_increasing
     icon: mdi:solar-power-variant
     never_resets: True
-  # 3079 - 3085 - Reserved
+  # 3079 - 3085 - UPS function enable, output voltage, output frequency,
+  # load-first stop SOC, then reserved. The communication address and baud
+  # rate of these models are at 30 and 22 above, not in this range.
   DeratingMode:
     name: Derating Mode
     address: 3086

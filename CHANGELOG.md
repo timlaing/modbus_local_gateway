@@ -9,6 +9,12 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [Unreleased]
+
+### Fixed
+
+- **A Growatt inverter read its communication address from the wrong register**: the address and baud rate are registers 30 and 22 of the low register group that every Growatt model answers to, but the TL-X and TL-XH configs declared the address at 3085, which is the storage family's address register - a register these models do not answer to. An inverter set to slave address 7 therefore reported 0 there, and the number control showed something outside its own 1-254 range rather than the address the gateway is talking to. The address is register 30 again on the `MIN 6000TL-XH`, `MOD-6000TL-X`, `MOD-10KTL3-XH` and `SPH-3600TL-BL_UP`, and a baud rate select at register 22 is added to the `MIN 6000TL-XH`, `MOD-6000TL-X`, `MOD-10KTL3-XH` and `MIC-2500TL-X`, which had the address but no baud rate to go with it. The `# 3079 - 3085 - Reserved` comment above `DeratingMode` in those files, which implied the address was somewhere in that range, is corrected to name what the range holds.
+
 ## [v2026.10.1] - 2026-10-05
 
 ### Added
