@@ -9,6 +9,9 @@
       "Gateway connection": "Cannot connect to the gateway",
       "already_configured": "This gateway is already configured"
     },
+    "initiate_flow": {
+      "user": "Add gateway"
+    },
     "step": {
       "reconfigure": {
         "data": {

@@ -1,5 +1,8 @@
 {
   "config": {
+    "initiate_flow": {
+      "user": "Add gateway"
+    },
     "step": {
       "user": {
         "title": "Modbus gateway",
