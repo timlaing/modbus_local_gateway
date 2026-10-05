@@ -9,6 +9,20 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [Unreleased]
+
+### Fixed
+
+- **A device set up before this release is renamed by its device id on
+  upgrade**: a device behind a gateway was named `slave 2` in the list of
+  devices behind it, which does not say what the device is and collides with a
+  device of the same id on another gateway. It is now named `Device ID: 2`, with
+  the prefix in brackets when it has one, but the title was only ever written
+  when a device was created or reconfigured, so every device added before
+  2026.10.1 kept saying `slave 2` until it was saved again. Those titles are
+  rewritten once on setup. Only a title this integration wrote itself is
+  rewritten, so a device you have renamed keeps the name you gave it.
+
 ## [v2026.10.1] - 2026-10-05
 
 ### Added
