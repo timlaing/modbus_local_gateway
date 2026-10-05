@@ -298,7 +298,7 @@ def test_composite_entity_write_function() -> None:
                     "minute": {"address": 2},
                 },
             },
-            "bad address, size, bits or shift_bits",
+            "bad address, size, bits, shift_bits or write_offset",
         ),
         (
             {
@@ -357,7 +357,7 @@ def test_composite_entity_write_function() -> None:
                 "type": "time",
                 "fields": {"hour": {"address": "first"}, "minute": {"address": 2}},
             },
-            "bad address, size, bits or shift_bits",
+            "bad address, size, bits, shift_bits or write_offset",
         ),
         (
             {
@@ -367,7 +367,7 @@ def test_composite_entity_write_function() -> None:
                     "minute": {"address": 2},
                 },
             },
-            "bad address, size, bits or shift_bits",
+            "bad address, size, bits, shift_bits or write_offset",
         ),
         # a write offset on a field of more than one register
         (
@@ -400,6 +400,28 @@ def test_composite_entity_write_function() -> None:
                 },
             },
             "cannot be combined with swap",
+        ),
+        # a write offset that is not a whole number, and a bool, which is an int
+        # in Python
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "write_offset": -1999.5},
+                    "minute": {"address": 2},
+                },
+            },
+            "bad address, size, bits, shift_bits or write_offset",
+        ),
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "write_offset": True},
+                    "minute": {"address": 2},
+                },
+            },
+            "bad address, size, bits, shift_bits or write_offset",
         ),
         # a write function that is neither single nor multiple
         (

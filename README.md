@@ -356,8 +356,10 @@ composite:
   own FC `0x06` request instead of one FC `0x10` over the run, for a device that
   refuses the block write across a clock. The request then costs one round trip
   per register, and each keeps the fallback to FC `0x10` for a device that does
-  not answer FC `0x06` at all. Absent, the connection's own `write_function`
-  decides, so every other device config is unaffected.
+  not answer FC `0x06` at all. A run of more than one register is always written
+  with FC `0x10` unless this says `single`, whatever the connection is set to;
+  the connection's own `write_function` decides only for a run of one register.
+  Absent, nothing changes, so every other device config is unaffected.
 - The entity-level options of any other entity work here too: `scan_interval`,
   `icon`, `entity_category` and `entity_registry_enabled_default`.
 - A field may claim **part of a register** with `bits` / `shift_bits`, which is

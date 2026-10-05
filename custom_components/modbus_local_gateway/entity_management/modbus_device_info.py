@@ -130,10 +130,16 @@ ENTITY_KEYS: tuple[str, ...] = (
 def _optional_int(value: Any) -> int | None:
     """Return an optional integer key as an int, or None when it is absent.
 
-    `bits` and `shift_bits` are read straight from YAML, so a quoted number or a
-    word has to fail here rather than deep inside the geometry check.
+    `bits`, `shift_bits` and `write_offset` are read straight from YAML, so a
+    quoted number or a word has to fail here rather than deep inside the
+    geometry check. A bool is a Python int, and a float truncates, so both are
+    rejected rather than turned into a register value nobody asked for.
     """
-    return None if value is None else int(value)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not float(value).is_integer():
+        raise ValueError(f"{value} is not an integer")
+    return int(value)
 
 
 class DeviceConfigError(HomeAssistantError):
@@ -506,11 +512,12 @@ class ModbusDeviceInfo:
         except (TypeError, ValueError) as err:
             _LOGGER.warning(
                 "Unable to create entity for %s: field %s has a bad address, "
-                "size, %s or %s: %s",
+                "size, %s, %s or %s: %s",
                 entity,
                 field_name,
                 CONV_BITS,
                 CONV_SHIFT_BITS,
+                CONV_WRITE_OFFSET,
                 err,
             )
             return None
