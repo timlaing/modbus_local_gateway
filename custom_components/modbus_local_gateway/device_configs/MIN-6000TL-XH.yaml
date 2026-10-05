@@ -742,9 +742,13 @@ composite:
     name: Current Time
     type: datetime
     data_type: read_write_word
+    # Register 45 reports a four digit year and takes a two digit one, which
+    # `offset` cannot express, and refuses FC 0x10 across the run.
+    write_function: single
     fields:
       year:
         address: 45
+        write_offset: -2000
       month:
         address: 46
       day:

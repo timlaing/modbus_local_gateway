@@ -13,6 +13,34 @@ custom integrations. Pre-releases are not listed here.
 
 ### Added
 
+- **A composite field can read one value and write another**: `offset` is
+  applied in both directions, so it cannot describe a register that reports one
+  value and takes another. The Growatt clock is such a register: holding
+  register 45 (`Sys Year`) reports a four digit year and only accepts a two
+  digit one, so every write of the Growatt `current_time` composite was
+  refused with an illegal data address. A field can now carry a `write_offset`,
+  added to the value on the way out only and leaving the read untouched, and four
+  Growatt device configs use it to write `26` for `2026`: `MIC-2500TL-X`,
+  `MIN-6000TL-XH`, `MOD-6000TL-X` and `MOD-10KTL3-XH`. `SPH-3600TL-BL_UP` is left
+  alone, because a report of a different Growatt family taking the full year
+  there suggests it wants the opposite, and it has not been confirmed on
+  hardware. A field of more than one register is rejected, since one offset says
+  nothing about which of its registers it was meant for, as are `swap` and bit
+  fields, which carry no single value to offset.
+
+- **A composite entity can be written register by register**: a run of adjacent
+  registers is written with one FC `0x10` request, which keeps a clock from
+  being left half updated - but a device that refuses the block write across its
+  clock can only be written one register at a time, and every write was
+  preceded by a request that came back as an exception. A composite entity can
+  now declare `write_function: single`, which writes each register of a run
+  with its own FC `0x06` request, each keeping the existing fallback to FC `0x10`
+  for a device that does not answer FC `0x06` at all. This is per entity rather
+  than a change to the connection-wide option, because on this hardware the
+  clock is the exception while the settings registers around it generally need
+  the block write. Absent the declaration nothing changes, so every other device
+  config is unaffected. Both are documented in the README.
+
 - A composite entity of `type: time` is now created as a `time` entity, and one
   of `type: date` as a `date` entity, instead of both being `datetime` entities.
   A time used to carry today's date, which the device never reported.
