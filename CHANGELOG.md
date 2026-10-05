@@ -24,6 +24,7 @@ custom integrations. Pre-releases are not listed here.
   2026.10.1 kept saying `slave 2` until it was saved again. Those titles are
   rewritten once on setup. Only a title this integration wrote itself is
   rewritten, so a device you have renamed keeps the name you gave it.
+
 - **An entity id built from a CamelCase register key is now valid**: an object
   id has to be a slug, and a key like `GridFirstDischargePowerRate` is not one,
   so every entity of a device whose config uses CamelCase keys asked for an
