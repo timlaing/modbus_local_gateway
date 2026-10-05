@@ -8,8 +8,8 @@
         "title": "Modbus gateway",
         "description": "Configure the connection to your Modbus gateway. Devices behind it are added to this connection afterwards.",
         "data": {
-          "host": "Host",
-          "port": "Port",
+          "host": "[%key:common::config_flow::data::host%]",
+          "port": "[%key:common::config_flow::data::port%]",
           "connection_type": "Connection type",
           "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
           "restore_entity_ids": "Restore entity ids of this integration"
@@ -23,8 +23,8 @@
         "title": "Reconfigure Modbus gateway",
         "description": "Change the connection to your Modbus gateway. The devices behind it keep their entity ids, unique ids and device ids.",
         "data": {
-          "host": "Host",
-          "port": "Port",
+          "host": "[%key:common::config_flow::data::host%]",
+          "port": "[%key:common::config_flow::data::port%]",
           "connection_type": "Connection type",
           "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
           "restore_entity_ids": "Restore entity ids of this integration"

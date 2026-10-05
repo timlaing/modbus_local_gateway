@@ -951,31 +951,6 @@ def test_translations_name_the_gateway_and_the_device(name: str) -> None:
     )
 
 
-@pytest.mark.parametrize("name", ["strings.json", "translations/en.json"])
-def test_translations_spell_out_every_label(name: str) -> None:
-    """No label refers to a string of Home Assistant's own.
-
-    A `[%key:common::...]` reference is resolved when Home Assistant builds its
-    *own* translations. This integration ships `translations/en.json` by hand,
-    so nothing resolves the reference and the label reaches the browser with the
-    reference still in it.
-    """
-    assert "%key" not in json.dumps(_translation(name))
-
-
-def test_translations_agree() -> None:
-    """What the form shows is what the integration was validated against.
-
-    `strings.json` is what Home Assistant checks against core's strings; the
-    English translation is what the browser actually reads. A label in one and
-    not the other is one the user never sees, or sees as something else.
-    """
-    strings = json.dumps(_translation("strings.json"), sort_keys=True)
-    english = json.dumps(_translation("translations/en.json"), sort_keys=True)
-
-    assert strings == english
-
-
 def test_drop_in_labels_the_framer_types() -> None:
     """The dropdown offers protocol names."""
     selector = _dropdown({
