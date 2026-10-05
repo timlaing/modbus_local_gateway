@@ -75,6 +75,18 @@ def get_device_key(config: Mapping[str, Any]) -> str:
     )
 
 
+def get_device_title(config: Mapping[str, Any]) -> str:
+    """Return the title of a device sub-entry.
+
+    This is what a device is called in the list of devices behind the gateway,
+    where it is sorted and searched, so it says which device it is: the id it
+    answers to, and the prefix when it has one, so two devices that answer to
+    the same id on different gateways stay apart.
+    """
+    prefix: str = config.get(CONF_PREFIX) or ""
+    return f"Device ID: {config[CONF_DEVICE_ID]}{f' ({prefix})' if prefix else ''}"
+
+
 def get_device_identifiers(config: Mapping[str, Any]) -> set[tuple[str, str]]:
     """Return the registry identifiers of one device behind a gateway."""
     key = get_device_key(config)

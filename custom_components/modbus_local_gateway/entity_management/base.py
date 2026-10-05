@@ -9,6 +9,7 @@ import logging
 from typing import Any
 
 from homeassistant.components.binary_sensor import BinarySensorEntityDescription
+from homeassistant.components.date import DateEntityDescription
 from homeassistant.components.datetime import (
     DateTimeEntityDescription,
 )
@@ -17,6 +18,7 @@ from homeassistant.components.select import SelectEntityDescription
 from homeassistant.components.sensor import SensorEntityDescription
 from homeassistant.components.switch import SwitchEntityDescription
 from homeassistant.components.text import TextEntityDescription
+from homeassistant.components.time import TimeEntityDescription
 from homeassistant.helpers.entity import EntityDescription
 
 from .const import (
@@ -679,3 +681,17 @@ class ModbusDateTimeEntityDescription(
     DateTimeEntityDescription, ModbusCompositeEntityDescription
 ):
     """Describes a composite entity exposed as a date/time."""
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusTimeEntityDescription(
+    TimeEntityDescription, ModbusCompositeEntityDescription
+):
+    """Describes a composite entity exposed as a time."""
+
+
+@dataclass(kw_only=True, frozen=True)
+class ModbusDateEntityDescription(
+    DateEntityDescription, ModbusCompositeEntityDescription
+):
+    """Describes a composite entity exposed as a date."""

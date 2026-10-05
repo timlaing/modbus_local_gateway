@@ -65,6 +65,7 @@ from .helpers import (
     get_device_config,
     get_device_identifiers,
     get_device_key,
+    get_device_title,
     is_supported_home_assistant,
 )
 from .tcp_client import AsyncModbusTcpClientGateway
@@ -178,7 +179,7 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         """Store the settings of a device as a new or updated sub-entry."""
         if subentry is None:
             return self.async_create_entry(
-                title=_device_title(config),
+                title=get_device_title(config),
                 data=data,
                 unique_id=get_device_key(config),
             )
@@ -190,8 +191,16 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
             hass=self.hass, entry=entry, subentry=subentry, config=config
         )
 
+        # The title is the device's name in the list of devices behind the
+        # gateway, and it is built from the id and the prefix. Those are editable,
+        # so the title is refreshed with them: a device keeps the name of the
+        # settings it was created with otherwise.
         self.hass.config_entries.async_update_subentry(
-            entry, subentry, data=data, unique_id=get_device_key(config)
+            entry,
+            subentry,
+            data=data,
+            title=get_device_title(config),
+            unique_id=get_device_key(config),
         )
         # The devices and entities of this entry are built from its sub-entries,
         # so they have to be rebuilt when one of them changed.
@@ -199,7 +208,7 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         return self.async_abort(
             reason="reconfigure_successful",
             description_placeholders={
-                "device": _device_title(config),
+                "device": get_device_title(config),
                 "gateway": entry.title,
             },
         )
@@ -350,7 +359,11 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     entry.data[CONF_HOST],
                     entry.data[CONF_PORT],
                     get_connection_type(entry.data),
-                    restore=bool(entry.data.get(CONF_LEGACY_ENTITY_IDS, False)),
+                    restore=bool(
+                        entry.data.get(
+                            CONF_LEGACY_ENTITY_IDS, CONF_LEGACY_ENTITY_IDS_DEFAULT
+                        )
+                    ),
                 ),
                 suggested_values={**entry.data, CONF_RESTORE_ENTITY_IDS: False},
             ),
@@ -448,12 +461,6 @@ def _device_keys(entry: ConfigEntry, skip: ConfigSubentry | None = None) -> set[
         for known in entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE)
         if skip is None or known.subentry_id != skip.subentry_id
     }
-
-
-def _device_title(config: Mapping[str, Any]) -> str:
-    """Return the title of a device sub-entry."""
-    prefix: str = config.get(CONF_PREFIX) or ""
-    return f"{prefix + ' ' if prefix else ''}slave {config[CONF_DEVICE_ID]}"
 
 
 def _async_move_device(

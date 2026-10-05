@@ -82,6 +82,22 @@ class CompositeType(StrEnum):
     DATETIME = "datetime"
 
     @property
+    def control_type(self) -> ControlType:
+        """Platform the value is exposed on.
+
+        A date, a time and a date/time are three different platforms rather than
+        three flavours of one: Home Assistant shows and lets each be set as what
+        it is, and the entity id says which it is. `datetime` used to take all
+        three, so a clock read as a date and time whose date was today's - the
+        device's date was never in the value.
+        """
+        if self is CompositeType.DATE:
+            return ControlType.DATE
+        if self is CompositeType.TIME:
+            return ControlType.TIME
+        return ControlType.DATETIME
+
+    @property
     def required_fields(self) -> tuple[str, ...]:
         """Fields the composite cannot be built without.
 
@@ -112,6 +128,8 @@ class ControlType(StrEnum):
     NUMBER = "number"
     BINARY_SENSOR = "binary_sensor"
     DATETIME = "datetime"
+    TIME = "time"
+    DATE = "date"
 
 
 class Units(StrEnum):

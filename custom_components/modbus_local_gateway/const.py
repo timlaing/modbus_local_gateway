@@ -15,6 +15,8 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
     Platform.TEXT,
     Platform.DATETIME,
+    Platform.TIME,
+    Platform.DATE,
 ]
 
 CONF_CONNECTION_TYPES: dict[str, str] = {
@@ -51,8 +53,19 @@ SUBENTRY_TYPE_DEVICE = "device"
 # Entity ids are never renamed (issue #168). This only decides whether entities
 # created from now on are *suggested* the <host>_<key> object id that
 # v2026.02.0 forced onto everybody, or the name Home Assistant derives itself.
+#
+# A gateway added from now on has nothing to protect and nothing to migrate, so
+# it gets the name that says which gateway it is on. The setting stays, because
+# an install that wants its existing ids keeps them and can still ask for the
+# one-click restore on its Configure page.
 CONF_LEGACY_ENTITY_IDS = "legacy_entity_ids"
-CONF_LEGACY_ENTITY_IDS_DEFAULT = True
+CONF_LEGACY_ENTITY_IDS_DEFAULT = False
+# A gateway set up before one-entry-per-gateway said nothing about entity ids
+# and kept the ids it had, so it stays on them through the migration whatever a
+# new gateway defaults to. That is also what keeps it being offered
+# "Restore entity ids of this integration" on its Configure page, so the
+# migration writes this rather than following the default.
+CONF_MIGRATED_LEGACY_ENTITY_IDS = True
 CONF_RESTORE_ENTITY_IDS = "restore_entity_ids"
 
 # Oldest Home Assistant this integration runs on. Config sub-entries and the

@@ -163,16 +163,18 @@ async def test_legacy_entity_ids_are_only_suggested(hass: HomeAssistant) -> None
 
 
 @pytest.mark.asyncio
-async def test_legacy_entity_ids_is_the_default(hass: HomeAssistant) -> None:
-    """An entry that says nothing about entity ids keeps the ones it has.
+async def test_prefixed_entity_ids_is_the_default(hass: HomeAssistant) -> None:
+    """A gateway added from now on names its entities after the gateway.
 
-    Prefixing is opt-in: an upgrade that finds no stored choice must not change a
-    single entity id.
+    An upgrade does not follow this default: the migration writes `True`
+    explicitly, so a gateway that came from before one-entry-per-gateway stays
+    on the ids it had and is still offered the one-click restore. See
+    `CONF_MIGRATED_LEGACY_ENTITY_IDS`.
     """
     entry = mock_gateway_entry(slave_ids=[])
     entry.add_to_hass(hass)
     assert entry.data[CONF_LEGACY_ENTITY_IDS] == CONF_LEGACY_ENTITY_IDS_DEFAULT
-    assert CONF_LEGACY_ENTITY_IDS_DEFAULT is True
+    assert CONF_LEGACY_ENTITY_IDS_DEFAULT is False
 
 
 @pytest.mark.asyncio
@@ -180,7 +182,7 @@ async def test_restore_puts_the_old_entity_ids_back(
     hass: HomeAssistant,
 ) -> None:
     """The ids of v2026.02.0 are restored when the user asks for it."""
-    entry = mock_gateway_entry()
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
     _entity(hass, entry, "sensor.localhost_firmware_version")
@@ -202,7 +204,7 @@ async def test_restore_keeps_the_unique_id_and_the_device(
     to keep working - that is the whole point of restoring rather than deleting
     and recreating.
     """
-    entry = mock_gateway_entry()
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
     device = dr.async_get(hass).async_get_or_create(
@@ -237,7 +239,7 @@ async def test_restore_leaves_a_taken_entity_id_alone(
     hass: HomeAssistant, caplog: pytest.LogCaptureFixture
 ) -> None:
     """An id another entity already uses is not taken from it."""
-    entry = mock_gateway_entry()
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
     registry = er.async_get(hass)
     _entity(hass, entry, "sensor.localhost_firmware_version")
@@ -260,9 +262,9 @@ async def test_restore_leaves_a_taken_entity_id_alone(
 @pytest.mark.asyncio
 async def test_restore_only_touches_its_own_entities(hass: HomeAssistant) -> None:
     """An entity of another gateway is not renamed by this one."""
-    entry = mock_gateway_entry()
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
-    other = mock_gateway_entry(host="10.0.0.9")
+    other = mock_gateway_entry(host="10.0.0.9", legacy_entity_ids=True)
     other.add_to_hass(hass)
     _entity(hass, entry, "sensor.localhost_firmware_version")
     untouched = _entity(hass, other, "sensor.localhost_power")
@@ -310,8 +312,13 @@ async def test_setup_does_not_restore_entity_ids(
 async def test_restore_is_reachable_only_from_the_gateway_form(
     hass: HomeAssistant, enable_custom_integrations: None
 ) -> None:
-    """The restore is offered by the gateway, the thing that owns the host."""
-    entry = mock_gateway_entry()
+    """The restore is offered by the gateway, the thing that owns the host.
+
+    A gateway added from now on is not on legacy ids and is never given them, so
+    it is not offered a restore of ids it does not have. Only a gateway that is
+    on them is.
+    """
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)
@@ -319,6 +326,19 @@ async def test_restore_is_reachable_only_from_the_gateway_form(
     assert CONF_RESTORE_ENTITY_IDS in fields
     assert CONF_HOST in fields
     assert CONF_PORT in fields
+
+
+@pytest.mark.asyncio
+async def test_new_gateway_is_not_offered_a_restore(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A gateway added from now on is not offered a restore of ids it never had."""
+    entry = mock_gateway_entry(legacy_entity_ids=CONF_LEGACY_ENTITY_IDS_DEFAULT)
+    entry.add_to_hass(hass)
+
+    result = await entry.start_reconfigure_flow(hass)
+    fields = {str(key.schema) for key in result["data_schema"].schema}
+    assert CONF_RESTORE_ENTITY_IDS not in fields
 
 
 @pytest.mark.asyncio
