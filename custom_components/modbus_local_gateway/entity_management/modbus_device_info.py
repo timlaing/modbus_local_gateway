@@ -18,6 +18,7 @@ from homeassistant.util.yaml.loader import JSON_TYPE
 from ..device_configs import CONFIG_DIR
 from .base import (
     ModbusBinarySensorEntityDescription,
+    ModbusDateEntityDescription,
     ModbusDateTimeEntityDescription,
     ModbusFieldDescription,
     ModbusNumberEntityDescription,
@@ -25,6 +26,7 @@ from .base import (
     ModbusSensorEntityDescription,
     ModbusSwitchEntityDescription,
     ModbusTextEntityDescription,
+    ModbusTimeEntityDescription,
 )
 from .const import (
     COMPOSITE,
@@ -69,6 +71,12 @@ from .const import (
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+COMPOSITE_DESCRIPTION_TYPE = (
+    ModbusDateTimeEntityDescription
+    | ModbusTimeEntityDescription
+    | ModbusDateEntityDescription
+)
+
 DESCRIPTION_TYPE = (
     ModbusNumberEntityDescription
     | ModbusSelectEntityDescription
@@ -76,8 +84,16 @@ DESCRIPTION_TYPE = (
     | ModbusSwitchEntityDescription
     | ModbusTextEntityDescription
     | ModbusBinarySensorEntityDescription
-    | ModbusDateTimeEntityDescription
-)
+) | COMPOSITE_DESCRIPTION_TYPE
+
+# The description class each composite type is exposed through. `datetime` used
+# to be the class for all three, which put a clock reading on the platform for a
+# date and a time.
+COMPOSITE_DESCRIPTION_CLASSES: dict[CompositeType, type[COMPOSITE_DESCRIPTION_TYPE]] = {
+    CompositeType.DATETIME: ModbusDateTimeEntityDescription,
+    CompositeType.TIME: ModbusTimeEntityDescription,
+    CompositeType.DATE: ModbusDateEntityDescription,
+}
 
 # The keys a `fields:` entry understands. Everything else is left out so a typo
 # cannot be read as a conversion the field never had.
@@ -287,7 +303,7 @@ class ModbusDeviceInfo:
 
     def _create_composite_description(
         self, entity: str, data: dict[str, Any]
-    ) -> ModbusDateTimeEntityDescription | None:
+    ) -> COMPOSITE_DESCRIPTION_TYPE | None:
         """Create a description for an entity assembled from several registers"""
         composite_type = self._composite_type(entity, data)
         if composite_type is None:
@@ -311,7 +327,7 @@ class ModbusDeviceInfo:
             "key": entity,
             "name": "".join(["", data.get(NAME, entity)]),
             "data_type": data_type,
-            "control_type": ControlType.DATETIME,
+            "control_type": composite_type.control_type,
             "composite_type": composite_type,
             "fields": fields,
             # The span covers every field, so the entity reads as one value
@@ -321,10 +337,10 @@ class ModbusDeviceInfo:
             - min(addresses)
             + 1,
         })
-        composite_desc: ModbusDateTimeEntityDescription | None = cast(
-            "ModbusDateTimeEntityDescription | None",
+        composite_desc: COMPOSITE_DESCRIPTION_TYPE | None = cast(
+            "COMPOSITE_DESCRIPTION_TYPE | None",
             self._create_description_instance(
-                ModbusDateTimeEntityDescription,
+                COMPOSITE_DESCRIPTION_CLASSES[composite_type],
                 params,
             ),
         )

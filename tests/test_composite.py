@@ -1,7 +1,7 @@
 """Composite register entity conversion tests"""
 
 # pylint: disable=unexpected-keyword-arg, protected-access
-from datetime import datetime
+from datetime import date, datetime, time
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
@@ -139,7 +139,7 @@ def test_from_registers_input_register(conversion: Conversion) -> None:
 
 
 def test_from_registers_date(conversion: Conversion) -> None:
-    """A date composite reads as midnight of that day"""
+    """A date composite reads as that day, and nothing else"""
     desc = make_description(
         composite_type=CompositeType.DATE,
         fields=(("year", 45), ("month", 46), ("day", 47)),
@@ -151,27 +151,24 @@ def test_from_registers_date(conversion: Conversion) -> None:
         conversion,
     )
 
-    assert value == datetime(2026, 9, 22, tzinfo=dt_util.get_default_time_zone())
+    assert value == date(2026, 9, 22)
+    assert not isinstance(value, datetime)
 
 
 def test_from_registers_time(conversion: Conversion) -> None:
-    """A time composite reads as that time today"""
+    """A time composite reads as that time, and no date with it"""
     desc = make_description(
         composite_type=CompositeType.TIME,
         fields=(("hour", 45), ("minute", 46), ("second", 47)),
         offset=None,
     )
-    today = dt_util.now().date()
 
     value = CompositeConversion.from_registers(
         desc, ReadHoldingRegistersResponse(registers=[16, 30, 5]), conversion
     )
 
-    assert value == datetime.combine(
-        today,
-        datetime.min.time().replace(hour=16, minute=30, second=5),
-        dt_util.get_default_time_zone(),
-    )
+    assert value == time(16, 30, 5)
+    assert not isinstance(value, datetime)
 
 
 def test_from_registers_unavailable_value(conversion: Conversion) -> None:
@@ -328,6 +325,7 @@ def test_from_registers_bit_fields(conversion: Conversion) -> None:
         conversion,
     )
 
+    assert isinstance(value, time)
     assert (value.hour, value.minute) == (9, 0)
 
 
@@ -340,6 +338,7 @@ def test_from_registers_bit_fields_keep_mode_and_enable(conversion: Conversion) 
         desc, ReadHoldingRegistersResponse(registers=[word]), conversion
     )
 
+    assert isinstance(value, time)
     assert (value.hour, value.minute) == (22, 45)
 
 
@@ -374,6 +373,7 @@ def test_from_registers_bit_field_with_offset(conversion: Conversion) -> None:
         desc, ReadHoldingRegistersResponse(registers=[26, 9, 22]), conversion
     )
 
+    assert isinstance(value, date)
     assert value.year == 2026
 
 

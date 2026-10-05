@@ -776,3 +776,137 @@ async def test_migration_moves_a_child_onto_the_kept_gateway_device(
     moved_child = registry.async_get(child_id)
     assert isinstance(moved_child, dr.DeviceEntry)
     assert moved_child.via_device_id == keeper_gateway.id
+
+
+async def _setup_gateway(hass: HomeAssistant, entry: MockConfigEntry) -> None:
+    """Set a gateway entry up, with every device connection mocked out"""
+    with patch(
+        "custom_components.modbus_local_gateway.AsyncModbusTcpClientGateway"
+        ".async_get_client_connection",
+        return_value=MagicMock(connected=True),
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+
+@pytest.mark.asyncio
+async def test_setup_moves_a_time_entity_off_the_datetime_platform(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A `time` composite becomes a `time` entity, keeping the object id.
+
+    An entity's registry key is (domain, platform, unique id), so a composite
+    that changes platform is a different registry entry. Without this the old
+    `datetime` entity would be registered for ever with nothing writing to it.
+    """
+    entry = mock_gateway_entry(filename="MOD-6000TL-X.yaml")
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "datetime",
+        DOMAIN,
+        "test-1-period1_end",
+        config_entry=entry,
+        suggested_object_id="test_period1_end",
+    )
+    assert registry.async_get("datetime.test_period1_end") is not None
+
+    await _setup_gateway(hass, entry)
+
+    assert registry.async_get("datetime.test_period1_end") is None
+    moved = registry.async_get("time.test_period1_end")
+    assert moved is not None
+    assert moved.unique_id == "test-1-period1_end"
+
+
+@pytest.mark.asyncio
+async def test_setup_moves_every_time_entity_of_a_device(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """Every time of a device moves, not just the first one found."""
+    entry = mock_gateway_entry(filename="MOD-6000TL-X.yaml")
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    for key in ("period1_start", "period2_end", "period3_start"):
+        registry.async_get_or_create(
+            "datetime",
+            DOMAIN,
+            f"test-1-{key}",
+            config_entry=entry,
+            suggested_object_id=f"test_{key}",
+        )
+
+    await _setup_gateway(hass, entry)
+
+    for key in ("period1_start", "period2_end", "period3_start"):
+        assert registry.async_get(f"datetime.test_{key}") is None
+        assert registry.async_get(f"time.test_{key}") is not None
+
+
+@pytest.mark.asyncio
+async def test_setup_leaves_a_datetime_entity_where_it_is(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A `datetime` composite stays a `datetime`: only times and dates move."""
+    entry = mock_gateway_entry(filename="MOD-6000TL-X.yaml")
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "datetime",
+        DOMAIN,
+        "test-1-current_time",
+        config_entry=entry,
+        suggested_object_id="test_current_time",
+    )
+
+    await _setup_gateway(hass, entry)
+
+    assert registry.async_get("datetime.test_current_time") is not None
+    assert registry.async_get("time.test_current_time") is None
+
+
+@pytest.mark.asyncio
+async def test_setup_leaves_an_entity_of_another_platform_alone(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """Nothing outside the `datetime` platform is touched by the move."""
+    entry = mock_gateway_entry(filename="MOD-6000TL-X.yaml")
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        "test-1-period1_end",
+        config_entry=entry,
+        suggested_object_id="test_period1_end",
+    )
+
+    await _setup_gateway(hass, entry)
+
+    assert registry.async_get("sensor.test_period1_end") is not None
+    assert registry.async_get("time.test_period1_end") is None
+
+
+@pytest.mark.asyncio
+async def test_setup_moving_a_time_entity_is_idempotent(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """Loading the entry again does not rename the entity a second time."""
+    entry = mock_gateway_entry(filename="MOD-6000TL-X.yaml")
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "datetime",
+        DOMAIN,
+        "test-1-period1_end",
+        config_entry=entry,
+        suggested_object_id="test_period1_end",
+    )
+
+    await _setup_gateway(hass, entry)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    await _setup_gateway(hass, entry)
+
+    assert registry.async_get("time.test_period1_end") is not None
+    assert registry.async_get("time_2.test_period1_end") is None

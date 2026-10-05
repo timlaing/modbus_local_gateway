@@ -9,6 +9,24 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.3] - 2026-10-05
+
+### Added
+
+- A composite entity of `type: time` is now created as a `time` entity, and one
+  of `type: date` as a `date` entity, instead of both being `datetime` entities.
+  A time used to carry today's date, which the device never reported.
+
+### Fixed
+
+- On upgrade, a composite entity that moves to the `time` or `date` platform is
+  moved in the entity registry rather than left behind as a `datetime` entity
+  that nothing writes to. It keeps its object id, so `datetime.test_period1_end`
+  becomes `time.test_period1_end`; history stays with the old entity id, and
+  automations naming it have to be updated.
+- A `datetime` value reaching a `date` entity is ignored rather than offered as
+  a date without its time.
+
 ## [v2026.10.0] - 2026-10-04
 
 ### Added

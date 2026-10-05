@@ -38,12 +38,19 @@ class CompositeConversion:
         desc: ModbusCompositeEntityDescription,
         response: ModbusPDU,
         conversion: Conversion,
-    ) -> datetime:
-        """Assemble the registers read for `desc` into one local datetime.
+    ) -> date | time | datetime:
+        """Assemble the registers read for `desc` into one local value.
 
-        A device clock is a wall-clock reading with no timezone of its own, so
-        the value is stamped with Home Assistant's local timezone - which is
-        what the `datetime` platform requires, since it refuses a naive value.
+        Each composite type gives back what it is: a `date` gives a `date`, a
+        `time` gives a `time`, and only a `datetime` gives a `datetime`. There is
+        no room for anything else in those two, so a clock no longer has to be
+        dressed up as a date and time whose date is today's - which was not a
+        reading of the device at all.
+
+        A device clock is a wall-clock reading with no timezone of its own, so a
+        `datetime` is stamped with Home Assistant's local timezone - which is
+        what the `datetime` platform requires, since it refuses a naive value. A
+        `time` or a `date` carries no timezone, so nothing is stamped on it.
 
         Fields that cannot form a real date or time (a device that reports
         0xFFFF, a clock that has never been set) raise `ValueUnavailable`, so
@@ -65,8 +72,10 @@ class CompositeConversion:
                 desc, field, field_registers, conversion
             )
 
-        value: datetime = CompositeConversion._assemble(desc, values)
-        return value.replace(tzinfo=dt_util.get_default_time_zone())
+        value: date | time | datetime = CompositeConversion._assemble(desc, values)
+        if isinstance(value, datetime):
+            return value.replace(tzinfo=dt_util.get_default_time_zone())
+        return value
 
     @staticmethod
     def _field_number(
@@ -94,8 +103,8 @@ class CompositeConversion:
     @staticmethod
     def _assemble(
         desc: ModbusCompositeEntityDescription, values: dict[str, int]
-    ) -> datetime:
-        """Combine the field values into a local datetime.
+    ) -> date | time | datetime:
+        """Combine the field values into the value the composite type declares.
 
         Parts the config does not declare stay at zero, so a minute-resolution
         clock reads as a value on the minute rather than an error.
@@ -109,11 +118,9 @@ class CompositeConversion:
 
         try:
             if desc.composite_type is CompositeType.TIME:
-                assembled: datetime = datetime.combine(
-                    dt_util.now().date(), time(hour, minute, second)
-                )
+                assembled: date | time | datetime = time(hour, minute, second)
             elif desc.composite_type is CompositeType.DATE:
-                assembled = datetime.combine(date(year, month, day), time.min)
+                assembled = date(year, month, day)
             else:
                 assembled = datetime(year, month, day, hour, minute, second)
         except ValueError as err:
@@ -128,28 +135,29 @@ class CompositeConversion:
 
     @staticmethod
     def to_field_values(
-        desc: ModbusCompositeEntityDescription, value: datetime
+        desc: ModbusCompositeEntityDescription, value: date | time | datetime
     ) -> dict[str, int]:
         """Take one semantic value apart into the fields the config declares.
 
         Only the declared fields come back, so a `date` composite writes
         year/month/day and leaves the device's clock registers alone.
 
-        A value that arrives with an offset - the entity's own state, for
-        instance, which Home Assistant serialises in UTC - is brought into
-        local time first, so the device is set to the wall clock `from_registers`
+        A `datetime` that arrives with an offset - the entity's own state, for
+        instance, which Home Assistant serialises in UTC - is brought into local
+        time first, so the device is set to the wall clock `from_registers`
         reads. A naive value is already the wall clock of the local timezone
-        and is taken as it is.
+        and is taken as it is. A `time` or a `date` carries no offset, so it is
+        the wall clock already.
         """
-        if value.tzinfo is not None:
+        if isinstance(value, datetime) and value.tzinfo is not None:
             value = dt_util.as_local(value)
-        parts: dict[str, int] = {
-            "year": value.year,
-            "month": value.month,
-            "day": value.day,
-            "hour": value.hour,
-            "minute": value.minute,
-            "second": value.second,
+        # A date has no clock and a time has no calendar, so only the parts the
+        # value actually has are taken. `validate` has already refused a config
+        # that asks for a part the type does not have.
+        parts: dict[str, Any] = {
+            part: getattr(value, part)
+            for part in ("year", "month", "day", "hour", "minute", "second")
+            if hasattr(value, part)
         }
         declared: dict[str, int] = {
             field.key: parts[field.key] for field in desc.fields if field.key in parts

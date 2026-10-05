@@ -302,8 +302,8 @@ For all entity definitions:
 ### Composite Entities
 
 Some devices split a date, a time or a timestamp across several registers. A
-`composite` entity assembles them into a single Home Assistant `datetime`
-entity, which is writable when its registers are writable:
+`composite` entity assembles them into a single Home Assistant `time`, `date` or
+`datetime` entity, which is writable when its registers are writable:
 
 ```yaml
 composite:
@@ -320,12 +320,20 @@ composite:
       second: { address: 50 }
 ```
 
-- `type` (required): Which parts the entity carries.
+- `type` (required): Which parts the entity carries, and which Home Assistant
+  platform the entity is created on: `time` on a `time` entity, `date` on a
+  `date` entity and `datetime` on a `datetime` entity.
   - `date`: `year`, `month` and `day` (required).
   - `time`: `hour` and `minute` (required).
   - `datetime`: `year`, `month`, `day`, `hour` and `minute` (required).
   - `second`: Optional for `time` and `datetime`, not allowed for `date`; a
     clock without it reads on the minute.
+  - A composite of `date` or `time` used to be created as a `datetime` entity,
+    with a date on the value that the device never reported. On upgrade those
+    entities move to their own platform, keeping the object id: a
+    `datetime.test_period1_end` entity becomes `time.test_period1_end`. The
+    recorder holds the history of the old entity id, and automations that name
+    the old entity id have to be updated.
 - `data_type` (optional): `read_write_word` (default, writable) or
   `read_only_word` (read-only). A coil cannot hold a composite.
 - `fields` (required): One entry per part, each an `address` and any of

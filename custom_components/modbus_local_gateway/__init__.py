@@ -14,6 +14,7 @@ from homeassistant.const import (
     CONF_FILENAME,
     CONF_HOST,
     CONF_PORT,
+    Platform,
 )
 from homeassistant.const import (
     __version__ as HA_VERSION,
@@ -44,6 +45,8 @@ from .const import (
     SUBENTRY_TYPE_DEVICE,
 )
 from .coordinator import ModbusCoordinator
+from .entity_management.base import ModbusEntityDescription
+from .entity_management.const import ControlType
 from .entity_management.device_loader import create_device_info
 from .helpers import (
     GATEWAY_DEVICE_KEY,
@@ -172,6 +175,7 @@ async def async_setup_entry(
     entry.runtime_data = runtime
     _setup_device_devices(entry, device_registry, gateway_device)
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
+    _async_move_composite_entity_ids(hass, entry, runtime)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     for coordinator in runtime.coordinators.values():
         # Only now are the entities registered with their coordinator, so this is
@@ -249,6 +253,105 @@ def _setup_gateway_device(
     )
 
     return gateway_device
+
+
+def _async_move_composite_entity_ids(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    runtime: GatewayRuntime,
+) -> int:
+    """Move the `datetime` entities that are a time or a date onto their platform.
+
+    A `time` or `date` composite used to be built as a `datetime` entity whose
+    value was a date and a time with today's date on it, which was not a reading
+    of the device. Each is now exposed on the platform that says what it is, and
+    an entity's registry key is (domain, platform, unique id): so an entity that
+    changes platform is a *different* registry entry, and leaving the old one
+    behind would leave it registered for ever with nothing to write to it. It is
+    therefore moved here, while the coordinators are built and before any
+    platform is set up.
+
+    The registry will not rename an entity onto another platform - it refuses a
+    new entity id whose domain differs - so the entry is built on its platform
+    and the old one dropped, carrying over what the user set on it. The object
+    id is kept, so only the platform in front of it changes; the recorder holds
+    the old entity id's history, which does not follow an entity to another
+    platform. Nothing else is touched: a `datetime` composite stays a
+    `datetime`, and no entity of another platform is touched. Runs on every setup
+    and does nothing once it has been done, so it needs no entry version of its
+    own.
+    """
+    entity_registry: er.EntityRegistry = er.async_get(hass)
+    # The platform each entity of this entry now belongs on, by unique id.
+    # `control_type` is declared as a plain str, so this is one too.
+    descriptions: dict[str, str] = {}
+    for coordinator in runtime.coordinators.values():
+        for desc in coordinator.device_info.entity_descriptions:
+            registered_id: str | None = _entity_unique_id(coordinator, desc)
+            if registered_id is not None and desc.control_type is not None:
+                descriptions[registered_id] = desc.control_type
+
+    moved: int = 0
+    for entity_entry in tuple(entity_registry.entities.values()):
+        if (
+            entity_entry.config_entry_id != entry.entry_id
+            or entity_entry.domain != Platform.DATETIME
+            or entity_entry.unique_id is None
+        ):
+            continue
+        control_type: str | None = descriptions.get(entity_entry.unique_id)
+        if control_type not in (ControlType.TIME, ControlType.DATE):
+            continue
+        object_id: str = entity_entry.entity_id.split(".", 1)[1]
+        new_entry = entity_registry.async_get_or_create(
+            control_type,
+            DOMAIN,
+            entity_entry.unique_id,
+            config_entry=entry,
+            config_subentry_id=entity_entry.config_subentry_id,
+            device_id=entity_entry.device_id,
+            suggested_object_id=object_id,
+        )
+        # What the user, not the device config, decides about an entity: it has
+        # to be set again on the new entry, which starts from the defaults.
+        entity_registry.async_update_entity(
+            new_entry.entity_id,
+            aliases=entity_entry.aliases,
+            area_id=entity_entry.area_id,
+            categories=entity_entry.categories,
+            disabled_by=entity_entry.disabled_by,
+            entity_category=entity_entry.entity_category,
+            hidden_by=entity_entry.hidden_by,
+            labels=entity_entry.labels,
+            original_icon=entity_entry.original_icon,
+            original_name=entity_entry.original_name,
+        )
+        entity_registry.async_remove(entity_entry.entity_id)
+        _LOGGER.info(
+            "Moved %s to %s: a %s is not a date and a time",
+            entity_entry.entity_id,
+            new_entry.entity_id,
+            control_type,
+        )
+        moved += 1
+    return moved
+
+
+def _entity_unique_id(
+    coordinator: ModbusCoordinator, desc: ModbusEntityDescription
+) -> str | None:
+    """The unique id an entity of `desc` is registered under.
+
+    Built the same way `ModbusCoordinatorEntity` builds it, so an entity can be
+    found from the descriptions rather than by taking its key apart again. None
+    for a coordinator with no device id, which has no entities registered under
+    one either.
+    """
+    device_id: int | None = coordinator.device_id
+    if device_id is None:
+        return None
+    prefix: str | None = coordinator.prefix
+    return f"{prefix}-{device_id}-{desc.key}" if prefix else f"{device_id}-{desc.key}"
 
 
 def _setup_device_devices(
