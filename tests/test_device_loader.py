@@ -299,9 +299,9 @@ def test_eastron_settings_are_two_register_floats(fname: str) -> None:
     """The meter's own settings are two-register floats, not single registers.
 
     Declared as one register each, a read of the address or the baud rate took
-    the register and the reserved one after it as a 16-bit value, so the first
-    register of a float such as 1.0 (0x3F800000) came back as 16256 and never
-    matched the option list or the 1-247 range.
+    only the first register of the pair and decoded it as a 16-bit value, so a
+    float such as 1.0 (0x3F800000) came back as 16256 and never matched the
+    option list or the 1-247 range.
     """
     entities = {
         desc.key: desc
