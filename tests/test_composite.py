@@ -250,6 +250,34 @@ def test_to_field_values_declared_fields_only() -> None:
     }
 
 
+def test_to_field_values_of_a_time_is_the_clock_only() -> None:
+    """A time has no calendar, so no date is written for it"""
+    desc = make_description(
+        composite_type=CompositeType.TIME,
+        fields=(("hour", 45), ("minute", 46), ("second", 47)),
+    )
+
+    assert CompositeConversion.to_field_values(desc, time(16, 30, 45)) == {
+        "hour": 16,
+        "minute": 30,
+        "second": 45,
+    }
+
+
+def test_to_field_values_of_a_date_is_the_calendar_only() -> None:
+    """A date has no clock, so no time is written for it"""
+    desc = make_description(
+        composite_type=CompositeType.DATE,
+        fields=(("year", 45), ("month", 46), ("day", 47)),
+    )
+
+    assert CompositeConversion.to_field_values(desc, date(2026, 9, 22)) == {
+        "year": 2026,
+        "month": 9,
+        "day": 22,
+    }
+
+
 def test_to_field_values_converts_aware_value_to_local_time() -> None:
     """A value that arrives with an offset is written as the local wall clock.
 

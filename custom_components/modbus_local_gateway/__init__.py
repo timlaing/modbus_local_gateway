@@ -312,10 +312,11 @@ def _async_move_composite_entity_ids(
             device_id=entity_entry.device_id,
             suggested_object_id=object_id,
         )
-        # What the user, not the device config, decides about an entity: it has
-        # to be set again on the new entry, which starts from the defaults. A
-        # name and an icon the user set are the two overrides that would
-        # otherwise be lost; the rest the platform sets itself.
+        # Everything the user decided about the entity - where it sits, what it
+        # is called, what it looks like, whether it is shown at all - has to be
+        # set again on the new entry, which starts from the defaults. The
+        # values the device config supplies are left out: the new platform
+        # sets those itself when it registers the entity.
         entity_registry.async_update_entity(
             new_entry.entity_id,
             aliases=entity_entry.aliases,
