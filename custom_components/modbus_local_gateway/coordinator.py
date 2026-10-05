@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Mapping
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 import logging
 from typing import Any, cast
 
@@ -237,7 +237,7 @@ class ModbusCoordinatorEntity(CoordinatorEntity):
 
     async def write_data(
         self,
-        value: str | float | bool | datetime | None,
+        value: str | float | bool | date | time | datetime | None,
     ) -> None:
         """Write data to the Modbus device"""
         try:
@@ -410,6 +410,11 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
     def prefix(self) -> str | None:
         """Return the prefix this device's entities and ids carry, if any."""
         return self._subentry_data.get(CONF_PREFIX) or None
+
+    @property
+    def device_id(self) -> int | None:
+        """Return the device id this coordinator polls."""
+        return self._device_id
 
     @property
     def gateway_device(self) -> dr.DeviceEntry | None:
@@ -681,8 +686,8 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                 continue
             modbus_response: ModbusPDU = resp[entity.desc.key]
             try:
-                value: str | float | int | bool | datetime | None = self._convert_value(
-                    entity.desc, modbus_response
+                value: str | float | int | bool | date | time | datetime | None = (
+                    self._convert_value(entity.desc, modbus_response)
                 )
                 data[entity.desc.key] = value
                 self._unavailable_keys.discard(entity.desc.key)
@@ -716,7 +721,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
 
     def _convert_value(
         self, desc: ModbusEntityDescription, response: ModbusPDU
-    ) -> str | float | int | bool | datetime | None:
+    ) -> str | float | int | bool | date | time | datetime | None:
         """Convert one entity's registers into the value it publishes.
 
         A composite entity assembles its fields itself; every other entity hands
