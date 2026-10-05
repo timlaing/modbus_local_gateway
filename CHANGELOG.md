@@ -9,6 +9,12 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.2] - 2026-10-05
+
+### Changed
+
+- **A gateway added from now on names its entities after the gateway**: `legacy_entity_ids` defaulted to on, so a gateway set up from scratch had every entity it would ever create keep an unprefixed name that does not say which gateway it is on — `sensor.pool_temperature` rather than `sensor.shed_pool_temperature`. The setting exists to protect entities that already exist, and a new gateway has none, so the default is now off. Only gateways added from now on are affected, and **nothing is renamed**: entities that already exist keep their IDs whether or not the switch is touched, and a gateway set up before one-entry-per-gateway is migrated onto `legacy_entity_ids: true` explicitly rather than following this default, which is also what keeps it being offered **Restore entity ids of this integration** — the one-click way back to the IDs it had. The setting itself is unchanged and can still be switched on for entities added later.
+
 ## [v2026.10.0] - 2026-10-04
 
 ### Added
