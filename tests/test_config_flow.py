@@ -1,6 +1,9 @@
 """Tests for the Modbus Local Gateway config flow."""
 # pylint: disable=unexpected-keyword-arg, protected-access
 
+import json
+from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.config_entries import (
@@ -506,12 +509,39 @@ async def test_async_step_user_creates_a_subentry(
         await hass.async_block_till_done()
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["title"] == "test slave 1"
+    assert result["title"] == "Device ID: 1 (test)"
     subentries = entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE)
     assert len(subentries) == 1
     subentry = subentries[0]
     assert subentry.unique_id == "test-localhost:123:1"
     assert dict(subentry.data) == device_data(1, prefix="test", refresh=10)
+
+
+@pytest.mark.asyncio
+async def test_async_step_user_names_a_device_without_a_prefix(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """A device with no prefix is named after its device id alone."""
+    entry = mock_gateway_entry(slave_ids=[])
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.modbus_local_gateway.config_flow.create_device_info",
+        MagicMock(),
+    ):
+        result = await hass.config_entries.subentries.async_init(
+            (entry.entry_id, SUBENTRY_TYPE_DEVICE),
+            context={"source": SOURCE_USER},
+        )
+        assert result["type"] == FlowResultType.FORM
+
+        result = await hass.config_entries.subentries.async_configure(
+            result["flow_id"], {**DEVICE_INPUT, CONF_PREFIX: ""}
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["title"] == "Device ID: 1"
 
 
 @pytest.mark.asyncio
@@ -706,6 +736,10 @@ async def test_async_step_reconfigure_updates_the_subentry(
     assert result["reason"] == "reconfigure_successful"
     subentry = entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE)[0]
     assert subentry.unique_id == "shed-localhost:123:2"
+    # The title says which device this is in the list of devices behind the
+    # gateway, and it is built from the id and the prefix - both of which this
+    # reconfigure changed, so the title moves with them.
+    assert subentry.title == "Device ID: 2 (shed)"
     assert dict(subentry.data) == device_data(
         2,
         prefix="shed",
@@ -887,6 +921,60 @@ def test_write_function_defaults_to_single() -> None:
         if key.default is not vol.UNDEFINED
     }
     assert defaults[OPTIONS_WRITE_FUNCTION] == WriteFunction.SINGLE.value
+
+
+def _translation(name: str) -> dict[str, Any]:
+    """Read one of the integration's translation files"""
+    path = (
+        Path(__file__).parent.parent
+        / "custom_components"
+        / "modbus_local_gateway"
+        / name
+    )
+    loaded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    return loaded
+
+
+@pytest.mark.parametrize("name", ["strings.json", "translations/en.json"])
+def test_translations_name_the_gateway_and_the_device(name: str) -> None:
+    """The two buttons on the integration page say what they add.
+
+    The manifest declares the integration as a device, so a config flow with no
+    button of its own falls back to Home Assistant's own "Add device" - which
+    left both buttons on the page reading the same thing.
+    """
+    translations = _translation(name)
+
+    assert translations["config"]["initiate_flow"]["user"] == "Add gateway"
+    assert translations["config_subentries"]["device"]["initiate_flow"]["user"] == (
+        "Add device"
+    )
+
+
+@pytest.mark.parametrize("name", ["strings.json", "translations/en.json"])
+def test_translations_spell_out_every_label(name: str) -> None:
+    """No label refers to a string of Home Assistant's own.
+
+    A `[%key:common::...]` reference is resolved when Home Assistant builds its
+    *own* translations. This integration ships `translations/en.json` by hand,
+    so nothing resolves the reference and the label reaches the browser with the
+    reference still in it.
+    """
+    assert "%key" not in json.dumps(_translation(name))
+
+
+@pytest.mark.parametrize("name", ["strings.json", "translations/en.json"])
+def test_translations_agree(name: str) -> None:
+    """What the form shows is what the integration was validated against.
+
+    `strings.json` is what Home Assistant checks against core's strings; the
+    English translation is what the browser actually reads. A label in one and
+    not the other is one the user never sees, or sees as something else.
+    """
+    strings = json.dumps(_translation("strings.json"), sort_keys=True)
+    english = json.dumps(_translation("translations/en.json"), sort_keys=True)
+
+    assert strings == english
 
 
 def test_drop_in_labels_the_framer_types() -> None:

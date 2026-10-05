@@ -9,6 +9,16 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.1] - 2026-10-05
+
+### Fixed
+
+- **The buttons on the integration page say what they add**: the gateway button said "Add device", the same as the button that adds a device behind a gateway, so it was not possible to tell which was which. The gateway button now says "Add gateway". A Home Assistant release that added device sub-entries to this integration also named it a device itself, which is where the wrong button came from.
+
+- **Devices behind a gateway are named after the device id they answer to**: the list of devices behind a gateway said "slave 2" or "test slave 1", which is the raw id of the device rather than the device it is called in the rest of the Home Assistant. A device is now named "Device ID: 2", with the prefix when it has one: "Device ID: 1 (test)". Reconfiguring a device renames it, so a device that was renamed keeps the name of the settings it has now, and the device registry, its area, its history and the cards pointing at it are untouched. New devices get this name; devices that already exist keep theirs, since the name is only in the list of devices and not in any entity id.
+
+- **The Host and Port fields are labelled "Host" and "Port"**: the labels referred to Home Assistant's own strings through a `%key` reference. That reference is resolved when Home Assistant builds its own translations, but this integration ships `translations/en.json` by hand, so nothing resolved it and the raw reference reached the browser instead of the label.
+
 ## [v2026.10.0] - 2026-10-04
 
 ### Added
