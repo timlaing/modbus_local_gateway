@@ -123,13 +123,14 @@ async def test_async_step_user_stores_the_entity_id_choice(
 
 
 @pytest.mark.asyncio
-async def test_async_step_user_default_is_legacy_entity_ids(
+async def test_async_step_user_default_is_prefixed_entity_ids(
     hass: HomeAssistant, mock_client: AsyncMock
 ) -> None:
-    """A gateway that says nothing keeps the entity ids it already has.
+    """A gateway added from now on names its entities after the gateway.
 
-    Prefixing them is only for entities created from here on, so it has to be
-    asked for.
+    It has nothing to migrate and nothing to protect, so it should not start
+    every entity it will ever create with a name that does not say which
+    gateway it is on.
     """
     flow = ConfigFlowHandler()
     flow.hass = hass
@@ -145,7 +146,7 @@ async def test_async_step_user_default_is_legacy_entity_ids(
         )
 
     assert result["data"][CONF_LEGACY_ENTITY_IDS] is CONF_LEGACY_ENTITY_IDS_DEFAULT
-    assert CONF_LEGACY_ENTITY_IDS_DEFAULT is True
+    assert CONF_LEGACY_ENTITY_IDS_DEFAULT is False
 
 
 @pytest.mark.asyncio
@@ -342,7 +343,7 @@ async def test_async_step_reconfigure(
 
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
-    assert entry.data == gateway_data("10.0.0.5", 502)
+    assert entry.data == gateway_data("10.0.0.5", 502, legacy_entity_ids=True)
     assert entry.title == "Modbus Gateway (10.0.0.5:502)"
     assert len(entry.get_subentries_of_type(SUBENTRY_TYPE_DEVICE)) == 1
 
@@ -353,7 +354,7 @@ async def test_async_step_reconfigure_offers_the_restore(
     enable_custom_integrations: None,
 ) -> None:
     """A gateway in the pre-2026.02 style is offered the entity ids back."""
-    entry = mock_gateway_entry()
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)
@@ -384,7 +385,7 @@ async def test_async_step_reconfigure_restores_entity_ids(
     Nothing else may rename an entity: a forced rename breaks the automations and
     history that use the old one.
     """
-    entry = mock_gateway_entry()
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)
@@ -421,7 +422,7 @@ async def test_async_step_reconfigure_without_restore_leaves_entity_ids(
     enable_custom_integrations: None,
 ) -> None:
     """Reconfiguring without asking for a restore changes no entity id."""
-    entry = mock_gateway_entry()
+    entry = mock_gateway_entry(legacy_entity_ids=True)
     entry.add_to_hass(hass)
 
     result = await entry.start_reconfigure_flow(hass)

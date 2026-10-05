@@ -359,7 +359,11 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                     entry.data[CONF_HOST],
                     entry.data[CONF_PORT],
                     get_connection_type(entry.data),
-                    restore=bool(entry.data.get(CONF_LEGACY_ENTITY_IDS, False)),
+                    restore=bool(
+                        entry.data.get(
+                            CONF_LEGACY_ENTITY_IDS, CONF_LEGACY_ENTITY_IDS_DEFAULT
+                        )
+                    ),
                 ),
                 suggested_values={**entry.data, CONF_RESTORE_ENTITY_IDS: False},
             ),

@@ -11,6 +11,10 @@ custom integrations. Pre-releases are not listed here.
 
 ## [Unreleased]
 
+### Changed
+
+- **A gateway added from now on names its entities after the gateway**: `legacy_entity_ids` defaulted to on, so a gateway set up from scratch had every entity it would ever create keep an unprefixed name that does not say which gateway it is on — `sensor.pool_temperature` rather than `sensor.shed_pool_temperature`. The setting exists to protect entities that already exist, and a new gateway has none, so the default is now off. Only gateways added from now on are affected, and **nothing is renamed**: entities that already exist keep their IDs whether or not the switch is touched, and a gateway set up before one-entry-per-gateway is migrated onto `legacy_entity_ids: true` explicitly rather than following this default, which is also what keeps it being offered **Restore entity ids of this integration** — the one-click way back to the IDs it had. The setting itself is unchanged and can still be switched on for entities added later.
+
 ### Fixed
 
 - **The buttons on the integration page say what they add**: the gateway button said "Add device", the same as the button that adds a device behind a gateway, so it was not possible to tell which was which. The gateway button now says "Add gateway". A Home Assistant release that added device sub-entries to this integration also named it a device itself, which is where the wrong button came from.
