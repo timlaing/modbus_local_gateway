@@ -313,7 +313,9 @@ def _async_move_composite_entity_ids(
             suggested_object_id=object_id,
         )
         # What the user, not the device config, decides about an entity: it has
-        # to be set again on the new entry, which starts from the defaults.
+        # to be set again on the new entry, which starts from the defaults. A
+        # name and an icon the user set are the two overrides that would
+        # otherwise be lost; the rest the platform sets itself.
         entity_registry.async_update_entity(
             new_entry.entity_id,
             aliases=entity_entry.aliases,
@@ -322,10 +324,14 @@ def _async_move_composite_entity_ids(
             disabled_by=entity_entry.disabled_by,
             entity_category=entity_entry.entity_category,
             hidden_by=entity_entry.hidden_by,
+            icon=entity_entry.icon,
             labels=entity_entry.labels,
-            original_icon=entity_entry.original_icon,
-            original_name=entity_entry.original_name,
+            name=entity_entry.name,
         )
+        for domain, domain_options in entity_entry.options.items():
+            entity_registry.async_update_entity_options(
+                new_entry.entity_id, domain, dict(domain_options)
+            )
         entity_registry.async_remove(entity_entry.entity_id)
         _LOGGER.info(
             "Moved %s to %s: a %s is not a date and a time",

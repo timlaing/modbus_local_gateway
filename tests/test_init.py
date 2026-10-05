@@ -910,3 +910,36 @@ async def test_setup_moving_a_time_entity_is_idempotent(
 
     assert registry.async_get("time.test_period1_end") is not None
     assert registry.async_get("time_2.test_period1_end") is None
+
+
+@pytest.mark.asyncio
+async def test_setup_moving_a_time_entity_keeps_what_the_user_set(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """The new entry starts from the defaults, so what the user set is copied."""
+    entry = mock_gateway_entry(filename="MOD-6000TL-X.yaml")
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    registry.async_get_or_create(
+        "datetime",
+        DOMAIN,
+        "test-1-period1_end",
+        config_entry=entry,
+        suggested_object_id="test_period1_end",
+    )
+    registry.async_update_entity(
+        "datetime.test_period1_end",
+        name="Battery period 1",
+        icon="mdi:battery",
+    )
+    registry.async_update_entity_options(
+        "datetime.test_period1_end", "datetime", {"wake_time": "07:00"}
+    )
+
+    await _setup_gateway(hass, entry)
+
+    moved = registry.async_get("time.test_period1_end")
+    assert moved is not None
+    assert moved.name == "Battery period 1"
+    assert moved.icon == "mdi:battery"
+    assert moved.options == {"datetime": {"wake_time": "07:00"}}
