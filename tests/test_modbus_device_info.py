@@ -799,6 +799,27 @@ def test_composite_entity_write_function() -> None:
             },
             "cannot be used with size",
         ),
+        # a write offset where there is no single value to offset
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "bits": 5, "write_offset": -2000},
+                    "minute": {"address": 2},
+                },
+            },
+            "cannot be combined with bits or shift_bits",
+        ),
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "swap": "byte", "write_offset": -2000},
+                    "minute": {"address": 2},
+                },
+            },
+            "cannot be combined with swap",
+        ),
         # a write function that is neither single nor multiple
         (
             {

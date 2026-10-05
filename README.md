@@ -336,8 +336,9 @@ composite:
 - `write_offset` (optional, field): Added to the value on the way out only, for
   a device that reads one value and writes another: `offset` is applied in both
   directions, so it cannot describe a register that reports a four digit year
-  and takes a two digit one. A field of more than one register is rejected,
-  because one offset says nothing about which register it belongs to.
+  and takes a two digit one. It is rejected on a field of more than one
+  register, on a bit field and on a `swap` field, since none of them carries a
+  single value the offset could belong to.
 - Fields that are **not adjacent** are grouped: each run of adjacent registers
   is read with its own request, so the registers in between are never touched,
   and written in one request per run (FC `0x10`, or FC `0x06` for a run of one

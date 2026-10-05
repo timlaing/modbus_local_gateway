@@ -432,18 +432,7 @@ class ModbusFieldDescription:
         entity: ModbusEntityDescription = self.as_entity_description(data_type)
         if not entity.validate():
             return False
-        if self.conv_write_offset is not None and self.size > 1:
-            # The offset belongs to the value the field carries, and a field of
-            # several registers carries one value per register, so there is no
-            # telling which of them it was meant for.
-            _LOGGER.warning(
-                "Unable to create entity for %s: %s cannot be used with %s on a "
-                "field of %s registers",
-                self.key,
-                CONV_WRITE_OFFSET,
-                REGISTER_COUNT,
-                self.size,
-            )
+        if not self._write_offset_allowed():
             return False
         if not self.is_bitfield:
             return True
@@ -458,6 +447,49 @@ class ModbusFieldDescription:
             )
             return False
         return entity.validate_bitfield_geometry()
+
+    def _write_offset_allowed(self) -> bool:
+        """Whether a write offset on this field means one thing.
+
+        None of a field of several registers, a bit field or a swapped field
+        carries a single value the offset could belong to. A field of several
+        registers carries one value per register. A bit field is merged into
+        the register it lives in, so the offset would reach the device as a
+        shift of the whole register, mode and enable bits included. The offset
+        is added to the register the value ends up in, which for a swapped
+        field is its bytes the other way round: 2026 would arrive as
+        0xEA07 - 2000 rather than as 26 swapped.
+        """
+        if self.conv_write_offset is None:
+            return True
+        if self.size > 1:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be used with %s on a "
+                "field of %s registers",
+                self.key,
+                CONV_WRITE_OFFSET,
+                REGISTER_COUNT,
+                self.size,
+            )
+            return False
+        if self.is_bitfield:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be combined with %s or %s",
+                self.key,
+                CONV_WRITE_OFFSET,
+                CONV_BITS,
+                CONV_SHIFT_BITS,
+            )
+            return False
+        if self.conv_swap:
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be combined with %s",
+                self.key,
+                CONV_WRITE_OFFSET,
+                CONV_SWAP,
+            )
+            return False
+        return True
 
     def bit_ranges(self) -> list[tuple[int, int, int]]:
         """The `(address, lowest bit, highest bit)` this field claims.

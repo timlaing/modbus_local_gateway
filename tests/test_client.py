@@ -1754,15 +1754,27 @@ async def test_write_composite_single_write_function_gapped_runs() -> None:
 
 
 @pytest.mark.asyncio
-async def test_write_composite_single_write_function_error_response_aborts_write() -> (
-    None
-):
-    """A refused single write stops the run instead of being reported as done"""
+@pytest.mark.parametrize("failed_address", [45, 48, 50])
+async def test_write_composite_single_write_function_error_response_aborts_write(
+    failed_address: int,
+) -> None:
+    """A refused single write stops the run instead of being reported as done
+
+    Checked for a first, a middle and a last register, because a run that kept
+    writing after a refusal would end on the last register and report that
+    response - a success when only the later registers had been written.
+    """
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
+    ok_response = ModbusPDU()
+    cast(Any, ok_response).isError = lambda: False
     error_response = ModbusPDU()
     cast(Any, error_response).isError = lambda: True
-    cast(Any, client).write_register = AsyncMock(return_value=error_response)
+
+    def _answer(address: int, **_: Any) -> ModbusPDU:
+        return error_response if address == failed_address else ok_response
+
+    cast(Any, client).write_register = AsyncMock(side_effect=_answer)
     cast(Any, client).write_registers = AsyncMock(return_value=error_response)
 
     with (
@@ -1775,6 +1787,73 @@ async def test_write_composite_single_write_function_error_response_aborts_write
             _composite_entity(write_function=WriteFunction.SINGLE),
             value=datetime(2026, 9, 22, 16, 30, 5),
         )
+
+    # nothing past the register that was refused goes out
+    assert [
+        call.kwargs["address"]
+        for call in cast(Any, client).write_register.call_args_list
+    ] == list(range(45, failed_address + 1))
+
+
+@pytest.mark.asyncio
+async def test_write_composite_single_write_function_honoured_for_one_register() -> (
+    None
+):
+    """A run of one register is still written with the function declared"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register.return_value.isError = lambda: False
+    cast(Any, client).write_registers = AsyncMock()
+
+    entity = _composite_entity(
+        fields=(("hour", 45), ("minute", 60)),
+        write_function=WriteFunction.SINGLE,
+    )
+    with patch.object(
+        AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+    ):
+        await client.write_data(entity, value=datetime(2026, 9, 22, 16, 30, 5))
+
+    cast(Any, client).write_registers.assert_not_called()
+    assert [
+        call.kwargs["address"]
+        for call in cast(Any, client).write_register.call_args_list
+    ] == [45, 60]
+
+
+@pytest.mark.asyncio
+async def test_write_composite_multiple_write_function_honoured_for_one_register() -> (
+    None
+):
+    """A composite declaring multiple is written in one request, entry or not"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+    cast(Any, client).write_register = AsyncMock()
+
+    entity = _composite_entity(
+        fields=(("hour", 45), ("minute", 60)),
+        write_function=WriteFunction.MULTIPLE,
+    )
+    with patch.object(
+        AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+    ):
+        # the connection is configured for single, and must not override the
+        # composite, or a run of one register would go out as FC 0x06
+        await client.write_data(
+            entity,
+            value=datetime(2026, 9, 22, 16, 30, 5),
+            write_function=WriteFunction.SINGLE,
+        )
+
+    cast(Any, client).write_register.assert_not_called()
+    assert cast(Any, client).write_registers.call_args_list[0].kwargs == {
+        "address": 45,
+        "values": [16],
+        "device_id": 1,
+    }
 
 
 @pytest.mark.asyncio

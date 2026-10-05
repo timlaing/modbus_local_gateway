@@ -19,10 +19,14 @@ custom integrations. Pre-releases are not listed here.
   register 45 (`Sys Year`) reports a four digit year and only accepts a two
   digit one, so every write of the Growatt `current_time` composite was
   refused with an illegal data address. A field can now carry a `write_offset`,
-  added to the value on the way out only and leaving the read untouched, and the
-  four Growatt device configs that declare a `current_time` composite use it to
-  write `26` for `2026`. A field of more than one register is rejected, since
-  one offset says nothing about which of its registers it was meant for.
+  added to the value on the way out only and leaving the read untouched, and four
+  Growatt device configs use it to write `26` for `2026`: `MIC-2500TL-X`,
+  `MIN-6000TL-XH`, `MOD-6000TL-X` and `MOD-10KTL3-XH`. `SPH-3600TL-BL_UP` is left
+  alone, because a report of a different Growatt family taking the full year
+  there suggests it wants the opposite, and it has not been confirmed on
+  hardware. A field of more than one register is rejected, since one offset says
+  nothing about which of its registers it was meant for, as are `swap` and bit
+  fields, which carry no single value to offset.
 
 - **A composite entity can be written register by register**: a run of adjacent
   registers is written with one FC `0x10` request, which keeps a clock from

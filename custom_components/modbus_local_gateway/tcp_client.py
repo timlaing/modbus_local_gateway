@@ -756,7 +756,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 values=registers,
                 device_id=entity.device_id,
                 write_function=write_function,
-                per_register=desc.write_function == WriteFunction.SINGLE,
+                declared=desc.write_function,
             )
             if run_pdu is None:
                 raise ModbusClientError(
@@ -780,26 +780,37 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         values: list[int],
         device_id: int,
         write_function: WriteFunction,
-        per_register: bool,
+        declared: WriteFunction | None,
     ) -> ModbusPDU | None:
         """Write the registers of one run, one request per register if asked.
 
-        A device that refuses preset multiple registers over adjacent registers
-        accepts them one at a time, so a run of a composite that declared
-        `single` is split and each register keeps the per-register fallback to
-        FC 0x10 that a single write already has. Without the declaration the run
-        is one request, whatever the connection would otherwise choose.
+        `declared` is what the composite asked for, and it wins over the
+        connection's own `write_function` even for a run of one register: a
+        device that refuses the block write over a clock would reject the run as
+        soon as one register made it a block write again. `single` sends each
+        register as its own request, each keeping the per-register fallback to
+        FC 0x10 that a single write already has. The first register the device
+        refuses ends the run and its response is returned, so a clock left
+        partly updated is never reported as written.
+
+        Without a declaration the run is one request whatever the connection
+        would otherwise choose, which is how every other device config writes.
         """
-        if not per_register or len(values) == 1:
+        if declared is None:
             return await self._custom_write_registers(
                 address=address,
                 values=values,
                 device_id=device_id,
                 write_function=write_function,
             )
+        if declared == WriteFunction.MULTIPLE:
+            return await self._write_multiple_registers(address, values, device_id)
+
         pdu: ModbusPDU | None = None
         for offset, value in enumerate(values):
             pdu = await self._write_single_register(address + offset, value, device_id)
+            if pdu.isError():
+                return pdu
         return pdu
 
     def _run_registers(
