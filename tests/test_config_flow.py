@@ -963,8 +963,7 @@ def test_translations_spell_out_every_label(name: str) -> None:
     assert "%key" not in json.dumps(_translation(name))
 
 
-@pytest.mark.parametrize("name", ["strings.json", "translations/en.json"])
-def test_translations_agree(name: str) -> None:
+def test_translations_agree() -> None:
     """What the form shows is what the integration was validated against.
 
     `strings.json` is what Home Assistant checks against core's strings; the
