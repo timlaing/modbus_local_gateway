@@ -454,10 +454,12 @@ async def _async_migrate_device_titles(hass: HomeAssistant) -> None:
             # the device would keep the name it was given to shed.
             if subentry.title.casefold() != _legacy_device_title(config).casefold():
                 continue
-            hass.config_entries.async_update_subentry(
+            # The return value is what says the title was really written, so it
+            # is what is counted: an update that changed nothing is not a rename.
+            if hass.config_entries.async_update_subentry(
                 entry, subentry, title=get_device_title(config)
-            )
-            renamed += 1
+            ):
+                renamed += 1
 
     if renamed:
         _LOGGER.info("Renamed %d device sub-entries by their device id", renamed)

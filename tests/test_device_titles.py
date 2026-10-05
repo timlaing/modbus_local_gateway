@@ -1,5 +1,4 @@
 """Tests for the titles of the devices behind a gateway"""
-# pylint: disable=protected-access
 
 from unittest.mock import MagicMock, patch
 
