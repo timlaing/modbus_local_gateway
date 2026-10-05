@@ -717,6 +717,10 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         value: a clock written as one preset multiple registers request changes
         year to second together, and only fields that are not adjacent to each
         other need a request of their own.
+
+        `write_function` on the description overrides the connection's choice
+        for a device that will not take a whole run in one request: declared
+        single, the run is written one register at a time.
         """
         desc: ModbusCompositeEntityDescription = cast(
             ModbusCompositeEntityDescription, entity.desc
@@ -747,11 +751,12 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 ", ".join(field.key for field in run),
                 run[0].address,
             )
-            run_pdu: ModbusPDU | None = await self._custom_write_registers(
+            run_pdu: ModbusPDU | None = await self._write_run_registers(
                 address=run[0].address,
                 values=registers,
                 device_id=entity.device_id,
                 write_function=write_function,
+                per_register=desc.write_function == WriteFunction.SINGLE,
             )
             if run_pdu is None:
                 raise ModbusClientError(
@@ -767,6 +772,34 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         if pdu is None:
             raise ModbusClientError(f"Composite {desc.key} declares no fields")
+        return pdu
+
+    async def _write_run_registers(
+        self,
+        address: int,
+        values: list[int],
+        device_id: int,
+        write_function: WriteFunction,
+        per_register: bool,
+    ) -> ModbusPDU | None:
+        """Write the registers of one run, one request per register if asked.
+
+        A device that refuses preset multiple registers over adjacent registers
+        accepts them one at a time, so a run of a composite that declared
+        `single` is split and each register keeps the per-register fallback to
+        FC 0x10 that a single write already has. Without the declaration the run
+        is one request, whatever the connection would otherwise choose.
+        """
+        if not per_register or len(values) == 1:
+            return await self._custom_write_registers(
+                address=address,
+                values=values,
+                device_id=device_id,
+                write_function=write_function,
+            )
+        pdu: ModbusPDU | None = None
+        for offset, value in enumerate(values):
+            pdu = await self._write_single_register(address + offset, value, device_id)
         return pdu
 
     def _run_registers(
@@ -811,8 +844,8 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     registers[offset : offset + count],
                 )
             else:
-                registers[offset : offset + count] = conversion.convert_to_registers(
-                    field_desc, field_values[field.key]
+                registers[offset : offset + count] = field.apply_write_offset(
+                    conversion.convert_to_registers(field_desc, field_values[field.key])
                 )
         return registers
 

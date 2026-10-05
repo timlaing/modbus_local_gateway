@@ -40,6 +40,7 @@ from .const import (
     CONV_SUM_SCALE,
     CONV_SWAP,
     CONV_UNAVAILABLE_VALUES,
+    CONV_WRITE_OFFSET,
     DEFAULT_STATE_CLASS,
     DEVICE,
     DEVICE_CLASS,
@@ -62,9 +63,11 @@ from .const import (
     UNIT,
     UOM,
     UOM_MAPPING,
+    WRITE_FUNCTION,
     CompositeType,
     ControlType,
     ModbusDataType,
+    WriteFunction,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -87,6 +90,7 @@ FIELD_KEYS: tuple[str, ...] = (
     CONV_SWAP,
     CONV_MULTIPLIER,
     CONV_OFFSET,
+    CONV_WRITE_OFFSET,
     CONV_UNAVAILABLE_VALUES,
     CONV_BITS,
     CONV_SHIFT_BITS,
@@ -103,6 +107,7 @@ ENTITY_KEYS: tuple[str, ...] = (
     "icon",
     "entity_category",
     "entity_registry_enabled_default",
+    WRITE_FUNCTION,
 )
 
 
@@ -301,6 +306,26 @@ class ModbusDeviceInfo:
         if fields is None:
             return None
 
+        write_function = data.get(WRITE_FUNCTION)
+        if write_function is not None:
+            # A device that refuses preset multiple registers (FC 0x10) across
+            # a span of adjacent registers can only have that span written
+            # register by register, which is what `single` asks for. It is not
+            # the entry-wide option: on such hardware the clock is the
+            # exception and the settings registers around it still need the
+            # block write.
+            try:
+                write_function = WriteFunction(write_function)
+            except ValueError:
+                _LOGGER.warning(
+                    "Unable to create entity for %s: %s must be one of %s, got %s",
+                    entity,
+                    WRITE_FUNCTION,
+                    ", ".join(WriteFunction),
+                    data[WRITE_FUNCTION],
+                )
+                return None
+
         addresses: list[int] = [field.address for field in fields]
         params: dict[str, Any] = {
             key: data[key] for key in ENTITY_KEYS if data.get(key) is not None
@@ -454,6 +479,7 @@ class ModbusDeviceInfo:
                 conv_swap=field_data.get(CONV_SWAP),
                 conv_multiplier=field_data.get(CONV_MULTIPLIER),
                 conv_offset=field_data.get(CONV_OFFSET),
+                conv_write_offset=_optional_int(field_data.get(CONV_WRITE_OFFSET)),
                 conv_unavailable_values=field_data.get(CONV_UNAVAILABLE_VALUES),
                 conv_bits=_optional_int(field_data.get(CONV_BITS)),
                 conv_shift_bits=_optional_int(field_data.get(CONV_SHIFT_BITS)),

@@ -329,15 +329,26 @@ composite:
 - `data_type` (optional): `read_write_word` (default, writable) or
   `read_only_word` (read-only). A coil cannot hold a composite.
 - `fields` (required): One entry per part, each an `address` and any of
-  `size`, `swap`, `multiplier`, `offset`, `unavailable_values`, `bits`,
-  `shift_bits`, `signed`, `float` and `string`, exactly as for a register
-  entity. A field name that is not a part of `type`, an unknown key, `map` or
-  `flags` is rejected with a warning and the entity is skipped.
+  `size`, `swap`, `multiplier`, `offset`, `write_offset`, `unavailable_values`,
+  `bits`, `shift_bits`, `signed`, `float` and `string`, exactly as for a
+  register entity. A field name that is not a part of `type`, an unknown key,
+  `map` or `flags` is rejected with a warning and the entity is skipped.
+- `write_offset` (optional, field): Added to the value on the way out only, for
+  a device that reads one value and writes another: `offset` is applied in both
+  directions, so it cannot describe a register that reports a four digit year
+  and takes a two digit one. A field of more than one register is rejected,
+  because one offset says nothing about which register it belongs to.
 - Fields that are **not adjacent** are grouped: each run of adjacent registers
   is read with its own request, so the registers in between are never touched,
   and written in one request per run (FC `0x10`, or FC `0x06` for a run of one
   register). A clock in registers 45-50 is therefore always updated in one
   request.
+- `write_function` (optional): `single` writes each register of a run with its
+  own FC `0x06` request instead of one FC `0x10` over the run, for a device that
+  refuses the block write across a clock. The request then costs one round trip
+  per register, and each keeps the fallback to FC `0x10` for a device that does
+  not answer FC `0x06` at all. Absent, the connection's own `write_function`
+  decides, so every other device config is unaffected.
 - The entity-level options of any other entity work here too: `scan_interval`,
   `icon`, `entity_category` and `entity_registry_enabled_default`.
 - A field may claim **part of a register** with `bits` / `shift_bits`, which is

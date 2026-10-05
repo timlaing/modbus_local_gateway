@@ -1,5 +1,5 @@
 """Device info Tests"""
-# pylint: disable=unexpected-keyword-arg, protected-access
+# pylint: disable=too-many-lines, unexpected-keyword-arg, protected-access
 
 from unittest.mock import patch
 
@@ -18,6 +18,7 @@ from custom_components.modbus_local_gateway.entity_management.const import (
     CompositeType,
     ControlType,
     ModbusDataType,
+    WriteFunction,
 )
 from custom_components.modbus_local_gateway.entity_management.device_loader import (
     load_devices,
@@ -549,7 +550,9 @@ def test_composite_entity_load() -> None:
         "second",
     ]
     assert desc.fields[0].conv_offset == 2000
+    assert desc.fields[0].conv_write_offset is None
     assert desc.fields[1].conv_offset is None
+    assert desc.write_function is None
     # one run of adjacent fields, so one read and one write
     assert desc.runs == (desc.fields,)
 
@@ -624,6 +627,52 @@ def test_composite_entity_field_conversion() -> None:
     assert fields[1].is_signed
     assert fields[1].conv_swap
     assert fields[1].conv_unavailable_values == [999]
+
+
+def test_composite_entity_field_write_offset() -> None:
+    """A field keeps a write offset apart from the offset it reads with"""
+    fields = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "datetime",
+                "fields": {
+                    "year": {"address": 45, "write_offset": -2000},
+                    "month": {"address": 46},
+                    "day": {"address": 47},
+                    "hour": {"address": 48},
+                    "minute": {"address": 49},
+                    "second": {"address": 50},
+                },
+            }
+        },
+    }).fields
+    assert fields[0].conv_write_offset == -2000
+    # the read path is untouched: only the write is offset
+    assert fields[0].conv_offset is None
+    assert fields[1].conv_write_offset is None
+
+
+def test_composite_entity_write_function() -> None:
+    """A composite can ask to be written register by register"""
+    desc = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "datetime",
+                "write_function": "single",
+                "fields": {
+                    "year": {"address": 45},
+                    "month": {"address": 46},
+                    "day": {"address": 47},
+                    "hour": {"address": 48},
+                    "minute": {"address": 49},
+                    "second": {"address": 50},
+                },
+            }
+        },
+    })
+    assert desc.write_function == WriteFunction.SINGLE
 
 
 @pytest.mark.parametrize(
@@ -738,6 +787,26 @@ def test_composite_entity_field_conversion() -> None:
                 },
             },
             "bad address, size, bits or shift_bits",
+        ),
+        # a write offset on a field of more than one register
+        (
+            {
+                "type": "time",
+                "fields": {
+                    "hour": {"address": 1, "size": 2, "write_offset": -2000},
+                    "minute": {"address": 2},
+                },
+            },
+            "cannot be used with size",
+        ),
+        # a write function that is neither single nor multiple
+        (
+            {
+                "type": "time",
+                "write_function": "preset",
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "write_function must be one of single, multiple",
         ),
         # a key that no field understands
         (

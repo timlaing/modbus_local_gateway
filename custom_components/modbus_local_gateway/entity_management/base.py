@@ -28,6 +28,7 @@ from .const import (
     CONV_SUM_SCALE,
     CONV_SWAP,
     CONV_UNAVAILABLE_VALUES,
+    CONV_WRITE_OFFSET,
     IS_FLOAT,
     IS_SIGNED,
     IS_STRING,
@@ -38,6 +39,7 @@ from .const import (
     CompositeType,
     ControlType,
     ModbusDataType,
+    WriteFunction,
 )
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -390,8 +392,14 @@ class ModbusFieldDescription:
     """One register, or run of registers, inside a composite entity.
 
     A field carries the conversion options a single entity carries, so a device
-    that stores the year as an offset from 2000 is described with
-    `offset: 2000` and the composite layer only ever sees 2026.
+    that stores and reports a value the same way on both sides is described
+    with `offset` and the composite layer only ever sees the real value.
+
+    `write_offset` is for the other kind of device: one that reports a value and
+    accepts a different one. Growatt register 45 (`Sys Year`) reports a
+    four-digit year and takes a two-digit one, which `offset` cannot express -
+    it is reversed on the way out, so a read of 2026 with `offset: 2000` would
+    write 2000 rather than 26.
     """
 
     key: str
@@ -400,6 +408,7 @@ class ModbusFieldDescription:
     conv_swap: str | None = None
     conv_multiplier: float | None = None
     conv_offset: float | None = None
+    conv_write_offset: int | None = None
     conv_unavailable_values: list[int] | None = None
     conv_bits: int | None = None
     conv_shift_bits: int | None = None
@@ -422,6 +431,19 @@ class ModbusFieldDescription:
         """
         entity: ModbusEntityDescription = self.as_entity_description(data_type)
         if not entity.validate():
+            return False
+        if self.conv_write_offset is not None and self.size > 1:
+            # The offset belongs to the value the field carries, and a field of
+            # several registers carries one value per register, so there is no
+            # telling which of them it was meant for.
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s cannot be used with %s on a "
+                "field of %s registers",
+                self.key,
+                CONV_WRITE_OFFSET,
+                REGISTER_COUNT,
+                self.size,
+            )
             return False
         if not self.is_bitfield:
             return True
@@ -452,6 +474,19 @@ class ModbusFieldDescription:
         if self.is_bitfield:
             return [(self.address + shift // 16, shift % 16, shift % 16 + width - 1)]
         return [(self.address + offset, 0, 15) for offset in range(max(1, self.size))]
+
+    def apply_write_offset(self, registers: list[int]) -> list[int]:
+        """Return `registers` with the field's write offset added to them.
+
+        Applied after the value has been descaled and scaled, so it reaches the
+        device as the raw register it holds rather than shifting what the
+        entity reports. It is deliberately not part of `conv_offset`, which is
+        reversed on the way out: a field that reads and writes the same value
+        needs neither this nor any change to the read path.
+        """
+        if self.conv_write_offset is None:
+            return registers
+        return [register + self.conv_write_offset for register in registers]
 
     def as_entity_description(
         self, data_type: ModbusDataType
@@ -497,6 +532,7 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
 
     composite_type: CompositeType
     fields: tuple[ModbusFieldDescription, ...]
+    write_function: WriteFunction | None = None
 
     @property
     def runs(self) -> tuple[tuple[ModbusFieldDescription, ...], ...]:
@@ -506,6 +542,11 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
         with one transaction, so the value on the device is never half updated.
         Two bit fields in the same register are one run, not two: they are
         written in the same request, and each merge keeps the other's bits.
+
+        `write_function` overrides the function the connection writes with, for
+        a device that refuses FC 0x10 over the run and takes FC 0x06 only. The
+        run is then one request per register, which is the price of a device
+        that will not take a whole span in one go.
         """
         ordered: list[ModbusFieldDescription] = sorted(
             self.fields, key=lambda field: field.address
