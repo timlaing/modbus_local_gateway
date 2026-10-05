@@ -12,6 +12,9 @@ import pytest
 from custom_components.modbus_local_gateway.const import DOMAIN
 from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
+from custom_components.modbus_local_gateway.entity_management.base import (
+    ModbusSelectEntityDescription,
+)
 from custom_components.modbus_local_gateway.entity_management.const import (
     ModbusDataType,
 )
@@ -335,7 +338,6 @@ def test_eastron_settings_decode_as_floats(
     fname: str, key: str, _: int, value: float
 ) -> None:
     """A setting read back is the float the meter holds, not the raw register.
-
     This is the regression the declaration above causes: the register pair of
     1.0 is 0x3F800000, and read as a lone 16-bit register the first half is
     16256 rather than 1.
@@ -346,7 +348,6 @@ def test_eastron_settings_decode_as_floats(
         if desc.key == key
     )
     conversion = Conversion(client=AsyncModbusTcpClient)
-
     decoded = conversion.convert_from_response(
         response=ReadHoldingRegistersResponse(
             registers=AsyncModbusTcpClient.convert_to_registers(
@@ -355,7 +356,6 @@ def test_eastron_settings_decode_as_floats(
         ),
         desc=desc,
     )
-
     assert decoded == pytest.approx(value)
 
 
@@ -370,7 +370,6 @@ def test_eastron_unit_prefix_decodes_as_a_float(value: float) -> None:
         if desc.key == "unit_prefix"
     )
     conversion = Conversion(client=AsyncModbusTcpClient)
-
     decoded = conversion.convert_from_response(
         response=ReadHoldingRegistersResponse(
             registers=AsyncModbusTcpClient.convert_to_registers(
@@ -379,5 +378,60 @@ def test_eastron_unit_prefix_decodes_as_a_float(value: float) -> None:
         ),
         desc=desc,
     )
-
     assert decoded == pytest.approx(value)
+
+
+# Every Growatt model here carries its communication address at register 30 and
+# its baud rate at register 22, in the common low register group. Register 3085
+# is the address and 3086 the baud rate only in the storage family; the TL-X and
+# TL-XH models have neither there.
+GROWATT_COMMUNICATION_SETTINGS: tuple[str, ...] = (
+    "MIC-2500TL-X.yaml",
+    "MIN-6000TL-XH.yaml",
+    "MOD-10KTL3-XH.yaml",
+    "MOD-6000TL-X.yaml",
+    "SPH-3600TL-BL_UP.yaml",
+)
+
+
+@pytest.mark.parametrize("fname", GROWATT_COMMUNICATION_SETTINGS)
+def test_growatt_communication_settings_match_the_protocol(fname: str) -> None:
+    """The address is register 30 and the baud rate 22, as the protocol says.
+    Declared at 3085, the address read the storage family's address register,
+    which these TL-X and TL-XH models do not answer to, so an inverter on slave
+    address 7 reported 0 there.
+    """
+    entities = {
+        desc.key: desc
+        for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
+    }
+    assert entities["com_address"].register_address == 30
+    assert entities["com_address"].data_type == ModbusDataType.HOLDING_REGISTER
+    assert entities["baud_rate"].register_address == 22
+    assert entities["baud_rate"].data_type == ModbusDataType.HOLDING_REGISTER
+
+
+@pytest.mark.parametrize("fname", GROWATT_COMMUNICATION_SETTINGS)
+def test_growatt_baud_rate_offers_both_protocol_rates(fname: str) -> None:
+    """The baud rate is the option list register 22 defines, not the storage one."""
+    entities = {
+        desc.key: desc
+        for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
+    }
+    baud_rate = entities["baud_rate"]
+    assert isinstance(baud_rate, ModbusSelectEntityDescription)
+    assert baud_rate.select_options == {0: "9600 bps", 1: "38400 bps"}
+
+
+@pytest.mark.parametrize("fname", GROWATT_CONFIGS)
+def test_growatt_tlx_models_do_not_use_the_storage_address_register(fname: str) -> None:
+    """Nothing on a TL-X or TL-XH reads register 3085 as the address.
+    The storage family keeps its address at 3085 and its baud rate at 3086; these
+    models answer to 30 and 22, so the storage registers belong to the storage
+    models alone.
+    """
+    entities = {
+        desc.key: desc
+        for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
+    }
+    assert all(desc.register_address != 3085 for desc in entities.values())
