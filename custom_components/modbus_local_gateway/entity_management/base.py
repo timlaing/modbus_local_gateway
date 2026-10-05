@@ -398,8 +398,8 @@ class ModbusFieldDescription:
     `write_offset` is for the other kind of device: one that reports a value and
     accepts a different one. Growatt register 45 (`Sys Year`) reports a
     four-digit year and takes a two-digit one, which `offset` cannot express -
-    it is reversed on the way out, so a read of 2026 with `offset: 2000` would
-    write 2000 rather than 26.
+    it applies on both sides, so `offset: 2000` would read a raw 2026 back as
+    4026. Leaving it unset writes 2026 where the device wants 26.
     """
 
     key: str

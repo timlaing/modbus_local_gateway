@@ -342,8 +342,8 @@ composite:
 - Fields that are **not adjacent** are grouped: each run of adjacent registers
   is read with its own request, so the registers in between are never touched,
   and written in one request per run (FC `0x10`, or FC `0x06` for a run of one
-  register). A clock in registers 45-50 is therefore always updated in one
-  request.
+  register). A clock in registers 45-50 is therefore read in one request and
+  written in one request per run, unless it sets `write_function: single`.
 - `write_function` (optional): `single` writes each register of a run with its
   own FC `0x06` request instead of one FC `0x10` over the run, for a device that
   refuses the block write across a clock. The request then costs one round trip
