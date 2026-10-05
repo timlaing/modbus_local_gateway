@@ -13,6 +13,8 @@ custom integrations. Pre-releases are not listed here.
 
 ### Fixed
 
+- **The Eastron meter's own settings are read and written as floats again**: the communication address, baud rate and, on the SDM630, the energy unit prefix are 32-bit floats over two registers at `0x0014`, `0x001C` and `0x001E`, but were declared as one register each, so a read took only the first half of the pair and decoded it as a 16-bit value: an address of 1 (`0x3F800000`) came back as 16256 and a baud rate of 2 as 16384, leaving every one of them permanently out of range and showing as unavailable or wrong. Each is declared as the register pair the protocol gives it again, so a read is the float the meter holds and a write is the same pair. This reverses the change made in v2026.10.0.
+
 - **A device set up before this release is renamed by its device id on
   upgrade**: a device behind a gateway was named `slave 2` in the list of
   devices behind it, which does not say what the device is and collides with a
