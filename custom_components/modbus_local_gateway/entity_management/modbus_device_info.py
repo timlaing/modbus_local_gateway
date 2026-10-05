@@ -137,7 +137,11 @@ def _optional_int(value: Any) -> int | None:
     """
     if value is None:
         return None
-    if isinstance(value, bool) or not float(value).is_integer():
+    if isinstance(value, bool):
+        raise ValueError(f"{value} is not an integer")
+    # `float()` would raise OverflowError on a big int rather than ValueError,
+    # and an int is already an integer, so only a float needs the check.
+    if isinstance(value, float) and not value.is_integer():
         raise ValueError(f"{value} is not an integer")
     return int(value)
 

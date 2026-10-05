@@ -234,6 +234,31 @@ def test_composite_entity_field_write_offset() -> None:
     assert fields[1].conv_write_offset is None
 
 
+def test_composite_entity_write_offset_accepts_a_big_integer() -> None:
+    """A big integer is an integer, and must not abort loading the config
+
+    Checking it went through `float()`, which raises OverflowError on a value
+    too large for one, escaping the field parser instead of warning.
+    """
+    fields = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "datetime",
+                "fields": {
+                    "year": {"address": 45, "write_offset": 10**400},
+                    "month": {"address": 46},
+                    "day": {"address": 47},
+                    "hour": {"address": 48},
+                    "minute": {"address": 49},
+                    "second": {"address": 50},
+                },
+            }
+        },
+    }).fields
+    assert fields[0].conv_write_offset == 10**400
+
+
 def test_composite_entity_write_function() -> None:
     """A composite can ask to be written register by register"""
     desc = _load_composite({
