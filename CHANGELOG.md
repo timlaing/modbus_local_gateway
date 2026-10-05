@@ -15,6 +15,32 @@ custom integrations. Pre-releases are not listed here.
 
 - **A Growatt inverter read its communication address from the wrong register**: the address and baud rate are registers 30 and 22 of the low register group that every Growatt model answers to, but the TL-X and TL-XH configs declared the address at 3085, which is the storage family's address register - a register these models do not answer to. An inverter set to slave address 7 therefore reported 0 there, and the number control showed something outside its own 1-254 range rather than the address the gateway is talking to. The address is register 30 again on the `MIN 6000TL-XH`, `MOD-6000TL-X`, `MOD-10KTL3-XH` and `SPH-3600TL-BL_UP`, and a baud rate select at register 22 is added to the `MIN 6000TL-XH`, `MOD-6000TL-X`, `MOD-10KTL3-XH` and `MIC-2500TL-X`, which had the address but no baud rate to go with it. The `# 3079 - 3085 - Reserved` comment above `DeratingMode` in those files, which implied the address was somewhere in that range, is corrected to name what the range holds.
 
+- **The Eastron meter's own settings are read and written as floats again**: the communication address, baud rate and, on the SDM630, the energy unit prefix are 32-bit floats over two registers at `0x0014`, `0x001C` and `0x001E`, but were declared as one register each, so a read took only the first half of the pair and decoded it as a 16-bit value: an address of 1 (`0x3F800000`) came back as 16256 and a baud rate of 2 as 16384, leaving every one of them permanently out of range and showing as unavailable or wrong. Each is declared as the register pair the protocol gives it again, so a read is the float the meter holds and a write is the same pair. This reverses the change made in v2026.10.0.
+
+- **A device set up before this release is renamed by its device id on
+  upgrade**: a device behind a gateway was named `slave 2` in the list of
+  devices behind it, which does not say what the device is and collides with a
+  device of the same id on another gateway. It is now named `Device ID: 2`, with
+  the prefix in brackets when it has one, but the title was only ever written
+  when a device was created or reconfigured, so every device added before
+  2026.10.1 kept saying `slave 2` until it was saved again. Those titles are
+  rewritten once on setup. Only a title this integration wrote itself is
+  rewritten, so a device you have renamed keeps the name you gave it.
+- **An entity id built from a CamelCase register key is now valid**: an object
+  id has to be a slug, and a key like `GridFirstDischargePowerRate` is not one,
+  so every entity of a device whose config uses CamelCase keys asked for an
+  invalid entity id. Home Assistant warns for each one at startup - 84 of them on
+  one Growatt - and stops accepting them in 2027.2.0, which would fail the entity.
+  The object id is now slugified, so `number.localhost_GridFirstDischargePowerRate`
+  becomes `number.localhost_gridfirstdischargepowerrate`. It is applied centrally,
+  so every platform benefits, and a key that is already a slug keeps the object
+  id it had. **Only newly created entities are affected**: Home Assistant reads
+  this value when an entity is registered and never touches an entity id again,
+  so an entity that already exists keeps the id you know it by and is not renamed.
+  The `unique_id` is deliberately not slugified - that is what an entity is
+  recognised by in the registry, and changing it would make every affected entity
+  a new entity.
+
 ## [v2026.10.1] - 2026-10-05
 
 ### Added

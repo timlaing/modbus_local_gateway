@@ -5,9 +5,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 from homeassistant.core import HomeAssistant
+from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.pdu.register_message import ReadHoldingRegistersResponse
 import pytest
 
 from custom_components.modbus_local_gateway.const import DOMAIN
+from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSelectEntityDescription,
@@ -284,38 +287,38 @@ def test_growatt_windows_are_writable_holding_registers(fname: str) -> None:
 
 EASTRON_METERS: tuple[str, ...] = ("SDM230.yaml", "SDM630.yaml")
 
-# The meter's own address and baud rate sit one register apart at 0x0014 and
-# 0x001C, each a single register holding a small whole number: the address is a
-# slave id of 1-247, the baud rate an index into the option list. The SDM630
-# keeps its energy unit prefix the same way at 0x001E.
-EASTRON_SINGLE_REGISTER_CONTROLS: tuple[tuple[str, int], ...] = (
+# The meter's own settings are 32-bit floats over two registers, like the
+# measurement registers they sit beside: the address is a slave id of 1-247, the
+# baud rate and the unit prefix indexes into small option lists, each held as a
+# float in the register pair the Eastron protocol table gives it.
+EASTRON_FLOAT_CONTROLS: tuple[tuple[str, int], ...] = (
     ("com_address", 20),
     ("baud_rate", 28),
 )
 
 
 @pytest.mark.parametrize("fname", EASTRON_METERS)
-def test_eastron_controls_are_single_registers(fname: str) -> None:
-    """The meter's own settings are one register each, not a float.
+def test_eastron_settings_are_two_register_floats(fname: str) -> None:
+    """The meter's own settings are two-register floats, not single registers.
 
-    Declared as two-register floats, writing the address or the baud rate packed
-    the value into two registers and went out as FC 0x10 over the register and
-    the reserved one after it, which the meter refuses; reading them back spanned
-    the same pair and decoded a float out of a register and a reserved one.
+    Declared as one register each, a read of the address or the baud rate took
+    only the first register of the pair and decoded it as a 16-bit value, so a
+    float such as 1.0 (0x3F800000) came back as 16256 and never matched the
+    option list or the 1-247 range.
     """
     entities = {
         desc.key: desc
         for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
     }
 
-    for key, address in EASTRON_SINGLE_REGISTER_CONTROLS:
+    for key, address in EASTRON_FLOAT_CONTROLS:
         assert entities[key].register_address == address
-        assert entities[key].register_count == 1
-        assert not entities[key].is_float
+        assert entities[key].register_count == 2
+        assert entities[key].is_float
 
 
-def test_eastron_unit_prefix_is_a_single_register() -> None:
-    """The SDM630 energy unit prefix is one register, like the settings beside it."""
+def test_eastron_unit_prefix_is_a_two_register_float() -> None:
+    """The SDM630 energy unit prefix is a float pair, like the settings beside it."""
     entities = {
         desc.key: desc
         for desc in modbus_device_info.ModbusDeviceInfo(
@@ -324,8 +327,58 @@ def test_eastron_unit_prefix_is_a_single_register() -> None:
     }
 
     assert entities["unit_prefix"].register_address == 30
-    assert entities["unit_prefix"].register_count == 1
-    assert not entities["unit_prefix"].is_float
+    assert entities["unit_prefix"].register_count == 2
+    assert entities["unit_prefix"].is_float
+
+
+@pytest.mark.parametrize("fname", EASTRON_METERS)
+@pytest.mark.parametrize("key, _", EASTRON_FLOAT_CONTROLS)
+@pytest.mark.parametrize("value", [1.0, 2.0, 247.0])
+def test_eastron_settings_decode_as_floats(
+    fname: str, key: str, _: int, value: float
+) -> None:
+    """A setting read back is the float the meter holds, not the raw register.
+    This is the regression the declaration above causes: the register pair of
+    1.0 is 0x3F800000, and read as a lone 16-bit register the first half is
+    16256 rather than 1.
+    """
+    desc = next(
+        desc
+        for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
+        if desc.key == key
+    )
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    decoded = conversion.convert_from_response(
+        response=ReadHoldingRegistersResponse(
+            registers=AsyncModbusTcpClient.convert_to_registers(
+                value, data_type=AsyncModbusTcpClient.DATATYPE.FLOAT32
+            )
+        ),
+        desc=desc,
+    )
+    assert decoded == pytest.approx(value)
+
+
+@pytest.mark.parametrize("value", [1.0, 2.0, 247.0])
+def test_eastron_unit_prefix_decodes_as_a_float(value: float) -> None:
+    """The SDM630 unit prefix decodes as the float the meter holds."""
+    desc = next(
+        desc
+        for desc in modbus_device_info.ModbusDeviceInfo(
+            "SDM630.yaml"
+        ).entity_descriptions
+        if desc.key == "unit_prefix"
+    )
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    decoded = conversion.convert_from_response(
+        response=ReadHoldingRegistersResponse(
+            registers=AsyncModbusTcpClient.convert_to_registers(
+                value, data_type=AsyncModbusTcpClient.DATATYPE.FLOAT32
+            )
+        ),
+        desc=desc,
+    )
+    assert decoded == pytest.approx(value)
 
 
 # Every Growatt model here carries its communication address at register 30 and
@@ -344,7 +397,6 @@ GROWATT_COMMUNICATION_SETTINGS: tuple[str, ...] = (
 @pytest.mark.parametrize("fname", GROWATT_COMMUNICATION_SETTINGS)
 def test_growatt_communication_settings_match_the_protocol(fname: str) -> None:
     """The address is register 30 and the baud rate 22, as the protocol says.
-
     Declared at 3085, the address read the storage family's address register,
     which these TL-X and TL-XH models do not answer to, so an inverter on slave
     address 7 reported 0 there.
@@ -353,7 +405,6 @@ def test_growatt_communication_settings_match_the_protocol(fname: str) -> None:
         desc.key: desc
         for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
     }
-
     assert entities["com_address"].register_address == 30
     assert entities["com_address"].data_type == ModbusDataType.HOLDING_REGISTER
     assert entities["baud_rate"].register_address == 22
@@ -368,7 +419,6 @@ def test_growatt_baud_rate_offers_both_protocol_rates(fname: str) -> None:
         for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
     }
     baud_rate = entities["baud_rate"]
-
     assert isinstance(baud_rate, ModbusSelectEntityDescription)
     assert baud_rate.select_options == {0: "9600 bps", 1: "38400 bps"}
 
@@ -376,7 +426,6 @@ def test_growatt_baud_rate_offers_both_protocol_rates(fname: str) -> None:
 @pytest.mark.parametrize("fname", GROWATT_CONFIGS)
 def test_growatt_tlx_models_do_not_use_the_storage_address_register(fname: str) -> None:
     """Nothing on a TL-X or TL-XH reads register 3085 as the address.
-
     The storage family keeps its address at 3085 and its baud rate at 3086; these
     models answer to 30 and 22, so the storage registers belong to the storage
     models alone.
@@ -385,5 +434,4 @@ def test_growatt_tlx_models_do_not_use_the_storage_address_register(fname: str) 
         desc.key: desc
         for desc in modbus_device_info.ModbusDeviceInfo(fname).entity_descriptions
     }
-
     assert all(desc.register_address != 3085 for desc in entities.values())

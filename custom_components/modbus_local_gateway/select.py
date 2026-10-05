@@ -70,11 +70,16 @@ class ModbusSelectEntity(ModbusCoordinatorEntity, SelectEntity):
             ):
                 option: str | None = None
                 if (
-                    isinstance(value, int)
+                    isinstance(value, (int, float))
                     and not isinstance(value, bool)
                     and value in self.entity_description.select_options
                 ):
-                    option = self.entity_description.select_options[value]
+                    # A `float: true` select decodes to a float, so a register
+                    # holding `2` arrives as `2.0`. A whole float compares and
+                    # hashes as the int option it stands for, so the lookup above
+                    # already matched; the cast is only to key the dict with an
+                    # int. A fractional value matches no option and is skipped.
+                    option = self.entity_description.select_options[int(value)]
                 if option is not None:
                     self._attr_current_option = option
                     _LOGGER.debug(
