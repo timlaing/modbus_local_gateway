@@ -1463,6 +1463,103 @@ async def test_write_data_non_bitfield_does_not_read_first() -> None:
         cast(Any, client).write_register.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_write_data_bitfield_with_write_with_rewrites_pair() -> None:
+    """write_with rewrites the partner register together with the bit field.
+
+    The device takes a ToU window word only when the register next to it is
+    rewritten in the same request, so the whole span is read and written as
+    one block, and the partner keeps the value it currently has.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusSwitchEntityDescription(
+            key="period1_enable",
+            register_address=3038,
+            register_count=1,
+            control_type="switch",
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            conv_bits=1,
+            conv_shift_bits=15,
+            on=1,
+            off=0,
+            write_with=(3039,),
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "read_data",
+            AsyncMock(
+                return_value=ReadHoldingRegistersResponse(
+                    registers=[0b0000_0000_0000_0000, 0b0000_0111_1100_0000]
+                )
+            ),
+        ) as read_data,
+    ):
+        await client.write_data(entity, value=1)
+
+    # the enable bit (15) is set, the paired end time word is untouched, and
+    # both land in the same preset multiple registers request
+    cast(Any, client).write_registers.assert_called_once_with(
+        address=3038,
+        values=[0b1000_0000_0000_0000, 0b0000_0111_1100_0000],
+        device_id=1,
+    )
+    assert read_data.call_args.kwargs["count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_write_data_with_write_with_whole_register() -> None:
+    """write_with also covers entities that own the whole register"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers.return_value.isError = lambda: False
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "read_data",
+            AsyncMock(
+                return_value=ReadHoldingRegistersResponse(registers=[0x000F, 0x07C0])
+            ),
+        ),
+    ):
+        await client.write_data(
+            ModbusContext(
+                device_id=1,
+                desc=ModbusSwitchEntityDescription(
+                    key="whole",
+                    register_address=1,
+                    register_count=1,
+                    control_type="switch",
+                    data_type=ModbusDataType.HOLDING_REGISTER,
+                    on=1,
+                    off=0,
+                    write_with=(2,),
+                ),
+            ),
+            value=True,
+        )
+
+    cast(Any, client).write_registers.assert_called_once_with(
+        address=1, values=[1, 0x07C0], device_id=1
+    )
+
+
 def _composite_entity(
     fields: tuple[tuple[str, int], ...] = (
         ("year", 45),

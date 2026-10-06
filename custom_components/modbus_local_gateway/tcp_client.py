@@ -958,6 +958,33 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     ) -> ModbusPDU | None:
         """Write one entity's value to its holding registers"""
         conversion = Conversion(type(self))
+        if entity.desc.write_with:
+            # A device may accept a register only when the one next to it is
+            # rewritten in the same request (a ToU window whose start and end
+            # times go together). The whole write span is read and written as
+            # one block, so the partner keeps its current value while the
+            # changed bits of this field land in the same request as it.
+            span_start, span_end = entity.desc.write_span
+            registers = await self._read_current_registers(
+                entity, span_start, span_end - span_start + 1
+            )
+            offset = entity.desc.register_address - span_start
+            count = entity.desc.register_count or 1
+            if entity.desc.conv_bits or entity.desc.conv_shift_bits:
+                registers[offset : offset + count] = conversion.merge_into_registers(
+                    entity.desc, value, registers[offset : offset + count]
+                )
+            else:
+                registers[offset : offset + count] = conversion.convert_to_registers(
+                    entity.desc, value
+                )
+            return await self._custom_write_registers(
+                address=span_start,
+                values=registers,
+                device_id=entity.device_id,
+                write_function=write_function,
+            )
+
         if entity.desc.conv_bits or entity.desc.conv_shift_bits:
             # No dependable device-side bit write (FC 0x16 is optional): read the
             # register, replace this field, write it back. Still inside

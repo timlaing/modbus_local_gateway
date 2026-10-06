@@ -613,6 +613,11 @@ class ModbusDeviceInfo:
             entity, _data, data_type, control_type, uom
         )
 
+        write_with = self._composite_write_with(entity, _data)
+        if write_with is None:
+            return None
+        params[WRITE_WITH] = write_with
+
         if "entity_category" in params:
             self._handle_entity_category(params, entity)
 
