@@ -353,7 +353,7 @@ class ModbusDeviceInfo:
                 )
                 return None
 
-        write_with = self._composite_write_with(entity, data, fields)
+        write_with = self._composite_write_with(entity, data)
         if write_with is None:
             return None
 
@@ -388,7 +388,7 @@ class ModbusDeviceInfo:
         return composite_desc
 
     def _composite_write_with(
-        self, entity: str, data: dict[str, Any], fields: tuple[Any, ...]
+        self, entity: str, data: dict[str, Any]
     ) -> tuple[int, ...] | None:
         """Read the registers that must be rewritten with the composite.
 
@@ -416,22 +416,6 @@ class ModbusDeviceInfo:
                 entity,
                 WRITE_WITH,
                 data[WRITE_WITH],
-            )
-            return None
-        field_addresses = {
-            register
-            for field in fields
-            for register in range(field.address, field.end_address + 1)
-        }
-        if any(address in field_addresses for address in write_with):
-            _LOGGER.warning(
-                "Unable to create entity for %s: register %s in %s is already "
-                "a field of the composite",
-                entity,
-                ", ".join(
-                    str(address) for address in write_with if address in field_addresses
-                ),
-                WRITE_WITH,
             )
             return None
         return tuple(write_with)
