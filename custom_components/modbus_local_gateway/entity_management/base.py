@@ -104,6 +104,7 @@ class ModbusEntityDescription(
     control_type: str | None = ControlType.SENSOR
     max_change: float | None = None
     scan_interval: int | None = None
+    write_with: tuple[int, ...] = ()
 
     def validate(self) -> bool:
         """Validate the entity description"""
@@ -117,8 +118,90 @@ class ModbusEntityDescription(
             self._validate_unavailable_values,
             self._validate_no_flag_value,
             self._validate_bitfield,
+            self._validate_write_with,
         )
         return all(check() for check in validators)
+
+    @property
+    def write_span(self) -> tuple[int, int]:
+        """(first, last) register the entity's write must cover.
+
+        Without `write_with` this is the register(s) the entity itself writes.
+        With it, the declared registers are rewritten in the same request, and
+        the longest run that spans the entity and them is what one request
+        covers (a device that wants a window's start and end written together
+        refuses a request that only covers one of them). The extra registers
+        keep their current values.
+        """
+        start = self.register_address
+        end = self.register_address + (self.register_count or 1) - 1
+        if not self.write_with:
+            return start, end
+        return min(start, *self.write_with), max(end, *self.write_with)
+
+    def _validate_write_with(self) -> bool:
+        """Check `write_with` on an entity that is not a composite.
+
+        The registers it names are rewritten together with the entity's own
+        in one request, so they must be adjustable holdings and the write must
+        not drag registers neither the entity nor `write_with` declared across
+        the span: a request that writes more than it was told to could zero a
+        value that shares the registers.
+        """
+        if not self.write_with:
+            return True
+        if self.control_type not in (
+            ControlType.NUMBER,
+            ControlType.SWITCH,
+            ControlType.SELECT,
+        ):
+            _LOGGER.warning(
+                "Unable to create entity for %s: write_with cannot be used "
+                "on a %s, which has nothing to write",
+                self.key,
+                self.control_type,
+            )
+            return False
+        if self.data_type != ModbusDataType.HOLDING_REGISTER:
+            _LOGGER.warning(
+                "Unable to create entity for %s: write_with only works on "
+                "holding registers, not a %s",
+                self.key,
+                self.data_type,
+            )
+            return False
+        own_registers = set(
+            range(
+                self.register_address,
+                self.register_address + (self.register_count or 1),
+            )
+        )
+        for address in self.write_with:
+            if address in own_registers:
+                _LOGGER.warning(
+                    "Unable to create entity for %s: register %d is already "
+                    "the entity's own and cannot be listed in write_with",
+                    self.key,
+                    address,
+                )
+                return False
+        start, end = self.write_span
+        covered = own_registers | set(self.write_with)
+        gaps = [
+            register for register in range(start, end + 1) if register not in covered
+        ]
+        if gaps:
+            _LOGGER.warning(
+                "Unable to create entity for %s: write_with span %d-%d would "
+                "also rewrite registers %s, which are neither the entity's own "
+                "nor declared in write_with",
+                self.key,
+                start,
+                end,
+                ", ".join(str(register) for register in gaps),
+            )
+            return False
+        return True
 
     def _validate_unavailable_values(self) -> bool:
         """`unavailable_values` must be a list of whole numbers.

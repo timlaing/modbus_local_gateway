@@ -117,10 +117,14 @@ read_write_word:
   # Time-of-use windows 1-9: the start time word of each pair carries the charge
   # mode in bits 13-14 and the enable flag in bit 15, and the end time word
   # (one register higher) leaves those bits reserved. All of it is holding
-  # registers, so the windows can be set from Home Assistant.
+  # registers, so the windows can be set from Home Assistant. The device only
+  # takes one of the pair's words when its partner is rewritten with it, so a
+  # mode or enable change also rewrites the paired end time register in the
+  # same request, keeping its current value.
   period1_mode:
     name: Period 1 Mode
     address: 3038
+    write_with: 3039
     control: select
     bits: 2
     shift_bits: 13
@@ -131,12 +135,14 @@ read_write_word:
   period1_enable:
     name: Period 1 Enable
     address: 3038
+    write_with: 3039
     control: switch
     bits: 1
     shift_bits: 15
   period2_mode:
     name: Period 2 Mode
     address: 3040
+    write_with: 3041
     control: select
     bits: 2
     shift_bits: 13
@@ -147,12 +153,14 @@ read_write_word:
   period2_enable:
     name: Period 2 Enable
     address: 3040
+    write_with: 3041
     control: switch
     bits: 1
     shift_bits: 15
   period3_mode:
     name: Period 3 Mode
     address: 3042
+    write_with: 3043
     control: select
     bits: 2
     shift_bits: 13
@@ -163,12 +171,14 @@ read_write_word:
   period3_enable:
     name: Period 3 Enable
     address: 3042
+    write_with: 3043
     control: switch
     bits: 1
     shift_bits: 15
   period4_mode:
     name: Period 4 Mode
     address: 3044
+    write_with: 3045
     control: select
     bits: 2
     shift_bits: 13
@@ -179,12 +189,14 @@ read_write_word:
   period4_enable:
     name: Period 4 Enable
     address: 3044
+    write_with: 3045
     control: switch
     bits: 1
     shift_bits: 15
   period5_mode:
     name: Period 5 Mode
     address: 3050
+    write_with: 3051
     control: select
     bits: 2
     shift_bits: 13
@@ -195,12 +207,14 @@ read_write_word:
   period5_enable:
     name: Period 5 Enable
     address: 3050
+    write_with: 3051
     control: switch
     bits: 1
     shift_bits: 15
   period6_mode:
     name: Period 6 Mode
     address: 3052
+    write_with: 3053
     control: select
     bits: 2
     shift_bits: 13
@@ -211,12 +225,14 @@ read_write_word:
   period6_enable:
     name: Period 6 Enable
     address: 3052
+    write_with: 3053
     control: switch
     bits: 1
     shift_bits: 15
   period7_mode:
     name: Period 7 Mode
     address: 3054
+    write_with: 3055
     control: select
     bits: 2
     shift_bits: 13
@@ -227,12 +243,14 @@ read_write_word:
   period7_enable:
     name: Period 7 Enable
     address: 3054
+    write_with: 3055
     control: switch
     bits: 1
     shift_bits: 15
   period8_mode:
     name: Period 8 Mode
     address: 3056
+    write_with: 3057
     control: select
     bits: 2
     shift_bits: 13
@@ -243,12 +261,14 @@ read_write_word:
   period8_enable:
     name: Period 8 Enable
     address: 3056
+    write_with: 3057
     control: switch
     bits: 1
     shift_bits: 15
   period9_mode:
     name: Period 9 Mode
     address: 3058
+    write_with: 3059
     control: select
     bits: 2
     shift_bits: 13
@@ -259,6 +279,7 @@ read_write_word:
   period9_enable:
     name: Period 9 Enable
     address: 3058
+    write_with: 3059
     control: switch
     bits: 1
     shift_bits: 15

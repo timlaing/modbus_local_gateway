@@ -271,6 +271,10 @@ def test_growatt_period_windows_match_the_protocol(fname: str) -> None:
         assert isinstance(end, ModbusCompositeEntityDescription)
         assert start.write_with == (end_address,)
         assert end.write_with == (start_address,)
+        # the same goes for the mode and the enable on the start-time register:
+        # they declare the end-time register too, or their write would be dropped
+        assert mode.write_with == (end_address,)
+        assert enable.write_with == (end_address,)
 
 
 @pytest.mark.parametrize("fname", GROWATT_CONFIGS)

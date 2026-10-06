@@ -1,6 +1,7 @@
 """Device info Tests"""
 # pylint: disable=unexpected-keyword-arg, protected-access
 
+import contextlib
 from unittest.mock import patch
 
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
@@ -487,3 +488,100 @@ async def test_devices_power_entities_are_measurements(hass: HomeAssistant) -> N
     ]
 
     assert not offenders, f"power entities declared as totals: {offenders}"
+
+
+def _load_write_with(
+    section: str,
+    entities: dict[str, dict[str, object]],
+    caplog: pytest.LogCaptureFixture | None = None,
+) -> list[modbus_device_info.DESCRIPTION_TYPE]:
+    """Build a one-section device config and return its descriptions."""
+    _config = {
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "read_write_word": {},
+        "read_only_word": {},
+        "read_write_boolean": {},
+        "read_only_boolean": {},
+        section: entities,
+    }
+    context = contextlib.nullcontext() if caplog is None else caplog.at_level("WARNING")
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.entity_management."
+            "modbus_device_info.load_yaml",
+            return_value=_config,
+        ),
+        context,
+    ):
+        device = modbus_device_info.ModbusDeviceInfo("test.yaml")
+        return list(device.entity_descriptions)
+
+
+def test_entity_create_with_write_with() -> None:
+    """A holding entity can declare a partner register to rewrite with it."""
+    descriptions = _load_write_with(
+        "read_write_word",
+        {
+            "enable": {
+                "name": "Enable",
+                "address": 3038,
+                "control": "switch",
+                "write_with": 3039,
+            },
+            "mode": {
+                "name": "Mode",
+                "address": 3040,
+                "control": "select",
+                "write_with": [3041],
+                "options": {0: "Load", 1: "Battery", 2: "Grid"},
+            },
+        },
+    )
+    enable = next(desc for desc in descriptions if desc.key == "enable")
+    mode = next(desc for desc in descriptions if desc.key == "mode")
+    assert enable.write_with == (3039,)
+    assert enable.write_span == (3038, 3039)
+    assert mode.write_with == (3041,)
+    assert mode.write_span == (3040, 3041)
+
+
+@pytest.mark.parametrize(
+    ("section", "entity", "expected_log"),
+    [
+        (
+            "read_write_word",
+            {"name": "Sensor", "address": 1, "write_with": 2},
+            "has nothing to write",
+        ),
+        (
+            "read_write_boolean",
+            {"name": "Coil Switch", "address": 1, "control": "switch", "write_with": 2},
+            "only works on holding registers",
+        ),
+        (
+            "read_write_word",
+            {"name": "Self", "address": 1, "control": "switch", "write_with": 1},
+            "already the entity's own",
+        ),
+        (
+            "read_write_word",
+            {"name": "Gap", "address": 1, "control": "switch", "write_with": 3},
+            "would also rewrite registers 2",
+        ),
+        (
+            "read_write_word",
+            {"name": "Bad", "address": 1, "control": "switch", "write_with": "x"},
+            "must be a register address or a list",
+        ),
+    ],
+)
+def test_entity_invalid_write_with(
+    section: str,
+    entity: dict[str, object],
+    expected_log: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A misconfigured write_with drops the entity instead of puzzling a write."""
+    descriptions = _load_write_with(section, {"test": entity}, caplog)
+    assert not descriptions
+    assert expected_log in caplog.text

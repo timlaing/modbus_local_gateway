@@ -178,6 +178,38 @@ For all entity definitions:
       ```yaml
       unavailable_values: [255, 0]
       ```
+  - `write_with` (optional): One register address or a list of them, declaring
+    registers that must be **rewritten together with this entity's own registers**, in the same
+    FC `0x10` request, because the device ignores a write that does not include
+    the whole pair. Often the pair is a window's two words, where the mode and
+    enable bits live in the start word: setting the mode or the enable flag then
+    rewrites the end time word too, keeping its value. The whole span — this
+    entity's registers and the declared ones — is read first and the value is
+    merged into it. Only `control: number`, `control: select` and
+    `control: switch` entities may name (holding) partners - a sensor, a coil or
+    a read-only register has nothing to rewrite the pair with, and an entity
+    that would drag unrelated gap registers into the write is rejected with a
+    warning instead of created.
+    - E.g.
+      ```yaml
+      period1_enable:
+        address: 3038
+        bits: 1
+        shift_bits: 15
+        control: switch
+        write_with: 3039
+
+      period1_mode:
+        address: 3038
+        bits: 2
+        shift_bits: 13
+        control: select
+        write_with: 3039
+        options:
+          0: Load
+          1: Battery
+          2: Grid
+      ```
 
 ### Coil Properties (`read_write_boolean`, `read_only_boolean`)
 
