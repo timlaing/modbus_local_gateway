@@ -3,8 +3,13 @@ name: Sync prek dependencies
 # Dependabot only bumps the requirements files; it never runs
 # scripts/sync_prek_deps.py, so the generated blocks in
 # .pre-commit-config.yaml go stale and the check-prek-deps hook fails the
-# prek job. This regenerates them on the Dependabot branch so the checks
-# can pass unattended.
+# prek job. This regenerates them on the Dependabot branch.
+#
+# The push authenticates with PR_SYNC_TOKEN rather than GITHUB_TOKEN,
+# because a push made with GITHUB_TOKEN leaves the re-triggered
+# pull_request runs in an approval-required state, so the required checks
+# would never report unattended. Set PR_SYNC_TOKEN as a Dependabot secret,
+# and as an Actions secret too so the follow-up run can read it.
 #
 # yamllint disable-line rule:truthy
 on:
@@ -14,7 +19,7 @@ on:
       - "requirements*.txt"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: sync-prek-deps-${{ github.event.pull_request.number }}
@@ -29,6 +34,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.PR_SYNC_TOKEN || github.token }}
           persist-credentials: true
 
       - uses: actions/setup-python@v7
@@ -41,10 +47,15 @@ jobs:
       - name: Commit and push
         env:
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_SYNC_TOKEN: ${{ secrets.PR_SYNC_TOKEN }}
         run: |
           if git diff --quiet -- .pre-commit-config.yaml; then
             echo "prek dependencies are already in sync"
             exit 0
+          fi
+          if [ -z "${PR_SYNC_TOKEN}" ]; then
+            echo "::error::PR_SYNC_TOKEN is not set, so the sync commit cannot be pushed with a credential that re-triggers the required checks"
+            exit 1
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
