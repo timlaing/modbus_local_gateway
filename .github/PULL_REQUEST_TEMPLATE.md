@@ -51,8 +51,9 @@
 
 <!-- Check the boxes that apply. -->
 
-- [ ] Updated the README "Creating YAML Device Configurations" section (if the schema changed)
-- [ ] Updated the README "Supported Devices" tested-slaves list (if adding a device)
+- [ ] Updated `YAML_DEVICE_CONFIGURATIONS.md` (if the schema changed)
+- [ ] Added the device to `SUPPORTED_DEVICES.md` (if adding a device configuration)
+- [ ] Updated the README "Tested Devices" list (if the maintainer has tested it)
 - [ ] Updated `CONTRIBUTING.md` / other docs if the change affects them
 
 ## Verification
