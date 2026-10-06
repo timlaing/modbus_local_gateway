@@ -558,6 +558,15 @@ def test_composite_entity_write_with_keeps_span() -> None:
             },
             "write_with cannot combine with write_function single",
         ),
+        # write_with that would drag gap registers into the write span
+        (
+            {
+                "type": "time",
+                "write_with": 3038,
+                "fields": {"hour": {"address": 3040}, "minute": {"address": 3041}},
+            },
+            "would also rewrite registers",
+        ),
         # a key that no field understands
         (
             {

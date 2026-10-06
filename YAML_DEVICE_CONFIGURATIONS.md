@@ -265,9 +265,12 @@ composite:
   the whole pair - e.g. a window time whose start and end registers the
   hardware only applies as a pair. The declared registers keep whatever value
   the device holds: the whole span, fields and declared registers, is read
-  first and the fields are merged into it. `write_with` is rejected with
-  `write_function: single`, which would separate the pair again, and must not
-  name a register the composite already writes.
+  first and the fields are merged into it. Every register between the first
+  and last of the span must be a field or a declared register - a `write_with`
+  that would drag unrelated gap registers into the write is rejected with a
+  warning. `write_with` is rejected with `write_function: single`, which would
+  separate the pair again, and must not name a register the composite already
+  writes.
 - The entity-level options of any other entity work here too: `scan_interval`,
   `icon`, `entity_category` and `entity_registry_enabled_default`.
 - A field may claim **part of a register** with `bits` / `shift_bits`, which is

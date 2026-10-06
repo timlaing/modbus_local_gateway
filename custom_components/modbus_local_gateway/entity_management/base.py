@@ -729,6 +729,22 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
                     address,
                 )
                 return False
+        start, end = self.write_span
+        covered = field_registers | set(self.write_with)
+        gaps = [
+            register for register in range(start, end + 1) if register not in covered
+        ]
+        if gaps:
+            _LOGGER.warning(
+                "Unable to create entity for %s: write_with span %d-%d would "
+                "also rewrite registers %s, which are neither fields nor "
+                "declared in write_with",
+                self.key,
+                start,
+                end,
+                ", ".join(str(register) for register in gaps),
+            )
+            return False
         return True
 
 
