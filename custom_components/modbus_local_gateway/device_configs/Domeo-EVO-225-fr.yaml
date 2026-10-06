@@ -38,7 +38,7 @@ read_only_boolean:
     name: "statut CLP(10009)"
     address: 8
   type_controle:
-    name: "Type de contôle(10010)"
+    name: "Type de contrôle(10010)"
     address: 9
   filtre_sale:
     name: "Filtre sale(10011)"
@@ -203,7 +203,6 @@ read_write_word:
       6: "9600 bit/s"
       8: "19200 bit/s"
       10: "38400 bit/s"
-    device_class: data_rate
     entity_category: diagnostic
 
   modbus_parite:
