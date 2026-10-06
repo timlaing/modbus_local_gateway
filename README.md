@@ -546,7 +546,7 @@ See `custom_components/modbus_local_gateway/device_configs/` for more examples.
 Tested with a [WaveShare Wi-Fi to RS485 Gateway](https://www.waveshare.com/rs485-to-wifi-eth.htm) in Modbus TCP to RTU mode:
 
 - **Settings**: Baud Rate: 9600, Data Bits: 8, Parity: None, Stop Bits: 1, Baudrate Adaptive: Disable, UART AutoFrame: Disable, Modbus Polling: Off, Network A TCP Time out: 5, Network A MAX TCP Num: 24.
-- **Tested Slaves**: Eastron SDM230/SDM630, Finder 7M.38/7M.24, Growatt MIN-6000-TL-XH/MOD-6000-TL-X/MIC-2500-TL-X.
+- **Tested Slaves**: Eastron SDM230/SDM630, Finder 7M.38/7M.24, Growatt MIN-6000-TL-XH/MOD-6000-TL-X/MIC-2500-TL-X, Soler & Palau Domeo EVO 225/315 RD.
 
 Firmware variations may affect compatibility.
 
