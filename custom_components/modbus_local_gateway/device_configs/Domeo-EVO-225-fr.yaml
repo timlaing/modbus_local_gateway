@@ -135,6 +135,7 @@ read_only_word:
   t_air_extrait:
     name: "T air extrait(30011)"
     address: 10
+    signed: true
     multiplier: 0.1
     unit_of_measurement: "°C"
     device_class: temperature
@@ -143,6 +144,7 @@ read_only_word:
   t_air_rejete:
     name: "T air rejeté(30012)"
     address: 11
+    signed: true
     multiplier: 0.1
     unit_of_measurement: "°C"
     device_class: temperature
@@ -151,6 +153,7 @@ read_only_word:
   t_air_exterieur:
     name: "T air extérieur(30013)"
     address: 12
+    signed: true
     multiplier: 0.1
     unit_of_measurement: "°C"
     device_class: temperature
@@ -159,6 +162,7 @@ read_only_word:
   t_air_souffle:
     name: "T air soufflé(30014)"
     address: 13
+    signed: true
     multiplier: 0.1
     unit_of_measurement: "°C"
     device_class: temperature
@@ -215,6 +219,7 @@ read_write_word:
   debit_correction:
     name: "débit correction(40005)"
     address: 4
+    signed: true
     control: number
     number:
       min: -15.0
@@ -225,6 +230,7 @@ read_write_word:
   debit_decalage:
     name: "débit décalage(40006)"
     address: 5
+    signed: true
     control: number
     number:
       min: -15.0
