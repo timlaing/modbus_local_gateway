@@ -66,6 +66,7 @@ from .const import (
     UOM,
     UOM_MAPPING,
     WRITE_FUNCTION,
+    WRITE_WITH,
     CompositeType,
     ControlType,
     ModbusDataType,
@@ -352,6 +353,10 @@ class ModbusDeviceInfo:
                 )
                 return None
 
+        write_with = self._composite_write_with(entity, data)
+        if write_with is None:
+            return None
+
         addresses: list[int] = [field.address for field in fields]
         params: dict[str, Any] = {
             key: data[key] for key in ENTITY_KEYS if data.get(key) is not None
@@ -365,6 +370,7 @@ class ModbusDeviceInfo:
             "control_type": composite_type.control_type,
             "composite_type": composite_type,
             "fields": fields,
+            "write_with": write_with,
             # The span covers every field, so the entity reads as one value
             # and the gaps between non-adjacent fields are not addressed.
             "register_address": min(addresses),
@@ -380,6 +386,39 @@ class ModbusDeviceInfo:
             ),
         )
         return composite_desc
+
+    def _composite_write_with(
+        self, entity: str, data: dict[str, Any]
+    ) -> tuple[int, ...] | None:
+        """Read the registers that must be rewritten with the composite.
+
+        A device may require a pair of registers to be written in the same
+        request, e.g. a window's start and end times. `write_with` lists the
+        partner register(s), which keep their current value and are written
+        along with the fields, so the two go to the device together.
+        """
+        write_with = data.get(WRITE_WITH)
+        if write_with is None:
+            return ()
+        if isinstance(write_with, int) and not isinstance(write_with, bool):
+            write_with = [write_with]
+        if (
+            not isinstance(write_with, (list, tuple))
+            or not write_with
+            or any(
+                not isinstance(address, int) or isinstance(address, bool)
+                for address in write_with
+            )
+        ):
+            _LOGGER.warning(
+                "Unable to create entity for %s: %s must be a register "
+                "address or a list of register addresses, got %s",
+                entity,
+                WRITE_WITH,
+                data[WRITE_WITH],
+            )
+            return None
+        return tuple(write_with)
 
     def _composite_type(
         self, entity: str, data: dict[str, Any]

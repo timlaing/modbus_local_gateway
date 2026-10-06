@@ -13,6 +13,7 @@ custom integrations. Pre-releases are not listed here.
 
 ### Added
 
+- **A Growatt ToU window's time can be set again**: the `MIN 6000TL-XH`, `MOD-6000TL-X` and `MOD-10KTL3-XH` only apply a window's start and end times when both registers are written together, in one request, so editing the start or the end of a period seemed to do nothing - the device ignored the single-register write. A new composite option, `write_with`, declares registers that must be rewritten together with the fields, keeping their current value, and the three configs give each of the 18 period times its partner register. The window's mode and enable bits still share the start register and survive the write, unchanged.
 - **Soler & Palau Domeo EVO 225 & 315 RD** (French variant): a 54-entity configuration for the mechanical ventilation unit, contributed from the file its owner built and runs on their own installation. The coils and discrete inputs carry the fault and status bits, the holding registers the commissioning parameters - Modbus id, baud rate and parity, flow limits, alarm and defrost timings - and the input registers the measurements: flow, the four air temperatures, humidity, voltages and motor state. The two flow corrections span -15 to +15 and each air temperature is a single register, so all six are declared signed: without that a negative write raised a struct error and a below-freezing reading came back in the thousands.
 
 ### Fixed

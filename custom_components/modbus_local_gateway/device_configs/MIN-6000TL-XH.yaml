@@ -770,8 +770,11 @@ composite:
         address: 50
   # Time-of-use windows 1-9: minute in bits 0-7 and hour in bits 8-12 of one
   # holding register, read and written without disturbing the mode and enable
-  # bits that share the start time register.
+  # bits that share the start time register. The device will only take a
+  # window time if its start and end registers are written together, so each
+  # entity also rewrites the paired register, keeping its current value.
   period1_start:
+    write_with: 3039
     name: Period 1 Start Time
     type: time
     data_type: read_write_word
@@ -785,6 +788,7 @@ composite:
         bits: 5
         shift_bits: 8
   period1_end:
+    write_with: 3038
     name: Period 1 End Time
     type: time
     data_type: read_write_word
@@ -798,6 +802,7 @@ composite:
         bits: 5
         shift_bits: 8
   period2_start:
+    write_with: 3041
     name: Period 2 Start Time
     type: time
     data_type: read_write_word
@@ -811,6 +816,7 @@ composite:
         bits: 5
         shift_bits: 8
   period2_end:
+    write_with: 3040
     name: Period 2 End Time
     type: time
     data_type: read_write_word
@@ -824,6 +830,7 @@ composite:
         bits: 5
         shift_bits: 8
   period3_start:
+    write_with: 3043
     name: Period 3 Start Time
     type: time
     data_type: read_write_word
@@ -837,6 +844,7 @@ composite:
         bits: 5
         shift_bits: 8
   period3_end:
+    write_with: 3042
     name: Period 3 End Time
     type: time
     data_type: read_write_word
@@ -850,6 +858,7 @@ composite:
         bits: 5
         shift_bits: 8
   period4_start:
+    write_with: 3045
     name: Period 4 Start Time
     type: time
     data_type: read_write_word
@@ -863,6 +872,7 @@ composite:
         bits: 5
         shift_bits: 8
   period4_end:
+    write_with: 3044
     name: Period 4 End Time
     type: time
     data_type: read_write_word
@@ -876,6 +886,7 @@ composite:
         bits: 5
         shift_bits: 8
   period5_start:
+    write_with: 3051
     name: Period 5 Start Time
     type: time
     data_type: read_write_word
@@ -889,6 +900,7 @@ composite:
         bits: 5
         shift_bits: 8
   period5_end:
+    write_with: 3050
     name: Period 5 End Time
     type: time
     data_type: read_write_word
@@ -902,6 +914,7 @@ composite:
         bits: 5
         shift_bits: 8
   period6_start:
+    write_with: 3053
     name: Period 6 Start Time
     type: time
     data_type: read_write_word
@@ -915,6 +928,7 @@ composite:
         bits: 5
         shift_bits: 8
   period6_end:
+    write_with: 3052
     name: Period 6 End Time
     type: time
     data_type: read_write_word
@@ -928,6 +942,7 @@ composite:
         bits: 5
         shift_bits: 8
   period7_start:
+    write_with: 3055
     name: Period 7 Start Time
     type: time
     data_type: read_write_word
@@ -941,6 +956,7 @@ composite:
         bits: 5
         shift_bits: 8
   period7_end:
+    write_with: 3054
     name: Period 7 End Time
     type: time
     data_type: read_write_word
@@ -954,6 +970,7 @@ composite:
         bits: 5
         shift_bits: 8
   period8_start:
+    write_with: 3057
     name: Period 8 Start Time
     type: time
     data_type: read_write_word
@@ -967,6 +984,7 @@ composite:
         bits: 5
         shift_bits: 8
   period8_end:
+    write_with: 3056
     name: Period 8 End Time
     type: time
     data_type: read_write_word
@@ -980,6 +998,7 @@ composite:
         bits: 5
         shift_bits: 8
   period9_start:
+    write_with: 3059
     name: Period 9 Start Time
     type: time
     data_type: read_write_word
@@ -993,6 +1012,7 @@ composite:
         bits: 5
         shift_bits: 8
   period9_end:
+    write_with: 3058
     name: Period 9 End Time
     type: time
     data_type: read_write_word

@@ -259,6 +259,18 @@ composite:
   with FC `0x10` unless this says `single`, whatever the connection is set to;
   the connection's own `write_function` decides only for a run of one register.
   Absent, nothing changes, so every other device config is unaffected.
+- `write_with` (optional): One register address or a list of them, declaring
+  registers that must be **rewritten together with the fields**, in the same
+  FC `0x10` request, because the device ignores a write that does not include
+  the whole pair - e.g. a window time whose start and end registers the
+  hardware only applies as a pair. The declared registers keep whatever value
+  the device holds: the whole span, fields and declared registers, is read
+  first and the fields are merged into it. Every register between the first
+  and last of the span must be a field or a declared register - a `write_with`
+  that would drag unrelated gap registers into the write is rejected with a
+  warning. `write_with` is rejected with `write_function: single`, which would
+  separate the pair again, and must not name a register the composite already
+  writes.
 - The entity-level options of any other entity work here too: `scan_interval`,
   `icon`, `entity_category` and `entity_registry_enabled_default`.
 - A field may claim **part of a register** with `bits` / `shift_bits`, which is

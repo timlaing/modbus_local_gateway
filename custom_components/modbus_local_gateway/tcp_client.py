@@ -678,8 +678,13 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         _LOGGER.debug("All individual writes successful using fallback")
         return result
 
-    async def _read_current_registers(self, entity: ModbusContext) -> list[int]:
-        """Read the register(s) backing a bit field, for a read-modify-write.
+    async def _read_current_registers(
+        self,
+        entity: ModbusContext,
+        address: int | None = None,
+        count: int | None = None,
+    ) -> list[int]:
+        """Read the register(s) backing an entity, for a read-modify-write.
 
         Must be called with the client lock held, so the read and the write it
         feeds cannot be interleaved with a poll.
@@ -688,11 +693,17 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         chunks: a field split across two reads could tear if the device changed
         in between. A failed read raises, abandoning the write - merging onto a
         guess would clear the field's neighbours.
+
+        `address`/`count` default to the entity's own span; a composite with
+        `write_with` passes the wider span its write rewrites.
         """
-        span_read_count: int = entity.desc.register_count or 1
+        read_address: int = entity.desc.register_address if address is None else address
+        span_read_count: int = (
+            entity.desc.register_count or 1 if count is None else count
+        )
         response: ModbusPDU | None = await self.read_data(
             func=self.read_holding_registers,
-            address=entity.desc.register_address,
+            address=read_address,
             count=span_read_count,
             device_id=entity.device_id,
             max_read_size=span_read_count,
@@ -700,7 +711,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         if response is None or response.isError():
             raise ModbusClientError(
                 "Unable to read current value of "
-                f"{entity.desc.key} at {entity.desc.register_address} - "
+                f"{entity.desc.key} at {read_address} - "
                 "aborting bit field write"
             )
         return response.registers
@@ -733,45 +744,79 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
 
         field_values: dict[str, Any] = CompositeConversion.to_field_values(desc, value)
         conversion: Conversion = Conversion(type(self))
-        current: list[int] | None = None
-        if any(field.is_bitfield for field in desc.fields):
-            # A field that claims part of a register has to be merged into what
-            # the device holds, or the bits it does not describe - a mode, an
-            # enable, reserved bits - would be zeroed by the write. The whole
-            # span is read once, in one transaction, inside `self.lock`.
-            current = await self._read_current_registers(entity)
         pdu: ModbusPDU | None = None
-        for run in desc.runs:
-            registers: list[int] = self._run_registers(
-                desc, run, field_values, conversion, current
+        if desc.write_with:
+            # A device may want the paired register rewritten together with the
+            # field, e.g. a window's start and end in one request. The whole
+            # write span - fields and the declared registers - is seeded from
+            # the current values, so the partner keeps its value while the
+            # field is merged into it, then written as one block.
+            write_start, write_end = desc.write_span
+            current: list[int] | None = await self._read_current_registers(
+                entity, write_start, write_end - write_start + 1
+            )
+            registers: list[int] = self._span_registers(
+                desc,
+                write_start,
+                write_end,
+                field_values,
+                conversion,
+                current,
             )
             _LOGGER.debug(
-                "Writing composite %s run %s to address %d",
+                "Writing composite %s to registers %d-%d",
                 desc.key,
-                ", ".join(field.key for field in run),
-                run[0].address,
+                write_start,
+                write_end,
             )
-            run_pdu: ModbusPDU | None = await self._write_run_registers(
-                address=run[0].address,
+            pdu = await self._write_run_registers(
+                address=write_start,
                 values=registers,
                 device_id=entity.device_id,
                 write_function=write_function,
                 declared=desc.write_function,
             )
-            if run_pdu is None:
-                raise ModbusClientError(
-                    f"No response writing composite {desc.key} to registers "
-                    f"{run[0].address}-{run[-1].end_address}"
+        else:
+            current = None
+            if any(field.is_bitfield for field in desc.fields):
+                # A field that claims part of a register has to be merged into
+                # what the device holds, or the bits it does not describe - a
+                # mode, an enable, reserved bits - would be zeroed by the
+                # write. The whole span is read once, in one transaction,
+                # inside `self.lock`.
+                current = await self._read_current_registers(entity)
+            for run in desc.runs:
+                registers = self._run_registers(
+                    desc, run, field_values, conversion, current
                 )
-            if run_pdu.isError():
-                raise ModbusClientError(
-                    f"Error writing {desc.key} to registers "
-                    f"{run[0].address}-{run[-1].end_address}: {run_pdu}"
+                _LOGGER.debug(
+                    "Writing composite %s run %s to address %d",
+                    desc.key,
+                    ", ".join(field.key for field in run),
+                    run[0].address,
                 )
-            pdu = run_pdu
+                pdu = await self._write_run_registers(
+                    address=run[0].address,
+                    values=registers,
+                    device_id=entity.device_id,
+                    write_function=write_function,
+                    declared=desc.write_function,
+                )
+                if pdu is None:
+                    raise ModbusClientError(
+                        f"No response writing composite {desc.key} to registers "
+                        f"{run[0].address}-{run[-1].end_address}"
+                    )
+                if pdu.isError():
+                    raise ModbusClientError(
+                        f"Error writing {desc.key} to registers "
+                        f"{run[0].address}-{run[-1].end_address}: {pdu}"
+                    )
 
         if pdu is None:
             raise ModbusClientError(f"Composite {desc.key} declares no fields")
+        if pdu.isError():
+            raise ModbusClientError(f"Error writing {desc.key}: {pdu}")
         return pdu
 
     async def _write_run_registers(
@@ -842,6 +887,51 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 desc.data_type
             )
             offset: int = field.address - run[0].address
+            count: int = max(1, field.size)
+            if field.is_bitfield:
+                if current is None:
+                    raise ModbusClientError(
+                        f"Composite {desc.key} field {field.key} is a bit field "
+                        "but no current registers were read"
+                    )
+                registers[offset : offset + count] = conversion.merge_into_registers(
+                    field_desc,
+                    field_values[field.key],
+                    registers[offset : offset + count],
+                )
+            else:
+                registers[offset : offset + count] = field.apply_write_offset(
+                    conversion.convert_to_registers(field_desc, field_values[field.key])
+                )
+        return registers
+
+    def _span_registers(
+        self,
+        desc: ModbusCompositeEntityDescription,
+        span_start: int,
+        span_end: int,
+        field_values: dict[str, Any],
+        conversion: Conversion,
+        current: list[int] | None,
+    ) -> list[int]:
+        """Turn the whole write span into the registers to write for it.
+
+        `write_with` registers are not fields, so they start from `current` -
+        the read that also feeds the bit field merges - and keep whatever the
+        device holds. Fields are placed at their own offset inside the span,
+        which may start one or more registers before the first field: a pair
+        is then written together as one request whose first register is the
+        partner the device wants rewritten too.
+        """
+        length: int = span_end - span_start + 1
+        registers: list[int] = (
+            list(current[:length]) if current is not None else [0] * length
+        )
+        for field in desc.fields:
+            field_desc: ModbusEntityDescription = field.as_entity_description(
+                desc.data_type
+            )
+            offset: int = field.address - span_start
             count: int = max(1, field.size)
             if field.is_bitfield:
                 if current is None:
