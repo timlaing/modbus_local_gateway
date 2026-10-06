@@ -9,6 +9,22 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.3] - 2026-10-06
+
+### Fixed
+
+- **A Growatt ToU window's mode and enable bits can be changed again**: the
+  `MIN 6000TL-XH`, `MOD-6000TL-X` and `MOD-10KTL3-XH` only apply a window's
+  start word when its end word is rewritten with it, in one request, so
+  changing a `periodN_mode` or `periodN_enable` bit had no effect - the device
+  ignored the single-register write. `write_with` now works on plain holding
+  registers too, not just composites: a number, select or switch can declare
+  partner registers that are rewritten with it, keeping their current value,
+  and the three configs give each of the 18 mode and enable bits its end-time
+  partner. A refusal is surfaced as a write error instead of being retried as
+  single-register writes the device would drop, and a misconfigured `write_with`
+  is rejected at setup.
+
 ## [v2026.10.2] - 2026-10-06
 
 ### Added
