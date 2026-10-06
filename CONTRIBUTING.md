@@ -84,7 +84,7 @@ The test and analysis tools (and their exact versions) are pinned in `requiremen
 
 ## Adding a New Device Configuration
 
-See the README's [Creating YAML Device Configurations](README.md#creating-yaml-device-configurations) section for the full reference. In short:
+See [Creating YAML Device Configurations](YAML_DEVICE_CONFIGURATIONS.md) for the full reference. In short:
 
 1. Create a YAML file for the device in `custom_components/modbus_local_gateway/device_configs/`. Name it after the model (e.g. `SDM230.yaml`).
 2. Keep it minimal — only include registers/coils that are useful.
