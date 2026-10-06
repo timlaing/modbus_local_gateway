@@ -58,6 +58,7 @@
     "coveragerc",
     "desync",
     "desynced",
+    "domeo",
     "fröling",
     "hacc",
     "hacs",
@@ -75,6 +76,7 @@
     "pytype",
     "pyupgrade",
     "salda",
+    "soler",
     "sonarqube",
     "unqueue",
     "unsub"

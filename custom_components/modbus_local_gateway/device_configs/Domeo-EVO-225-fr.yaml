@@ -177,7 +177,7 @@ read_only_word:
       2: "fermé(2)"
 
   etat_commande:
-    name: "Etat commande(30022)"
+    name: "État commande(30022)"
     address: 21
     map:
       0: "pas de commande(0)"
@@ -380,7 +380,7 @@ read_write_word:
       max: 24
 
   degivrage_limite:
-    name: "degivrage limite de temperature(40046)"
+    name: "dégivrage limite de température(40046)"
     address: 45
     unit_of_measurement: "°C"
     device_class: temperature
@@ -391,7 +391,7 @@ read_write_word:
     multiplier: 0.1
 
   debit:
-    name: "degivrage debit(40047)"
+    name: "dégivrage débit(40047)"
     address: 46
     unit_of_measurement: "V"
     device_class: voltage
@@ -402,7 +402,7 @@ read_write_word:
     multiplier: 0.1
 
   duree_pre-degivrage:
-    name: "durée pré-degivrage(40048)"
+    name: "durée pré-dégivrage(40048)"
     address: 47
     unit_of_measurement: "min"
     device_class: duration
