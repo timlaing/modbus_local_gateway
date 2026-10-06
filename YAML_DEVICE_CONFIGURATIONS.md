@@ -179,12 +179,12 @@ For all entity definitions:
       unavailable_values: [255, 0]
       ```
   - `write_with` (optional): One register address or a list of them, declaring
-    registers that must be **rewritten together with this entity's**, in the same
+    registers that must be **rewritten together with this entity's own registers**, in the same
     FC `0x10` request, because the device ignores a write that does not include
     the whole pair. Often the pair is a window's two words, where the mode and
     enable bits live in the start word: setting the mode or the enable flag then
-    rewrites the end time word too, keeping its value. The whole span, this
-    entity's registers and the declared ones, is read first and the value is
+    rewrites the end time word too, keeping its value. The whole span — this
+    entity's registers and the declared ones — is read first and the value is
     merged into it. Only `control: number`, `control: select` and
     `control: switch` entities may name (holding) partners - a sensor, a coil or
     a read-only register has nothing to rewrite the pair with, and an entity
