@@ -1,0 +1,425 @@
+device:
+  manufacturer: "Soler&Palau"
+  model: "Domeo EVO 225 & 315 RD(fr)"
+
+read_only_boolean:
+  mode_degivrage:
+    name: "Mode dégivrage(10001)"
+    address: 0
+  moteur_1_erreur:
+    name: "Moteur 1 erreur(10002)"
+    address: 1
+    device_class: problem
+  moteur_2_erreur:
+    name: "Moteur 2 erreur(10003)"
+    address: 2
+    device_class: problem
+  sonde_air_extrait:
+    name: "sonde air extrait(10004)"
+    address: 3
+    device_class: problem
+  sonde_air_rejete:
+    name: "sonde air rejeté(10005)"
+    address: 4
+    device_class: problem
+  sonde_air_exterieur:
+    name: "sonde air extérieur(10006)"
+    address: 5
+    device_class: problem
+  sonde_air_souffle:
+    name: "sonde air soufflé(10007)"
+    address: 6
+    device_class: problem
+  sonde_avant_echangeur:
+    name: "sonde avant échangeur(10008)"
+    address: 7
+    device_class: problem
+  statut_CLP:
+    name: "statut CLP(10009)"
+    address: 8
+  type_controle:
+    name: "Type de contôle(10010)"
+    address: 9
+  filtre_sale:
+    name: "Filtre sale(10011)"
+    address: 10
+read_write_boolean:
+  version_config:
+    name: "version A/B(1)"
+    address: 0
+    control: binary_sensor
+    entity_category: diagnostic
+
+  mode:
+    name: "mode p/a(2)"
+    address: 1
+    control: switch
+
+  clp:
+    name: "CLP(3)"
+    address: 2
+    control: switch
+    entity_category: diagnostic
+
+  mode_vacances:
+    name: "Mode vacances(4)"
+    address: 3
+    control: switch
+
+  by-pass_auto:
+    name: "By-pass auto(5)"
+    address: 4
+    control: switch
+
+  by-pass_manuel:
+    name: "By-pass manuel(6)"
+    address: 5
+    control: switch
+
+  mode_degivrage_interdit:
+    name: "Mode dégivrage interdit(7)"
+    address: 6
+    control: switch
+
+  alarm_reset:
+    name: "Alarm reset(8)"
+    address: 7
+    control: switch
+
+read_only_word:
+  version_appareil:
+    name: "Version appareil(30001)"
+    address: 0
+    entity_category: diagnostic
+
+  version_command:
+    name: "Version command(30002)"
+    address: 1
+    entity_category: diagnostic
+
+  mode_courant:
+    name: "Mode courant(30003)"
+    address: 2
+    map:
+      0: "vitesse constante(0)"
+      1: "mode proportionnel(1)"
+      2: "mode agile(2)"
+      3: "CLP(3)"
+      4: "by-pass(4)"
+      5: "dégivrage(5)"
+
+  debit_actuel:
+    name: "Débit actuel(30004)"
+    address: 3
+    unit_of_measurement: "m³/h"
+    state_class: measurement
+    device_class: volume_flow_rate
+    icon: mdi:fan
+
+  hr:
+    name: "HR(30005)"
+    address: 4
+    unit_of_measurement: "%"
+    state_class: measurement
+    device_class: humidity
+    icon: mdi:water-percent
+
+  tension:
+    name: "tension(30006)"
+    address: 5
+    multiplier: 0.1
+    unit_of_measurement: "V"
+    device_class: voltage
+    state_class: measurement
+
+  t_air_extrait:
+    name: "T air extrait(30011)"
+    address: 10
+    multiplier: 0.1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+
+  t_air_rejete:
+    name: "T air rejeté(30012)"
+    address: 11
+    multiplier: 0.1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+
+  t_air_exterieur:
+    name: "T air extérieur(30013)"
+    address: 12
+    multiplier: 0.1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+
+  t_air_souffle:
+    name: "T air soufflé(30014)"
+    address: 13
+    multiplier: 0.1
+    unit_of_measurement: "°C"
+    device_class: temperature
+    state_class: measurement
+
+  fin_de_course:
+    name: "fin de course(30017)"
+    address: 16
+    map:
+      0: "sans signal(0)"
+      1: "ouvert(1)"
+      2: "fermé(2)"
+
+  etat_commande:
+    name: "Etat commande(30022)"
+    address: 21
+    map:
+      0: "pas de commande(0)"
+      1: "commande filaire(1)"
+      2: "commande radio(2)"
+
+read_write_word:
+  modbus_device:
+    name: "Modbus device(40001)"
+    address: 0
+    control: number
+    number:
+      min: 1
+      max: 247
+    entity_category: diagnostic
+
+  modbus_vitesse:
+    name: "Modbus vitesse(40002)"
+    address: 1
+    control: select
+    options:
+      5: "4800 bit/s"
+      6: "9600 bit/s"
+      8: "19200 bit/s"
+      10: "38400 bit/s"
+    device_class: data_rate
+    entity_category: diagnostic
+
+  modbus_parite:
+    name: "Modbus parité(40003)"
+    address: 2
+    control: select
+    options:
+      0: "none"
+      1: "odd"
+      2: "even"
+    entity_category: diagnostic
+
+  debit_correction:
+    name: "débit correction(40005)"
+    address: 4
+    control: number
+    number:
+      min: -15.0
+      max: 15.0
+    unit_of_measurement: "m³/h"
+    entity_category: diagnostic
+
+  debit_decalage:
+    name: "débit décalage(40006)"
+    address: 5
+    control: number
+    number:
+      min: -15.0
+      max: 15.0
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+
+  debit_faible:
+    name: "débit faible(40007)"
+    address: 6
+    unit_of_measurement: "m³/h"
+    state_class: measurement
+    device_class: volume_flow_rate
+    icon: mdi:fan-minus
+    control: number
+    number:
+      min: 60.0
+      max: 135.0
+
+  debit_haut:
+    name: "débit haut(40008)"
+    address: 7
+    unit_of_measurement: "m³/h"
+    state_class: measurement
+    device_class: volume_flow_rate
+    icon: mdi:fan-plus
+    control: number
+    number:
+      min: 120.0
+      max: 225.0
+
+  debit_freecooling:
+    name: "débit freecooling(40009)"
+    address: 8
+    unit_of_measurement: "m³/h"
+    state_class: measurement
+    device_class: volume_flow_rate
+    icon: mdi:wind-power
+    control: number
+    number:
+      min: 120.0
+      max: 225.0
+
+  debit_consigne:
+    name: "débit consigne(40010)"
+    address: 9
+    control: select
+    options:
+      0: "faible"
+      1: "Boost"
+
+  debit_hr_mini:
+    name: "débit HR mini(40011)"
+    address: 10
+    unit_of_measurement: "m³/h"
+    device_class: volume_flow_rate
+    icon: mdi:wind-power
+    control: number
+    number:
+      min: 60.0
+      max: 135.0
+
+  debit_hr_maxi:
+    name: "débit HR maxi (40017)"
+    address: 16
+    unit_of_measurement: "m³/h"
+    device_class: volume_flow_rate
+    icon: mdi:wind-power
+    control: number
+    number:
+      min: 120.0
+      max: 225.0
+
+  hr_mini:
+    name: "RH mini (40023)"
+    address: 22
+    unit_of_measurement: "%"
+    state_class: measurement
+    device_class: humidity
+    icon: mdi:water-percent
+    control: number
+    number:
+      min: 60
+      max: 89
+
+  hr_maxi:
+    name: "RH maxi (40029)"
+    address: 28
+    unit_of_measurement: "%"
+    state_class: measurement
+    device_class: humidity
+    icon: mdi:water-percent
+    control: number
+    number:
+      min: 60
+      max: 90
+
+  bypass_auto_t21:
+    name: "bypass AUTO T21(40039)"
+    address: 38
+    unit_of_measurement: "°C"
+    device_class: temperature
+    control: number
+    number:
+      min: 11
+      max: 20
+    entity_category: diagnostic
+
+  bypass_auto_t11:
+    name: "bypass AUTO T11(40040)"
+    address: 39
+    unit_of_measurement: "°C"
+    device_class: temperature
+    control: number
+    number:
+      min: 21
+      max: 30
+    entity_category: diagnostic
+
+  derivation_temps_manu:
+    name: "dérivation temps manu(40041)"
+    address: 40
+    unit_of_measurement: "h"
+    device_class: duration
+    control: number
+    number:
+      min: 1
+      max: 24
+
+  duree_derivation_erreur:
+    name: "durée dérivation erreur(40042)"
+    address: 41
+    unit_of_measurement: "s"
+    device_class: duration
+    control: number
+    number:
+      min: 0
+      max: 30
+
+  duree_alarm:
+    name: "durée alarme(40045)"
+    address: 44
+    device_class: duration
+    control: number
+    number:
+      min: 1
+      max: 24
+
+  degivrage_limite:
+    name: "degivrage limite de temperature(40046)"
+    address: 45
+    unit_of_measurement: "°C"
+    device_class: temperature
+    control: number
+    number:
+      min: 0
+      max: 100
+    multiplier: 0.1
+
+  debit:
+    name: "degivrage debit(40047)"
+    address: 46
+    unit_of_measurement: "V"
+    device_class: voltage
+    control: number
+    number:
+      min: 12
+      max: 30
+    multiplier: 0.1
+
+  duree_pre-degivrage:
+    name: "durée pré-degivrage(40048)"
+    address: 47
+    unit_of_measurement: "min"
+    device_class: duration
+    control: number
+    number:
+      min: 0
+      max: 120
+
+  duree_prechauffage:
+    name: "durée préchauffage(40049)"
+    address: 48
+    unit_of_measurement: "min"
+    device_class: duration
+    control: number
+    number:
+      min: 0
+      max: 30
+
+  etat_prechauffage:
+    name: "état préchauffage(40050)"
+    address: 49
+    control: select
+    options:
+      0: "Off"
+      1: "On"
+      2: "Manuel"
