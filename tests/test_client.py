@@ -1604,6 +1604,50 @@ async def test_write_data_with_write_with_incorrect_register_count() -> None:
     cast(Any, client).write_registers.assert_not_called()
 
 
+@pytest.mark.asyncio
+async def test_write_data_with_write_with_refusal_is_not_split() -> None:
+    """A refused paired write must surface, not crumble into FC 0x06 retries.
+
+    The whole point of the pair is that the device only takes both registers in
+    one request, so the individual-write fallback of the plain multiple write
+    must not apply: it would hand the registers to the device one by one, which
+    it drops, and the change would be silently lost.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    error_response = ModbusPDU()
+    cast(Any, error_response).isError = lambda: True
+    write_registers = AsyncMock(return_value=error_response)
+    cast(Any, client).write_registers = write_registers
+    cast(Any, client).write_register = AsyncMock()
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusEntityDescription(
+            key="pair",
+            register_address=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            write_with=(2,),
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "read_data",
+            AsyncMock(return_value=ReadHoldingRegistersResponse(registers=[4, 8])),
+        ),
+        pytest.raises(ModbusClientError, match="Error writing data to pair"),
+    ):
+        await client.write_data(entity, value=6)
+
+    write_registers.assert_awaited_once_with(address=1, values=[6, 8], device_id=1)
+    cast(Any, client).write_register.assert_not_called()
+
+
 def _composite_entity(
     fields: tuple[tuple[str, int], ...] = (
         ("year", 45),

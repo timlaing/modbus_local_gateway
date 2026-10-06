@@ -162,6 +162,14 @@ class ModbusEntityDescription(
                 self.control_type,
             )
             return False
+        if self.data_type != ModbusDataType.HOLDING_REGISTER:
+            _LOGGER.warning(
+                "Unable to create entity for %s: write_with only works on "
+                "holding registers, not a %s",
+                self.key,
+                self.data_type,
+            )
+            return False
         own_registers = set(
             range(
                 self.register_address,
@@ -169,14 +177,6 @@ class ModbusEntityDescription(
             )
         )
         for address in self.write_with:
-            if self.data_type != ModbusDataType.HOLDING_REGISTER:
-                _LOGGER.warning(
-                    "Unable to create entity for %s: write_with cannot be used "
-                    "on register %d, which is read only",
-                    self.key,
-                    address,
-                )
-                return False
             if address in own_registers:
                 _LOGGER.warning(
                     "Unable to create entity for %s: register %d is already "

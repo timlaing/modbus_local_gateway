@@ -982,11 +982,14 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                     f"{count}, got {len(converted)}"
                 )
             registers[offset : offset + count] = converted
-            return await self._custom_write_registers(
+            # Straight FC 0x10 rather than _custom_write_registers: the block
+            # must stay together, so a refusal must surface as an error PDU
+            # instead of falling back to individual FC 0x06 writes, which the
+            # device would drop one more time.
+            return await self.write_registers(
                 address=span_start,
                 values=registers,
                 device_id=entity.device_id,
-                write_function=write_function,
             )
 
         if entity.desc.conv_bits or entity.desc.conv_shift_bits:

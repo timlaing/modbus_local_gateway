@@ -556,7 +556,7 @@ def test_entity_create_with_write_with() -> None:
         (
             "read_write_boolean",
             {"name": "Coil Switch", "address": 1, "control": "switch", "write_with": 2},
-            "read only",
+            "only works on holding registers",
         ),
         (
             "read_write_word",
