@@ -1560,6 +1560,50 @@ async def test_write_data_with_write_with_whole_register() -> None:
     )
 
 
+@pytest.mark.asyncio
+async def test_write_data_with_write_with_incorrect_register_count() -> None:
+    """A conversion that returns the wrong width cannot shift the partner.
+
+    The pair is written as one block, so a value that does not line up with
+    the entity's own registers would push the partner's value into the wrong
+    slot instead of failing cleanly.
+    """
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusEntityDescription(
+            key="wide",
+            register_address=1,
+            register_count=2,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            write_with=(4,),
+        ),
+    )
+
+    with (
+        patch.object(
+            AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+        ),
+        patch.object(
+            AsyncModbusTcpClientGateway,
+            "read_data",
+            AsyncMock(
+                return_value=ReadHoldingRegistersResponse(registers=[0, 0, 0, 0])
+            ),
+        ),
+        patch.object(Conversion, "convert_to_registers", return_value=[123]),
+        pytest.raises(
+            ModbusException, match="Incorrect number of registers: expected 2, got 1"
+        ),
+    ):
+        await client.write_data(entity, value=789)
+
+    cast(Any, client).write_registers.assert_not_called()
+
+
 def _composite_entity(
     fields: tuple[tuple[str, int], ...] = (
         ("year", 45),

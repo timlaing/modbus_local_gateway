@@ -971,13 +971,17 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             offset = entity.desc.register_address - span_start
             count = entity.desc.register_count or 1
             if entity.desc.conv_bits or entity.desc.conv_shift_bits:
-                registers[offset : offset + count] = conversion.merge_into_registers(
+                converted = conversion.merge_into_registers(
                     entity.desc, value, registers[offset : offset + count]
                 )
             else:
-                registers[offset : offset + count] = conversion.convert_to_registers(
-                    entity.desc, value
+                converted = conversion.convert_to_registers(entity.desc, value)
+            if len(converted) != count:
+                raise ModbusClientError(
+                    "Incorrect number of registers: expected "
+                    f"{count}, got {len(converted)}"
                 )
+            registers[offset : offset + count] = converted
             return await self._custom_write_registers(
                 address=span_start,
                 values=registers,
