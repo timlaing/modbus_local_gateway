@@ -372,6 +372,7 @@ read_write_word:
   duree_alarm:
     name: "durée alarme(40045)"
     address: 44
+    unit_of_measurement: "h"
     device_class: duration
     control: number
     number:
