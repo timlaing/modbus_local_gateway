@@ -281,6 +281,53 @@ def test_composite_entity_write_function() -> None:
     assert desc.write_function == WriteFunction.SINGLE
 
 
+def test_composite_entity_write_with() -> None:
+    """A composite can declare registers to rewrite together with its fields"""
+    desc = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "time",
+                "write_with": 3038,
+                "fields": {"hour": {"address": 3039}, "minute": {"address": 3040}},
+            }
+        },
+    })
+    assert desc.write_with == (3038,)
+
+
+def test_composite_entity_write_with_list() -> None:
+    """write_with accepts a list of register addresses"""
+    desc = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "time",
+                "write_with": [3038, 3041],
+                "fields": {"hour": {"address": 3039}, "minute": {"address": 3040}},
+            }
+        },
+    })
+    assert desc.write_with == (3038, 3041)
+
+
+def test_composite_entity_write_with_keeps_span() -> None:
+    """write_with does not move the entity's own read span"""
+    desc = _load_composite({
+        "device": {"manufacturer": "Manufacturer", "model": "Model"},
+        "composite": {
+            "clock": {
+                "type": "time",
+                "write_with": 3038,
+                "fields": {"hour": {"address": 3039}, "minute": {"address": 3040}},
+            }
+        },
+    })
+    assert desc.register_address == 3039
+    assert desc.register_count == 2
+    assert desc.write_span == (3038, 3040)
+
+
 @pytest.mark.parametrize(
     ("entity", "expected_log"),
     [
@@ -456,6 +503,60 @@ def test_composite_entity_write_function() -> None:
                 "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
             },
             "write_function must be one of single, multiple",
+        ),
+        # a write_with address that is stripped off whatever holds it
+        (
+            {
+                "type": "time",
+                "write_with": "3038",
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "write_with must be a register address",
+        ),
+        (
+            {
+                "type": "time",
+                "write_with": [True],
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "write_with must be a register address",
+        ),
+        (
+            {
+                "type": "time",
+                "write_with": [],
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "write_with must be a register address",
+        ),
+        # a write_with address that is already a field
+        (
+            {
+                "type": "time",
+                "write_with": 1,
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "already a field of the composite",
+        ),
+        # write_with needs registers that can be written
+        (
+            {
+                "type": "time",
+                "write_with": 3038,
+                "data_type": "read_only_word",
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "write_with cannot be used on",
+        ),
+        # write_with defeats write_function single
+        (
+            {
+                "type": "time",
+                "write_with": 3038,
+                "write_function": "single",
+                "fields": {"hour": {"address": 1}, "minute": {"address": 2}},
+            },
+            "write_with cannot combine with write_function single",
         ),
         # a key that no field understands
         (

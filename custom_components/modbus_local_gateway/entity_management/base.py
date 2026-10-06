@@ -567,6 +567,24 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
     composite_type: CompositeType
     fields: tuple[ModbusFieldDescription, ...]
     write_function: WriteFunction | None = None
+    write_with: tuple[int, ...] = ()
+
+    @property
+    def write_span(self) -> tuple[int, int]:
+        """(first, last) register the whole write must cover.
+
+        Without `write_with` this is the span the fields cover. With it, the
+        write must also rewrite the declared registers, and the longest run
+        that spans the fields and those registers is what one write request
+        covers (a device that wants a window's start and end written together
+        refuses a request that only covers the end). The extra registers keep
+        their current values, they are not fields of this entity.
+        """
+        start = min(field.address for field in self.fields)
+        end = max(field.end_address for field in self.fields)
+        if not self.write_with:
+            return start, end
+        return min(start, *self.write_with), max(end, *self.write_with)
 
     @property
     def runs(self) -> tuple[tuple[ModbusFieldDescription, ...], ...]:
@@ -600,6 +618,8 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
         if not self.validate_composite():
             return False
         if not self.validate_field_overlap():
+            return False
+        if not self.validate_write_with():
             return False
         return all(field.validate(self.data_type) for field in self.fields)
 
@@ -673,6 +693,42 @@ class ModbusCompositeEntityDescription(ModbusEntityDescription):
                 run[0].address,
                 run[-1].end_address,
             )
+        return True
+
+    def validate_write_with(self) -> bool:
+        """The registers `write_with` rewrites are adjustable holdings."""
+        if not self.write_with:
+            return True
+        if self.write_function == WriteFunction.SINGLE:
+            _LOGGER.warning(
+                "Unable to create entity for %s: write_with cannot combine "
+                "with write_function single, which writes registers one at a "
+                "time instead of the pair together",
+                self.key,
+            )
+            return False
+        field_registers = {
+            register
+            for field in self.fields
+            for register in range(field.address, field.end_address + 1)
+        }
+        for address in self.write_with:
+            if self.data_type != ModbusDataType.HOLDING_REGISTER:
+                _LOGGER.warning(
+                    "Unable to create entity for %s: write_with cannot be used "
+                    "on register %d, which is read only",
+                    self.key,
+                    address,
+                )
+                return False
+            if address in field_registers:
+                _LOGGER.warning(
+                    "Unable to create entity for %s: register %d is already a "
+                    "field of the composite and cannot be listed in write_with",
+                    self.key,
+                    address,
+                )
+                return False
         return True
 
 

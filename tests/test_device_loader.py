@@ -13,6 +13,7 @@ from custom_components.modbus_local_gateway.const import DOMAIN
 from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
+    ModbusCompositeEntityDescription,
     ModbusSelectEntityDescription,
 )
 from custom_components.modbus_local_gateway.entity_management.const import (
@@ -264,6 +265,12 @@ def test_growatt_period_windows_match_the_protocol(fname: str) -> None:
         assert enable.register_address == start_address
         assert (mode.conv_bits, mode.conv_shift_bits) == (2, 13)
         assert (enable.conv_bits, enable.conv_shift_bits) == (1, 15)
+        # the device will not take one time alone: each window time is written
+        # together with its partner register, which keeps its current value
+        assert isinstance(start, ModbusCompositeEntityDescription)
+        assert isinstance(end, ModbusCompositeEntityDescription)
+        assert start.write_with == (end_address,)
+        assert end.write_with == (start_address,)
 
 
 @pytest.mark.parametrize("fname", GROWATT_CONFIGS)

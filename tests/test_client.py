@@ -2083,6 +2083,53 @@ async def test_write_composite_bit_fields_span_read_once() -> None:
 
 
 @pytest.mark.asyncio
+async def test_write_composite_write_with_rewrites_pair_together() -> None:
+    """A composite with write_with writes the paired register in the same block"""
+    client = AsyncModbusTcpClientGateway(host="localhost")
+    cast(Any, client).connect = AsyncMock()
+    read_holding = AsyncMock(
+        return_value=ReadHoldingRegistersResponse(registers=[0x1100, 0x1300])
+    )
+    cast(Any, client).read_holding_registers = read_holding
+    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+
+    entity = ModbusContext(
+        device_id=1,
+        desc=ModbusDateTimeEntityDescription(
+            key="period1_end",
+            register_address=3039,
+            register_count=1,
+            data_type=ModbusDataType.HOLDING_REGISTER,
+            control_type=ControlType.DATETIME,
+            composite_type=CompositeType.TIME,
+            write_with=(3038,),
+            fields=(
+                ModbusFieldDescription(
+                    key="minute", address=3039, conv_bits=8, conv_shift_bits=0
+                ),
+                ModbusFieldDescription(
+                    key="hour", address=3039, conv_bits=5, conv_shift_bits=8
+                ),
+            ),
+        ),
+    )
+    with patch.object(
+        AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
+    ):
+        await client.write_data(entity, value=datetime(2026, 9, 22, 22, 45))
+
+    # The composite lives at 3039 but declares 3038 as a partner: both are
+    # read in one transaction and rewritten in one set multiple registers
+    # request, so the device sees the window start and end together. The mode
+    # and enable bits of the 0x1100 start word are preserved.
+    cast(Any, client).write_registers.assert_called_once_with(
+        address=3038, values=[0x1100, 0x162D], device_id=1
+    )
+    assert read_holding.call_args.kwargs["count"] == 2
+    cast(Any, client).read_holding_registers.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_write_composite_input_register_bit_fields_refused() -> None:
     """A read-only composite of bit fields is still refused"""
     client = AsyncModbusTcpClientGateway(host="localhost")
