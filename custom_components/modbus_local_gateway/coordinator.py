@@ -368,6 +368,10 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         self._gateway_device: dr.DeviceEntry | None = gateway_device
         # Entities whose most recent read was not a usable value.
         self._unavailable_keys: set[str] = set()
+        # Entities whose previous read missed once and were left on the value
+        # they had. A second read in a row that misses is not a blip, so it goes
+        # into `_unavailable_keys`.
+        self._tolerated_miss_keys: set[str] = set()
         # The first poll of a device covers every entity, including the ones that
         # poll on their own `scan_interval`: waiting for that timer would leave
         # them without a value until it first fires.
@@ -647,6 +651,10 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         A register that times out then says nothing about the rest of the device, so
         such a read marks the device as answering when it comes back and otherwise
         only speaks for the entity it read.
+
+        A key the poll did not fetch is kept on the value it had if this is the
+        first read of it to miss; a second miss in a row, or a miss of a value
+        that was never read, makes the entity unavailable.
         """
         _LOGGER.debug("Updating data for %s (%s)", self.name, self.client)
         if not entities:
@@ -684,14 +692,30 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         for entity in entities:
             if entity.desc.key not in resp:
                 # This poll did not fetch it: the device stopped answering, or the
-                # read came back unusable. There is no fresh value either way, and
-                # the entity becomes unavailable rather than holding the last one.
+                # read came back unusable. A single missed read on a device that
+                # is otherwise answering is tolerated - the entity keeps the value
+                # it had rather than flipping to unavailable for a cycle, which
+                # a TCP-to-serial bridge falling out of step triggers often enough
+                # to be a visible flap. A second read in a row that misses
+                # is not a blip, and with nothing read yet there is no value to
+                # keep, so both go unavailable here.
+                if entity.desc.key in self._tolerated_miss_keys or not (
+                    self.data and self.data.get(entity.desc.key) is not None
+                ):
+                    _LOGGER.debug(
+                        "No value for key %s in this poll of %s",
+                        entity.desc.key,
+                        self.name,
+                    )
+                    self._unavailable_keys.add(entity.desc.key)
+                    self._tolerated_miss_keys.discard(entity.desc.key)
+                    continue
                 _LOGGER.debug(
-                    "No value for key %s in this poll of %s",
+                    "Keeping the last value of %s, its read missed once",
                     entity.desc.key,
-                    self.name,
                 )
-                self._unavailable_keys.add(entity.desc.key)
+                data[entity.desc.key] = self.data[entity.desc.key]
+                self._tolerated_miss_keys.add(entity.desc.key)
                 continue
             modbus_response: ModbusPDU = resp[entity.desc.key]
             try:
@@ -700,6 +724,7 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                 )
                 data[entity.desc.key] = value
                 self._unavailable_keys.discard(entity.desc.key)
+                self._tolerated_miss_keys.discard(entity.desc.key)
                 _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
             except ValueUnavailable as err:
                 # Deliberately not added to `data`: the platforms' "is not None"
