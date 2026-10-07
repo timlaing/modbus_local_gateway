@@ -755,7 +755,7 @@ async def test_handle_coordinator_update_never_resets_tolerates_rounding_dip() -
         entity._handle_coordinator_update()
 
         warning.assert_not_called()
-        cast(Any, entity).async_write_ha_state.assert_not_called()
+        cast(Any, entity).async_write_ha_state.assert_called_once()
 
 
 @pytest.mark.asyncio

@@ -109,25 +109,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
                 err.desc.key,
                 err.value,
             )
-            suppress = False
-            try:
-                current = self._attr_native_value
-                incoming = err.value
-                if current != incoming:
-                    # For decreases (rounding dips in never_resets), suppress write.
-                    # For increases that round to same (precision), don't suppress write.
-                    try:
-                        suppress = float(incoming) < float(current)
-                    except Exception:
-                        suppress = True
-                else:
-                    suppress = (
-                        False  # Don't suppress for true same - but also don't re-raise
-                    )
-            except Exception:
-                pass
-            if suppress:
-                return  # Don't update state for rounding tolerance
+            # Rounding tolerance handled in _validate_and_update_value
         except MaxChangeExceeded as err:
             _LOGGER.warning(
                 "Ignoring device value for %s: %s – change Δ=%s exceeds max_change=%s",
@@ -178,8 +160,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
                     ) or getattr(self.entity_description, "multiplier", None)
                     if mult is not None:
                         m = abs(float(mult))
-                        # Only apply rounding tolerance for fractional multipliers (< 1.0)
-                        # where LSB jitter is common; for integer multipliers, drops of 1 LSB are meaningful
+                        # Only apply rounding tolerance for fractional multipliers (< 1.0); for integer multipliers
                         threshold = m if 0 < m < 1.0 else 0.0
                 except Exception:
                     threshold = 0.0
