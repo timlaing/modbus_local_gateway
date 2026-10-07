@@ -109,6 +109,25 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
                 err.desc.key,
                 err.value,
             )
+            suppress = False
+            try:
+                current = self._attr_native_value
+                incoming = err.value
+                if current != incoming:
+                    # For decreases (rounding dips in never_resets), suppress write.
+                    # For increases that round to same (precision), don't suppress write.
+                    try:
+                        suppress = float(incoming) < float(current)
+                    except Exception:
+                        suppress = True
+                else:
+                    suppress = (
+                        False  # Don't suppress for true same - but also don't re-raise
+                    )
+            except Exception:
+                pass
+            if suppress:
+                return  # Don't update state for rounding tolerance
         except MaxChangeExceeded as err:
             _LOGGER.warning(
                 "Ignoring device value for %s: %s – change Δ=%s exceeds max_change=%s",
@@ -148,16 +167,44 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
 
             if (
                 self.state_class == SensorStateClass.TOTAL_INCREASING
-                and int(self._attr_native_value) > int(value)
                 and self.entity_description.never_resets
+                and isinstance(self._attr_native_value, (int, float))
+                and isinstance(value, (int, float))
             ):
-                _LOGGER.warning(
-                    "Ignoring device value with %s as %s - never resets %s",
-                    self.entity_description.key,
-                    value,
-                    self._attr_native_value,
-                )
-
+                threshold = 0.0
+                try:
+                    mult = getattr(
+                        self.entity_description, "conv_multiplier", None
+                    ) or getattr(self.entity_description, "multiplier", None)
+                    if mult is not None:
+                        m = abs(float(mult))
+                        # Only apply rounding tolerance for fractional multipliers (< 1.0)
+                        # where LSB jitter is common; for integer multipliers, drops of 1 LSB are meaningful
+                        threshold = m if 0 < m < 1.0 else 0.0
+                except Exception:
+                    threshold = 0.0
+                old_v = self._round_value(self._attr_native_value)
+                new_v = self._round_value(value)
+                if old_v > new_v + 1e-12:
+                    drop = old_v - new_v
+                    if drop <= threshold + 1e-12:
+                        raise SameValue(self.entity_description, value)
+                    _LOGGER.warning(
+                        "Ignoring device value with %s as %s - never resets %s",
+                        self.entity_description.key,
+                        value,
+                        self._attr_native_value,
+                    )
+                    # Real drop - log but don't raise; value will be set below
+                    self._attr_native_value = value
+                    self._first_update_received = True
+                    _LOGGER.debug(
+                        "Updating device with %s as %s",
+                        self.entity_description.key,
+                        value,
+                    )
+                    return
+                # Increase or equal within rounding - treat as normal update
         self._attr_native_value = value
         self._first_update_received = True
 

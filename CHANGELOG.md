@@ -31,6 +31,12 @@ custom integrations. Pre-releases are not listed here.
   `config_flow.py`, so a device that happens to share identifiers from another
   config entry cannot be selected instead; a coordinator with no config entry
   skips the lookup.
+- **Never-resets `total_increasing` sensors tolerate rounding dips**: for sensors
+  with `state_class: total_increasing` and `never_resets`, a small within-unit
+  decrease (e.g., Growatt `Eload_total` at 0.1 kWh resolution) no longer triggers
+  the "never resets" rejection or spurious warnings; the guard now compares against
+  the entity multiplier (LSB) to ignore sub-multiplier drops while still rejecting
+  genuine resets. No config changes required.
 
 ## [v2026.10.3] - 2026-10-06
 
