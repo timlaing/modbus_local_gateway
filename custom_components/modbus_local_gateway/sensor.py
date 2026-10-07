@@ -160,9 +160,10 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
                     ) or getattr(self.entity_description, "multiplier", None)
                     if mult is not None:
                         m = abs(float(mult))
-                        # Only apply rounding tolerance for fractional multipliers (< 1.0); for integer multipliers
+                        # Only apply rounding tolerance for fractional multipliers
+                        # (< 1.0)
                         threshold = m if 0 < m < 1.0 else 0.0
-                except Exception:
+                except (ValueError, TypeError):
                     threshold = 0.0
                 old_v = self._round_value(self._attr_native_value)
                 new_v = self._round_value(value)
