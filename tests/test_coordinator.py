@@ -1030,6 +1030,152 @@ async def test_async_update_entity_swallows_a_failed_poll(
     assert coordinator.data == {"test_key": 42}
 
 
+def _single_entity_context(key: str = "test_key") -> ModbusContext:
+    """One entity reading one input register."""
+    return ModbusContext(
+        1,
+        ModbusSensorEntityDescription(
+            register_address=1,
+            key=key,
+            data_type=ModbusDataType.INPUT_REGISTER,
+        ),
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_single_failed_read_keeps_the_last_value(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """One missed read on an answering device is left on the value it had.
+
+    A TCP-to-serial bridge answers a request after the client has stopped
+    waiting for it, one register read is lost, and before this change every
+    entity that missed went unavailable for a cycle even though the device was
+    answering. The entity keeps its last value instead.
+    """
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.data = {"test_key": 42}
+    ctx = _single_entity_context()
+
+    future: asyncio.Future[Any] = asyncio.Future()
+    future.set_result({})
+    cast(Any, coordinator.client).update_device.return_value = future
+
+    data = await coordinator._update_device([ctx])
+
+    assert data == {"test_key": 42}
+    assert coordinator.is_unavailable(ctx) is False
+
+
+@pytest.mark.asyncio
+async def test_a_second_consecutive_failed_read_goes_unavailable(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """Two reads in a row that miss is not a blip, so the entity goes unavailable."""
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.data = {"test_key": 42}
+    ctx = _single_entity_context()
+
+    future: asyncio.Future[Any] = asyncio.Future()
+    future.set_result({})
+    cast(Any, coordinator.client).update_device.return_value = future
+
+    await coordinator._update_device([ctx])
+    assert coordinator.is_unavailable(ctx) is False
+
+    data = await coordinator._update_device([ctx])
+
+    assert data == {}
+    assert coordinator.is_unavailable(ctx) is True
+
+
+@pytest.mark.asyncio
+async def test_a_read_that_recovers_clears_the_tolerated_miss(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """A good read ends the tolerance, so a later single miss is tolerated again."""
+    coordinator = _coordinator(mock_config_entry)
+    coordinator.data = {"test_key": 42}
+    ctx = _single_entity_context()
+
+    future: asyncio.Future[Any] = asyncio.Future()
+    future.set_result({})
+    cast(Any, coordinator.client).update_device.return_value = future
+
+    await coordinator._update_device([ctx])
+    assert coordinator.is_unavailable(ctx) is False
+
+    future2: asyncio.Future[Any] = asyncio.Future()
+    future2.set_result({"test_key": MagicMock()})
+    cast(Any, coordinator.client).update_device.return_value = future2
+    with patch(
+        "custom_components.modbus_local_gateway.conversion"
+        ".Conversion.convert_from_response",
+        return_value=42,
+    ):
+        data = await coordinator._update_device([ctx])
+    assert data["test_key"] == 42
+    assert coordinator.is_unavailable(ctx) is False
+
+    future3: asyncio.Future[Any] = asyncio.Future()
+    future3.set_result({})
+    cast(Any, coordinator.client).update_device.return_value = future3
+
+    data = await coordinator._update_device([ctx])
+
+    assert data == {"test_key": 42}
+    assert coordinator.is_unavailable(ctx) is False
+
+
+@pytest.mark.asyncio
+async def test_a_miss_with_nothing_kept_is_unavailable(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """A read that never produced a value has nothing to stay on: unavailable.
+
+    Only a value the entity already had can be kept; an entity that has never
+    been read goes straight to unavailable.
+    """
+    coordinator = _coordinator(mock_config_entry)
+    ctx = _single_entity_context()
+    coordinator.data = {"other_key": 1}
+
+    future: asyncio.Future[Any] = asyncio.Future()
+    future.set_result({})
+    cast(Any, coordinator.client).update_device.return_value = future
+
+    data = await coordinator._update_device([ctx])
+
+    assert data == {}
+    assert coordinator.is_unavailable(ctx) is True
+
+
+@pytest.mark.asyncio
+async def test_a_miss_does_not_resurrect_an_unavailable_entity(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """An entity that is already unavailable has nothing to stay on.
+
+    A self-polled entity that read a declared non-value is unavailable even
+    though its old value is still cached. A miss must keep it unavailable
+    rather than returning the stale value, which would also mark the poll
+    successful.
+    """
+    coordinator = _coordinator(mock_config_entry)
+    ctx = _single_entity_context()
+    coordinator.data = {"test_key": 42}
+    coordinator._unavailable_keys.add("test_key")
+
+    future: asyncio.Future[Any] = asyncio.Future()
+    future.set_result({})
+    cast(Any, coordinator.client).update_device.return_value = future
+
+    data = await coordinator._update_device([ctx])
+
+    assert data == {}
+    assert coordinator.is_unavailable(ctx) is True
+
+
 @pytest.mark.asyncio
 async def test_unavailable_value_marks_entity_and_clears_again(
     mock_config_entry: ConfigEntry,
