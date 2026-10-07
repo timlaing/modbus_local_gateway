@@ -9,6 +9,29 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [Unreleased]
+
+### Fixed
+
+- **A single failed read is tolerated before an entity goes unavailable**: a
+  TCP-to-RTU bridge that answers late left every entity the aborted poll had
+  not reached unavailable for one cycle, even though the device itself was
+  still answering. A register the coordinator asked for and did not get is now
+  kept at its last value for one cycle, so a bridge that drops an occasional
+  answer no longer flips a handful of entities between their value and
+  `unavailable`; only a second consecutive miss, an entity that is already
+  unavailable, or a read with nothing to hold on to goes unavailable. Entities
+  that read on their own `scan_interval` are unaffected.
+- **The deprecated device-registry lookup behind the entities is replaced**:
+  `sensor.py` found its device with `device_registry.async_get_device`, which
+  Home Assistant has deprecated because identifiers and connections are no
+  longer unique across config entries, and will remove in 2027.8.0. The device
+  is now found with `async_get_device_by_identifier`, scoped to the config
+  entry of the coordinator like the lookups in `__init__.py` and
+  `config_flow.py`, so a device that happens to share identifiers from another
+  config entry cannot be selected instead; a coordinator with no config entry
+  skips the lookup.
+
 ## [v2026.10.3] - 2026-10-06
 
 ### Fixed
