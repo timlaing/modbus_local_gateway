@@ -1134,11 +1134,37 @@ async def test_a_miss_with_nothing_kept_is_unavailable(
     """A read that never produced a value has nothing to stay on: unavailable.
 
     Only a value the entity already had can be kept; an entity that has never
-    been read (or that is already unavailable) goes straight to unavailable.
+    been read goes straight to unavailable.
     """
     coordinator = _coordinator(mock_config_entry)
     ctx = _single_entity_context()
     coordinator.data = {"other_key": 1}
+
+    future: asyncio.Future[Any] = asyncio.Future()
+    future.set_result({})
+    cast(Any, coordinator.client).update_device.return_value = future
+
+    data = await coordinator._update_device([ctx])
+
+    assert data == {}
+    assert coordinator.is_unavailable(ctx) is True
+
+
+@pytest.mark.asyncio
+async def test_a_miss_does_not_resurrect_an_unavailable_entity(
+    mock_config_entry: ConfigEntry,
+) -> None:
+    """An entity that is already unavailable has nothing to stay on.
+
+    A self-polled entity that read a declared non-value is unavailable even
+    though its old value is still cached. A miss must keep it unavailable
+    rather than returning the stale value, which would also mark the poll
+    successful.
+    """
+    coordinator = _coordinator(mock_config_entry)
+    ctx = _single_entity_context()
+    coordinator.data = {"test_key": 42}
+    coordinator._unavailable_keys.add("test_key")
 
     future: asyncio.Future[Any] = asyncio.Future()
     future.set_result({})

@@ -696,12 +696,18 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
                 # is otherwise answering is tolerated - the entity keeps the value
                 # it had rather than flipping to unavailable for a cycle, which
                 # a TCP-to-serial bridge falling out of step triggers often enough
-                # to be a visible flap. A second read in a row that misses
-                # is not a blip, and with nothing read yet there is no value to
-                # keep, so both go unavailable here.
-                if entity.desc.key in self._tolerated_miss_keys or not (
-                    self.data and self.data.get(entity.desc.key) is not None
-                ):
+                # to be a visible flap. Nothing else is: a second read in a row
+                # that misses is not a blip, an entity that is already unavailable
+                # has nothing to stay on (its old value is stale, not just
+                # unrefreshed), and with nothing read yet there is no value to
+                # keep - all of those go unavailable here.
+                tolerate_miss = (
+                    entity.desc.key not in self._tolerated_miss_keys
+                    and entity.desc.key not in self._unavailable_keys
+                    and self.data
+                    and self.data.get(entity.desc.key) is not None
+                )
+                if not tolerate_miss:
                     _LOGGER.debug(
                         "No value for key %s in this poll of %s",
                         entity.desc.key,
