@@ -381,6 +381,103 @@ async def test_update_deviceupdate_sw_version() -> None:
 
 
 @pytest.mark.asyncio
+async def test_update_device_version_lookup_is_scoped_to_the_config_entry() -> None:
+    """Version lookups use the entry-scoped API, not the deprecated one.
+
+    Identifiers are no longer unique across config entries, so the device that
+    belongs to this entry is selected by its entry id, and a device that happens
+    to share identifiers from another entry is not picked up instead. The
+    deprecated `async_get_device` is not invoked.
+    """
+    coordinator = MagicMock()
+    coordinator.config_entry.entry_id = "entry-1"
+    desc = ModbusSensorEntityDescription(
+        key="hw_version",
+        register_address=1,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    ctx = ModbusContext(1, desc=desc)
+    device: DeviceInfo = {"identifiers": {("a", "b")}}
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+
+    found = MagicMock()
+    found.id = "device-1"
+    registry = MagicMock()
+    registry.async_get_device_by_identifier.return_value = found
+    registry.async_get_device = MagicMock()
+
+    with patch(
+        "custom_components.modbus_local_gateway.sensor.dr.async_get",
+        return_value=registry,
+    ):
+        entity._update_device_versions("1.2.3")
+
+    registry.async_get_device_by_identifier.assert_called_once_with(
+        ("a", "b"), "entry-1"
+    )
+    registry.async_get_device.assert_not_called()
+    registry.async_update_device.assert_called_once_with(
+        device_id="device-1",
+        hw_version="1.2.3",
+    )
+
+
+@pytest.mark.asyncio
+async def test_update_device_version_missing_device_is_handled() -> None:
+    """A device not found updates nothing and raises nothing."""
+    coordinator = MagicMock()
+    coordinator.config_entry.entry_id = "entry-1"
+    desc = ModbusSensorEntityDescription(
+        key="sw_version",
+        register_address=1,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    ctx = ModbusContext(1, desc=desc)
+    device: DeviceInfo = {"identifiers": {("a", "b")}}
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+
+    registry = MagicMock()
+    registry.async_get_device_by_identifier.return_value = None
+
+    with patch(
+        "custom_components.modbus_local_gateway.sensor.dr.async_get",
+        return_value=registry,
+    ):
+        entity._update_device_versions("1.2.3")
+
+    registry.async_get_device_by_identifier.assert_called_once_with(
+        ("a", "b"), "entry-1"
+    )
+    registry.async_update_device.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_update_device_version_without_config_entry_is_handled() -> None:
+    """A coordinator with no config entry skips the lookup without error."""
+    coordinator = MagicMock()
+    coordinator.config_entry = None
+    desc = ModbusSensorEntityDescription(
+        key="hw_version",
+        register_address=1,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    ctx = ModbusContext(1, desc=desc)
+    device: DeviceInfo = {"identifiers": {("a", "b")}}
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+
+    registry = MagicMock()
+
+    with patch(
+        "custom_components.modbus_local_gateway.sensor.dr.async_get",
+        return_value=registry,
+    ):
+        entity._update_device_versions("1.2.3")
+
+    registry.async_get_device_by_identifier.assert_not_called()
+    registry.async_update_device.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_handle_coordinator_update_ignore_same_value() -> None:
     """Test _handle_coordinator_update ignores the same value."""
     coordinator = MagicMock()

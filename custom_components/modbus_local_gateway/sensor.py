@@ -179,9 +179,16 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
             ]
         ):
             device_registry: dr.DeviceRegistry = dr.async_get(self.hass)
-            device: dr.DeviceEntry | None = device_registry.async_get_device(
-                self._attr_device_info["identifiers"]
-            )
+            config_entry = self.coordinator.config_entry
+            if config_entry is None:
+                return
+            device: dr.DeviceEntry | None = None
+            for identifier in self._attr_device_info["identifiers"]:
+                device = device_registry.async_get_device_by_identifier(
+                    identifier, config_entry.entry_id
+                )
+                if device is not None:
+                    break
             if device:
                 if self.entity_description.key == "hw_version":
                     device_registry.async_update_device(
