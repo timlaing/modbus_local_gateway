@@ -5,13 +5,20 @@
 [![GitHub issues](https://img.shields.io/github/issues/timlaing/modbus_local_gateway.svg)](https://github.com/timlaing/modbus_local_gateway/issues)
 [![GitHub license](https://img.shields.io/github/license/timlaing/modbus_local_gateway.svg)](LICENSE)
 
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=coverage)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
+
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=bugs)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
-[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
-[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=timlaing_modbus_local_gateway&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=timlaing_modbus_local_gateway)
+
 
 ## Introduction
 
