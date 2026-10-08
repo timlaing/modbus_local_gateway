@@ -105,18 +105,25 @@ class CompositeType(StrEnum):
         `second` is never required: plenty of devices keep minute resolution,
         and a missing field simply leaves that part of the value at zero.
         """
-        if self is CompositeType.DATE:
-            return ("year", "month", "day")
-        if self is CompositeType.TIME:
-            return ("hour", "minute")
-        return ("year", "month", "day", "hour", "minute")
+        return _REQUIRED_FIELDS[self]
 
     @property
     def optional_fields(self) -> tuple[str, ...]:
         """Fields a config may add on top of `required_fields`."""
-        if self is CompositeType.DATE:
-            return ()
-        return ("second",)
+        return _OPTIONAL_FIELDS[self]
+
+
+_REQUIRED_FIELDS: dict[CompositeType, tuple[str, ...]] = {
+    CompositeType.DATE: ("year", "month", "day"),
+    CompositeType.TIME: ("hour", "minute"),
+    CompositeType.DATETIME: ("year", "month", "day", "hour", "minute"),
+}
+
+_OPTIONAL_FIELDS: dict[CompositeType, tuple[str, ...]] = {
+    CompositeType.DATE: (),
+    CompositeType.TIME: ("second",),
+    CompositeType.DATETIME: ("second",),
+}
 
 
 class ControlType(StrEnum):
