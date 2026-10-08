@@ -67,7 +67,7 @@ async def test_from_int16() -> None:
         ),
     )
 
-    assert registers == value
+    assert value == registers
 
 
 @pytest.mark.asyncio
@@ -132,7 +132,7 @@ async def test_from_int16_multiplier() -> None:
         ),
     )
 
-    assert registers == value
+    assert value == registers
 
 
 @pytest.mark.asyncio
@@ -176,7 +176,7 @@ async def test_from_int32() -> None:
         ),
     )
 
-    assert registers == value
+    assert value == registers
 
 
 @pytest.mark.asyncio
@@ -222,7 +222,7 @@ async def test_from_float() -> None:
         ),
     )
 
-    assert registers == value
+    assert value == registers
 
 
 @pytest.mark.asyncio
@@ -270,7 +270,7 @@ async def test_from_string() -> None:
         ),
     )
 
-    assert registers == value
+    assert value == registers
 
 
 @pytest.mark.asyncio
@@ -967,7 +967,6 @@ def test_merge_rejects_value_that_does_not_fit(value: int) -> None:
     """Overflowing the field would corrupt the neighbouring controls."""
     conversion = Conversion(client=AsyncModbusTcpClient)
     desc = _number_desc(conv_bits=8, conv_shift_bits=0)
-
     with pytest.raises(ValueError, match="does not fit"):
         conversion.merge_into_registers(desc, value, [0x1234])
 
