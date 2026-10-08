@@ -361,15 +361,11 @@ async def test_unavailable_values_matches_before_multiplier() -> None:
         data_type=ModbusDataType.INPUT_REGISTER,
     )
 
+    response = ReadInputRegistersResponse(
+        registers=client.convert_to_registers(255, data_type=client.DATATYPE.UINT16)
+    )
     with pytest.raises(ValueUnavailable):
-        conversion.convert_from_response(
-            response=ReadInputRegistersResponse(
-                registers=client.convert_to_registers(
-                    255, data_type=client.DATATYPE.UINT16
-                )
-            ),
-            desc=desc,
-        )
+        conversion.convert_from_response(response=response, desc=desc)
 
 
 @pytest.mark.asyncio
@@ -386,15 +382,13 @@ async def test_unavailable_values_matches_after_masking() -> None:
         data_type=ModbusDataType.INPUT_REGISTER,
     )
 
-    with pytest.raises(ValueUnavailable):
-        conversion.convert_from_response(
-            response=ReadInputRegistersResponse(
-                registers=client.convert_to_registers(
-                    (30 << 8) | 255, data_type=client.DATATYPE.UINT16
-                )
-            ),
-            desc=desc,
+    response = ReadInputRegistersResponse(
+        registers=client.convert_to_registers(
+            (30 << 8) | 255, data_type=client.DATATYPE.UINT16
         )
+    )
+    with pytest.raises(ValueUnavailable):
+        conversion.convert_from_response(response=response, desc=desc)
 
 
 @pytest.mark.asyncio
@@ -411,15 +405,11 @@ async def test_unavailable_values_on_a_float_entity() -> None:
         data_type=ModbusDataType.INPUT_REGISTER,
     )
 
+    response = ReadInputRegistersResponse(
+        registers=client.convert_to_registers(0.0, data_type=client.DATATYPE.FLOAT32)
+    )
     with pytest.raises(ValueUnavailable):
-        conversion.convert_from_response(
-            response=ReadInputRegistersResponse(
-                registers=client.convert_to_registers(
-                    0.0, data_type=client.DATATYPE.FLOAT32
-                )
-            ),
-            desc=desc,
-        )
+        conversion.convert_from_response(response=response, desc=desc)
 
 
 @pytest.mark.asyncio
