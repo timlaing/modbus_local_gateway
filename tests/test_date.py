@@ -213,8 +213,9 @@ async def test_set_value_synchronously_is_not_supported() -> None:
         device=MagicMock(),
     )
 
+    value = date(2026, 9, 22)
     with pytest.raises(NotImplementedError):
-        entity.set_value(date(2026, 9, 22))
+        entity.set_value(value)
 
 
 def test_native_value_has_no_time() -> None:
