@@ -163,7 +163,7 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
                         # Only apply rounding tolerance for fractional multipliers
                         # (< 1.0)
                         threshold = m if 0 < m < 1.0 else 0.0
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     threshold = 0.0
                 old_v = self._round_value(self._attr_native_value)
                 new_v = self._round_value(value)

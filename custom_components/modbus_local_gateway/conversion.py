@@ -112,7 +112,11 @@ class Conversion:
             data_type=self.client.DATATYPE.STRING,
         )
         if isinstance(value, str):
-            return value.split("\0")[0]
+            # Remove null bytes and non-printable characters
+            cleaned = "".join(c for c in value if c.isprintable())
+            # Also strip any remaining null bytes if any
+            cleaned = cleaned.replace("\x00", "").replace("\0", "")
+            return cleaned
         raise InvalidDataTypeError()
 
     def _convert_from_string(self, value: str) -> list[int]:
