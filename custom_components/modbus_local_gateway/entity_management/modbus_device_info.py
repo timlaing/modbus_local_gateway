@@ -75,6 +75,10 @@ from .const import (
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
+_UNSUPPORTED_VALUE_FORMAT = (
+    "Unable to create entity for %s: %s must be one of %s, got %s"
+)
+
 COMPOSITE_DESCRIPTION_TYPE = (
     ModbusDateTimeEntityDescription
     | ModbusTimeEntityDescription
@@ -345,7 +349,7 @@ class ModbusDeviceInfo:
                 write_function = WriteFunction(write_function)
             except ValueError:
                 _LOGGER.warning(
-                    "Unable to create entity for %s: %s must be one of %s, got %s",
+                    _UNSUPPORTED_VALUE_FORMAT,
                     entity,
                     WRITE_FUNCTION,
                     ", ".join(WriteFunction),
@@ -427,7 +431,7 @@ class ModbusDeviceInfo:
         stored: Any = data.get(COMPOSITE_TYPE)
         if not isinstance(stored, str):
             _LOGGER.warning(
-                "Unable to create entity for %s: %s must be one of %s, got %s",
+                _UNSUPPORTED_VALUE_FORMAT,
                 entity,
                 COMPOSITE_TYPE,
                 ", ".join(str(member) for member in CompositeType),
@@ -438,7 +442,7 @@ class ModbusDeviceInfo:
             return CompositeType(stored)
         except ValueError:
             _LOGGER.warning(
-                "Unable to create entity for %s: %s must be one of %s, got %s",
+                _UNSUPPORTED_VALUE_FORMAT,
                 entity,
                 COMPOSITE_TYPE,
                 ", ".join(str(member) for member in CompositeType),
