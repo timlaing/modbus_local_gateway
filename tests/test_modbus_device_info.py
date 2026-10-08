@@ -2,12 +2,17 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 
 import contextlib
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.core import HomeAssistant
 import pytest
 import yaml
+
+if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
+
 
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
@@ -414,7 +419,7 @@ def test_validate_scan_interval(
     scan_interval: int | None,
     num_entities: int,
     log_message: str,
-    caplog: pytest.LogCaptureFixture,
+    caplog: LogCaptureFixture,
 ) -> None:
     """Test _validate_scan_interval with various scan_interval values."""
     _config = {
@@ -493,7 +498,7 @@ async def test_devices_power_entities_are_measurements(hass: HomeAssistant) -> N
 def _load_write_with(
     section: str,
     entities: dict[str, dict[str, object]],
-    caplog: pytest.LogCaptureFixture | None = None,
+    caplog: LogCaptureFixture | None = None,
 ) -> list[modbus_device_info.DESCRIPTION_TYPE]:
     """Build a one-section device config and return its descriptions."""
     _config = {
@@ -579,7 +584,7 @@ def test_entity_invalid_write_with(
     section: str,
     entity: dict[str, object],
     expected_log: str,
-    caplog: pytest.LogCaptureFixture,
+    caplog: LogCaptureFixture,
 ) -> None:
     """A misconfigured write_with drops the entity instead of puzzling a write."""
     descriptions = _load_write_with(section, {"test": entity}, caplog)
