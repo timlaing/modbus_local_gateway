@@ -2,7 +2,7 @@ name: SonarQube
 
 on:
   workflow_run:
-    workflows: [Test]
+    workflows: [Tests]
     types: [completed]
 
 jobs:
@@ -52,6 +52,9 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           RUN_EVENT: ${{ github.event.workflow_run.event }}
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER_RAW: ${{ github.event.workflow_run.pull_requests[0].number }}
+          HEAD_REF_RAW: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
+          BASE_REF_RAW: ${{ github.event.workflow_run.pull_requests[0].base.ref }}
         run: |
           set -euo pipefail
           [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid HEAD_SHA"; exit 1; }
@@ -59,8 +62,14 @@ jobs:
           if [[ "$RUN_EVENT" != "pull_request" ]]; then
             exit 0
           fi
-          PR_NUMBER="${{ github.event.workflow_run.pull_requests[0].number }}"
-          if [[ -z "$PR_NUMBER" ]]; then
+          PR_NUMBER=""
+          HEAD_REF=""
+          BASE_REF=""
+          if [[ -n "$PR_NUMBER_RAW" ]]; then
+            PR_NUMBER="$PR_NUMBER_RAW"
+            HEAD_REF="$HEAD_REF_RAW"
+            BASE_REF="$BASE_REF_RAW"
+          else
             # workflow_run.pull_requests is empty for fork PRs; resolve via the API.
             PR_FILE="$(mktemp)"
             gh pr list --state open --json number,headRefName,headRefOid,baseRefName > "$PR_FILE"
@@ -70,9 +79,6 @@ jobs:
               HEAD_REF="$(jq -r '.headRefName' <<< "$PR_MATCH")"
               BASE_REF="$(jq -r '.baseRefName' <<< "$PR_MATCH")"
             fi
-          else
-            HEAD_REF="${{ github.event.workflow_run.pull_requests[0].head.ref }}"
-            BASE_REF="${{ github.event.workflow_run.pull_requests[0].base.ref }}"
           fi
           if [[ -z "$PR_NUMBER" || -z "$HEAD_REF" || -z "$BASE_REF" ]]; then
             echo "Could not resolve pull request metadata for $HEAD_SHA"; exit 1
