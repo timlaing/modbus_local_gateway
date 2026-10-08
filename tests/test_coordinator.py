@@ -254,12 +254,12 @@ async def test_update_exception(mock_config_entry: ConfigEntry) -> None:
         ),
         patch(
             "custom_components.modbus_local_gateway"
-            ".conversion.Conversion.convert_from_response"
+            ".conversion.Conversion.convert_from_response",
         ) as convert,
-        pytest.raises(UpdateFailed),
     ):
         convert.side_effect = [Exception(), Exception()]
-        await coordinator._async_update_data()
+        with pytest.raises(UpdateFailed):
+            await coordinator._async_update_data()
 
 
 @pytest.mark.asyncio

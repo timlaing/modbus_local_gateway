@@ -664,46 +664,39 @@ async def test_convert_from_response_errors() -> None:
     client = AsyncModbusTcpClient
     conversion = Conversion(client=client)
 
+    discrete_inputs_response = ReadDiscreteInputsResponse(
+        registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16),
+    )
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
     with pytest.raises(TypeError):
-        conversion.convert_from_response(
-            response=ReadDiscreteInputsResponse(
-                registers=client.convert_to_registers(
-                    1, data_type=client.DATATYPE.UINT16
-                ),
-            ),
-            desc=ModbusSensorEntityDescription(
-                register_address=1,
-                key="test",
-                data_type=ModbusDataType.INPUT_REGISTER,
-            ),
-        )
+        conversion.convert_from_response(response=discrete_inputs_response, desc=desc)
 
+    input_registers_response = ReadInputRegistersResponse(
+        registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16),
+    )
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        data_type=ModbusDataType.COIL,
+    )
     with pytest.raises(TypeError):
-        conversion.convert_from_response(
-            response=ReadInputRegistersResponse(
-                registers=client.convert_to_registers(
-                    1, data_type=client.DATATYPE.UINT16
-                ),
-            ),
-            desc=ModbusSensorEntityDescription(
-                register_address=1,
-                key="test",
-                data_type=ModbusDataType.COIL,
-            ),
-        )
+        conversion.convert_from_response(response=input_registers_response, desc=desc)
 
+    discrete_input_registers_response = ReadInputRegistersResponse(
+        registers=client.convert_to_registers(1, data_type=client.DATATYPE.UINT16),
+    )
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        data_type=ModbusDataType.DISCRETE_INPUT,
+    )
     with pytest.raises(TypeError):
         conversion.convert_from_response(
-            response=ReadInputRegistersResponse(
-                registers=client.convert_to_registers(
-                    1, data_type=client.DATATYPE.UINT16
-                ),
-            ),
-            desc=ModbusSensorEntityDescription(
-                register_address=1,
-                key="test",
-                data_type=ModbusDataType.DISCRETE_INPUT,
-            ),
+            response=discrete_input_registers_response, desc=desc
         )
 
 
