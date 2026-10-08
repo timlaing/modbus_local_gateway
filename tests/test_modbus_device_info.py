@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.core import HomeAssistant
-from pytest import mark as pytest_mark
+import pytest
 import yaml
 
 if TYPE_CHECKING:
@@ -301,7 +301,7 @@ def test_entity_invalid_string_float() -> None:
         assert len(entities) == 0
 
 
-@pytest_mark.parametrize(
+@pytest.mark.parametrize(
     "step",
     ["invalid", 0, -1, float("nan"), float("inf"), float("-inf")],
     ids=["non-numeric", "zero", "negative", "nan", "infinity", "negative-infinity"],
@@ -402,7 +402,7 @@ def test_entity_invalid_control_type() -> None:
         assert len(entities) == 0
 
 
-@pytest_mark.parametrize(
+@pytest.mark.parametrize(
     (
         "scan_interval",
         "num_entities",
@@ -446,7 +446,7 @@ def test_validate_scan_interval(
             assert log_message in caplog.text
 
 
-@pytest_mark.asyncio
+@pytest.mark.asyncio
 async def test_devices_yaml(hass: HomeAssistant) -> None:
     """Validate yaml files with new structure"""
     with patch(
@@ -471,7 +471,7 @@ async def test_devices_yaml(hass: HomeAssistant) -> None:
             log.assert_not_called()
 
 
-@pytest_mark.asyncio
+@pytest.mark.asyncio
 async def test_devices_power_entities_are_measurements(hass: HomeAssistant) -> None:
     """A power reading is a measurement, not a total.
 
@@ -550,7 +550,7 @@ def test_entity_create_with_write_with() -> None:
     assert mode.write_span == (3040, 3041)
 
 
-@pytest_mark.parametrize(
+@pytest.mark.parametrize(
     ("section", "entity", "expected_log"),
     [
         (

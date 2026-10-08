@@ -146,47 +146,8 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
                     value,
                     self._attr_native_value,
                 )
-
-            if (
-                self.state_class == SensorStateClass.TOTAL_INCREASING
-                and self.entity_description.never_resets
-                and isinstance(self._attr_native_value, (int, float))
-                and isinstance(value, (int, float))
-            ):
-                threshold = 0.0
-                try:
-                    mult = getattr(
-                        self.entity_description, "conv_multiplier", None
-                    ) or getattr(self.entity_description, "multiplier", None)
-                    if mult is not None:
-                        m = abs(float(mult))
-                        # Only apply rounding tolerance for fractional multipliers
-                        # (< 1.0)
-                        threshold = m if 0 < m < 1.0 else 0.0
-                except ValueError, TypeError:
-                    threshold = 0.0
-                old_v = self._round_value(self._attr_native_value)
-                new_v = self._round_value(value)
-                if old_v > new_v + 1e-12:
-                    drop = old_v - new_v
-                    if drop <= threshold + 1e-12:
-                        raise SameValue(self.entity_description, value)
-                    _LOGGER.warning(
-                        "Ignoring device value with %s as %s - never resets %s",
-                        self.entity_description.key,
-                        value,
-                        self._attr_native_value,
-                    )
-                    # Real drop - log but don't raise; value will be set below
-                    self._attr_native_value = value
-                    self._first_update_received = True
-                    _LOGGER.debug(
-                        "Updating device with %s as %s",
-                        self.entity_description.key,
-                        value,
-                    )
-                    return
-                # Increase or equal within rounding - treat as normal update
+            if self._handle_never_resets(value):
+                return
         self._attr_native_value = value
         self._first_update_received = True
 
@@ -195,6 +156,62 @@ class ModbusSensorEntity(ModbusCoordinatorEntity, RestoreSensor):
             self.entity_description.key,
             value,
         )
+
+    def _handle_never_resets(self, value: float) -> bool:
+        """Tolerate rounding dips for never_resets total_increasing sensors.
+
+        Returns True when the value was handled (rounding noise raised SameValue
+        or the real drop updated the state), False when the regular update path
+        should proceed.
+        """
+        if (
+            self.state_class != SensorStateClass.TOTAL_INCREASING
+            or not self.entity_description.never_resets
+        ):
+            return False
+        if not isinstance(self._attr_native_value, (int, float)):
+            return False
+
+        threshold = self._never_resets_threshold()
+        old_v = self._round_value(self._attr_native_value)
+        new_v = self._round_value(value)
+        if old_v <= new_v + 1e-12:
+            # Increase or equal within rounding - regular update path
+            return False
+
+        drop = old_v - new_v
+        if drop <= threshold + 1e-12:
+            raise SameValue(self.entity_description, value)
+        _LOGGER.warning(
+            "Ignoring device value with %s as %s - never resets %s",
+            self.entity_description.key,
+            value,
+            self._attr_native_value,
+        )
+        # Real drop - log but don't raise; the state is updated below
+        self._attr_native_value = value
+        self._first_update_received = True
+        _LOGGER.debug(
+            "Updating device with %s as %s",
+            self.entity_description.key,
+            value,
+        )
+        return True
+
+    def _never_resets_threshold(self) -> float:
+        """Rounding tolerance for fractional multipliers, 0.0 otherwise."""
+        threshold = 0.0
+        try:
+            mult = getattr(self.entity_description, "conv_multiplier", None) or getattr(
+                self.entity_description, "multiplier", None
+            )
+            if mult is not None:
+                m = abs(float(mult))
+                # Only apply rounding tolerance for fractional multipliers (< 1.0)
+                threshold = m if 0 < m < 1.0 else 0.0
+        except ValueError, TypeError:
+            threshold = 0.0
+        return threshold
 
     def _update_device_versions(self, value: str | float) -> None:
         """Update device registry for version keys."""
