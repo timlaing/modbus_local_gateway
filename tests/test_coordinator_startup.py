@@ -305,10 +305,11 @@ async def test_a_poll_that_never_finishes_fails(
     coordinator = _coordinator(mock_config_entry)
     cast(Any, coordinator.client).update_device.side_effect = _never_ends()
 
+    entity = _entity("test_key")
     with (
         patch(
             "custom_components.modbus_local_gateway.coordinator._POLL_BACKSTOP", 0.01
         ),
         pytest.raises(UpdateFailed),
     ):
-        await coordinator._update_device([_entity("test_key")])
+        await coordinator._update_device([entity])

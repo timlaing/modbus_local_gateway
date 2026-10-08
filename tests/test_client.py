@@ -1391,6 +1391,7 @@ async def test_write_data_bitfield_read_failure_aborts_write() -> None:
     cast(Any, client).connect = AsyncMock()
     cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
 
+    entity = _bitfield_entity()
     with (
         patch.object(
             AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
@@ -1400,7 +1401,7 @@ async def test_write_data_bitfield_read_failure_aborts_write() -> None:
         ),
         pytest.raises(ModbusException, match="aborting bit field write"),
     ):
-        await client.write_data(_bitfield_entity(), value=1)
+        await client.write_data(entity, value=1)
 
     cast(Any, client).write_register.assert_not_called()
 
@@ -1415,6 +1416,7 @@ async def test_write_data_bitfield_error_response_aborts_write() -> None:
     error_response = ReadHoldingRegistersResponse(registers=[0])
     cast(Any, error_response).isError = lambda: True
 
+    entity = _bitfield_entity()
     with (
         patch.object(
             AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
@@ -1426,7 +1428,7 @@ async def test_write_data_bitfield_error_response_aborts_write() -> None:
         ),
         pytest.raises(ModbusException, match="aborting bit field write"),
     ):
-        await client.write_data(_bitfield_entity(), value=1)
+        await client.write_data(entity, value=1)
 
     cast(Any, client).write_register.assert_not_called()
 
@@ -1962,16 +1964,15 @@ async def test_write_composite_single_write_function_error_response_aborts_write
     cast(Any, client).write_register = AsyncMock(side_effect=_answer)
     cast(Any, client).write_registers = AsyncMock(return_value=error_response)
 
+    entity = _composite_entity(write_function=WriteFunction.SINGLE)
+    value = datetime(2026, 9, 22, 16, 30, 5)
     with (
         patch.object(
             AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
         ),
         pytest.raises(ModbusClientError, match="Error writing clock"),
     ):
-        await client.write_data(
-            _composite_entity(write_function=WriteFunction.SINGLE),
-            value=datetime(2026, 9, 22, 16, 30, 5),
-        )
+        await client.write_data(entity, value=value)
 
     # nothing past the register that was refused goes out
     assert [
@@ -2628,6 +2629,7 @@ async def test_read_exception_resynchronises_the_connection() -> None:
     client.ctx.recv_buffer = b"stale frame"
     read_data = AsyncMock(side_effect=ModbusIOException("No response"))
 
+    entity = _single_holding_entity()
     with (
         patch.object(
             AsyncModbusTcpClientGateway,
@@ -2637,7 +2639,7 @@ async def test_read_exception_resynchronises_the_connection() -> None:
         patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
         pytest.raises(ModbusNoResponseError) as err,
     ):
-        await client.update_device([_single_holding_entity()], 64)
+        await client.update_device([entity], 64)
 
     # Nothing was read, so the error carries nothing back.
     assert err.value.partial == {}
@@ -2747,6 +2749,10 @@ async def test_a_failed_read_on_a_desynced_gateway_ends_the_poll() -> None:
     read_data = AsyncMock(side_effect=ModbusIOException("No response"))
     cast(Any, client.ctx).mismatched_frames = 1
 
+    entities = [
+        _single_holding_entity("first"),
+        _single_holding_entity("second"),
+    ]
     with (
         patch.object(
             AsyncModbusTcpClientGateway,
@@ -2756,9 +2762,7 @@ async def test_a_failed_read_on_a_desynced_gateway_ends_the_poll() -> None:
         patch.object(AsyncModbusTcpClientGateway, "read_data", read_data),
         pytest.raises(ModbusNoResponseError),
     ):
-        await client.update_device(
-            [_single_holding_entity("first"), _single_holding_entity("second")], 64
-        )
+        await client.update_device(entities, 64)
 
     assert read_data.call_count == 1
     assert cast(Any, client)._needs_reconnect is True
