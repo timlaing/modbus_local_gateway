@@ -58,12 +58,14 @@ class ModbusNumberEntity(ModbusCoordinatorEntity, NumberEntity):
         # conversion multiplier says how much the register is worth, which is
         # the step unless the config asks for one of its own.
         step: float = 1.0
-        if ctx.desc.conv_multiplier is not None:
-            step = float(ctx.desc.conv_multiplier)
         if ctx.desc.native_step is not None:
             step = float(ctx.desc.native_step)
+        elif ctx.desc.conv_multiplier is not None:
+            step = float(ctx.desc.conv_multiplier)
+        else:
+            step = 1.0
         self._attr_native_step = step
-        self._attr_mode = ctx.desc.mode if ctx.desc.mode is not None else NumberMode.BOX
+        self._attr_mode = ctx.desc.mode or NumberMode.BOX
 
     @callback
     def _handle_coordinator_update(self) -> None:
