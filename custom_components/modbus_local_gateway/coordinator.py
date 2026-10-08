@@ -691,66 +691,9 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
 
         for entity in entities:
             if entity.desc.key not in resp:
-                # This poll did not fetch it: the device stopped answering, or the
-                # read came back unusable. A single missed read on a device that
-                # is otherwise answering is tolerated - the entity keeps the value
-                # it had rather than flipping to unavailable for a cycle, which
-                # a TCP-to-serial bridge falling out of step triggers often enough
-                # to be a visible flap. Nothing else is: a second read in a row
-                # that misses is not a blip, an entity that is already unavailable
-                # has nothing to stay on (its old value is stale, not just
-                # unrefreshed), and with nothing read yet there is no value to
-                # keep - all of those go unavailable here.
-                tolerate_miss = (
-                    entity.desc.key not in self._tolerated_miss_keys
-                    and entity.desc.key not in self._unavailable_keys
-                    and self.data
-                    and self.data.get(entity.desc.key) is not None
-                )
-                if not tolerate_miss:
-                    _LOGGER.debug(
-                        "No value for key %s in this poll of %s",
-                        entity.desc.key,
-                        self.name,
-                    )
-                    self._unavailable_keys.add(entity.desc.key)
-                    self._tolerated_miss_keys.discard(entity.desc.key)
-                    continue
-                _LOGGER.debug(
-                    "Keeping the last value of %s, its read missed once",
-                    entity.desc.key,
-                )
-                data[entity.desc.key] = self.data[entity.desc.key]
-                self._tolerated_miss_keys.add(entity.desc.key)
-                continue
-            modbus_response: ModbusPDU = resp[entity.desc.key]
-            try:
-                value: str | float | int | bool | date | time | datetime | None = (
-                    self._convert_value(entity.desc, modbus_response)
-                )
-                data[entity.desc.key] = value
-                self._unavailable_keys.discard(entity.desc.key)
-                self._tolerated_miss_keys.discard(entity.desc.key)
-                _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
-            except ValueUnavailable as err:
-                # Deliberately not added to `data`: the platforms' "is not None"
-                # guard then skips the update, and availability comes from
-                # ModbusCoordinatorEntity.available.
-                _LOGGER.debug(
-                    "%s is unavailable: %s (%s)",
-                    entity.desc.key,
-                    err.reason,
-                    err.value,
-                )
-                self._unavailable_keys.add(entity.desc.key)
-            except Exception:  # pylint: disable=broad-exception-caught
+                self._apply_missed_entity(entity, data)
+            elif self._apply_fetched_entity(entity, resp[entity.desc.key], data):
                 failed = True
-                _LOGGER.debug(
-                    "Data not available for key: %s (%d)",
-                    entity.desc.key,
-                    entity.device_id,
-                    exc_info=True,
-                )
 
         if not data and failed:
             # Every entity this cycle read converted to nothing, and not because the
@@ -758,6 +701,76 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
             # rather than a device that is off, so it is reported as a failure.
             raise UpdateFailed()
         return data
+
+    def _apply_missed_entity(self, entity: ModbusContext, data: dict[str, Any]) -> None:
+        """Keep or drop the value of an entity that this poll did not fetch.
+
+        A single missed read on a device that is otherwise answering is tolerated:
+        the entity keeps the value it had rather than flipping to unavailable for a
+        cycle, which a TCP-to-serial bridge falling out of step triggers often
+        enough to be a visible flap. Nothing else is: a second read in a row that
+        misses is not a blip, an entity that is already unavailable has nothing to
+        stay on (its old value is stale, not just unrefreshed), and with nothing
+        read yet there is no value to keep - all of those go unavailable.
+        """
+        tolerate_miss = (
+            entity.desc.key not in self._tolerated_miss_keys
+            and entity.desc.key not in self._unavailable_keys
+            and self.data
+            and self.data.get(entity.desc.key) is not None
+        )
+        if not tolerate_miss:
+            _LOGGER.debug(
+                "No value for key %s in this poll of %s",
+                entity.desc.key,
+                self.name,
+            )
+            self._unavailable_keys.add(entity.desc.key)
+            self._tolerated_miss_keys.discard(entity.desc.key)
+            return
+        _LOGGER.debug(
+            "Keeping the last value of %s, its read missed once",
+            entity.desc.key,
+        )
+        data[entity.desc.key] = self.data[entity.desc.key]
+        self._tolerated_miss_keys.add(entity.desc.key)
+
+    def _apply_fetched_entity(
+        self, entity: ModbusContext, modbus_response: ModbusPDU, data: dict[str, Any]
+    ) -> bool:
+        """Publish one entity's value, marking it unavailable when declared so.
+
+        Returns True when the conversion failed for a reason that is a fault in the
+        conversion, alongside the already-unavailable values.
+        """
+        try:
+            value: str | float | int | bool | date | time | datetime | None = (
+                self._convert_value(entity.desc, modbus_response)
+            )
+            data[entity.desc.key] = value
+            self._unavailable_keys.discard(entity.desc.key)
+            self._tolerated_miss_keys.discard(entity.desc.key)
+            _LOGGER.debug("Value for key %s is %s", entity.desc.key, value)
+        except ValueUnavailable as err:
+            # Deliberately not added to `data`: the platforms' "is not None"
+            # guard then skips the update, and availability comes from
+            # ModbusCoordinatorEntity.available.
+            _LOGGER.debug(
+                "%s is unavailable: %s (%s)",
+                entity.desc.key,
+                err.reason,
+                err.value,
+            )
+            self._unavailable_keys.add(entity.desc.key)
+        except Exception:  # pylint: disable=broad-exception-caught
+            _LOGGER.debug(
+                "Data not available for key: %s (%d)",
+                entity.desc.key,
+                entity.device_id,
+                exc_info=True,
+            )
+            return True
+        return False
 
     def _convert_value(
         self, desc: ModbusEntityDescription, response: ModbusPDU
