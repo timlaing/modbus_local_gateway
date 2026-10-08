@@ -726,6 +726,74 @@ async def test_handle_coordinator_update_never_resets() -> None:
 
 
 @pytest.mark.asyncio
+async def test_handle_coordinator_update_never_resets_tolerates_rounding_dip() -> None:
+    """Test rounding dips within multiplier don't trigger never_resets warning."""
+    coordinator = MagicMock()
+    desc = ModbusSensorEntityDescription(
+        key="Eload_total",
+        register_address=1,
+        data_type=ModbusDataType.INPUT_REGISTER,
+        never_resets=True,
+        conv_multiplier=0.1,
+    )
+    ctx = ModbusContext(
+        1,
+        desc,
+    )
+    device = MagicMock()
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    cast(Any, entity).async_write_ha_state = MagicMock()
+    coordinator.get_data.return_value = 41579.9  # 0.1 less than current
+
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
+        ) as warning,
+    ):
+        entity._attr_native_value = 41580.0
+        entity.state_class = SensorStateClass.TOTAL_INCREASING
+        entity._handle_coordinator_update()
+
+        warning.assert_not_called()
+        cast(Any, entity).async_write_ha_state.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_coordinator_update_never_resets_still_warns_on_real_drop() -> (
+    None
+):
+    """Test real drops beyond multiplier still warn."""
+    coordinator = MagicMock()
+    desc = ModbusSensorEntityDescription(
+        key="Eload_total",
+        register_address=1,
+        data_type=ModbusDataType.INPUT_REGISTER,
+        never_resets=True,
+        conv_multiplier=0.1,
+    )
+    ctx = ModbusContext(
+        1,
+        desc,
+    )
+    device = MagicMock()
+    entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
+    cast(Any, entity).async_write_ha_state = MagicMock()
+    coordinator.get_data.return_value = 41579.0  # 1.0 drop > 0.1
+
+    with (
+        patch(
+            "custom_components.modbus_local_gateway.sensor._LOGGER.warning"
+        ) as warning,
+    ):
+        entity._attr_native_value = 41580.0
+        entity.state_class = SensorStateClass.TOTAL_INCREASING
+        entity._handle_coordinator_update()
+
+        warning.assert_called_once()
+        cast(Any, entity).async_write_ha_state.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_native_value_rounds_float_with_precision() -> None:
     """Test native_value rounds float with precision."""
 
@@ -742,8 +810,6 @@ async def test_native_value_rounds_float_with_precision() -> None:
     )
     device = MagicMock()
     entity = ModbusSensorEntity(coordinator=coordinator, ctx=ctx, device=device)
-    cast(Any, entity).async_write_ha_state = MagicMock()
-
     entity._attr_native_value = 12.3456
     result = entity.native_value
     assert result == pytest.approx(12.35)
