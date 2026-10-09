@@ -9,6 +9,32 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.5] - 2026-10-09
+
+### Fixed
+
+- **SonarQube-reported complexity in the codebase is down, behavior unchanged**: the
+  number platform's step and mode logic (S3358, S2589) and the coordinator's
+  per-entity handling (S3776) no longer trip the cognitive-complexity rule, and the
+  never-resets rounding-dip logic in `sensor.py` was extracted to its own helpers
+  (S3776). The rules that flagged sizing and shape were cleaned too: `CompositeType`
+  field properties always return the same register tuple length (S8495), the repeated
+  "must be one of `write_function`" warning is a single constant (S1192), and a dead
+  default in `number.py` (S1854) is gone. No device reacts differently.
+- **The tests that guard exception handling assert what they actually throw**: a few
+  `pytest.raises` blocks made more than one call inside the guarded scope, so the
+  assertion could pass for the wrong reason (S5778), and `pytest` was imported through
+  a re-export (S9084). Each of those blocks now leaves the call it means to test
+  alone inside the guard, and the tests import `pytest` as a module. The assertions
+  are unchanged, so the behavior the tests protect is the same.
+- **The CI now scans tests with SonarQube**: the `Tests` workflow runs the SonarQube
+  scan itself instead of relying on the push-only scan, so a pull request that touches
+  only tests is analyzed too. A token-handling hardening follows the scan on its move.
+
+### Dependencies
+
+- tox `4.64.8` → `4.64.9` ([#387](https://github.com/timlaing/modbus_local_gateway/pull/387))
+
 ## [v2026.10.4] - 2026-10-08
 
 ### Fixed
@@ -37,6 +63,10 @@ custom integrations. Pre-releases are not listed here.
   the "never resets" rejection or spurious warnings; the guard now compares against
   the entity multiplier (LSB) to ignore sub-multiplier drops while still rejecting
   genuine resets. No config changes required.
+- **String registers tolerate null bytes and non-printable characters**: pymodbus can
+  return a string with leading null bytes (a UCS-2-encoded value, for example), and the
+  old conversion only split on the first null, so such a register came back empty. The
+  decoded value is now cleared of null bytes and any non-printable characters instead.
 
 ## [v2026.10.3] - 2026-10-06
 
