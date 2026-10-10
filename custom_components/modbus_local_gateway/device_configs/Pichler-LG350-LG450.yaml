@@ -1679,7 +1679,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_category: diagnostic
     # Official Doc: LG_Modell - Air handling unit type (0=LG350, 1=LG450, 2=LG740)
 
-
   # External Digital Inputs (108)
   e3_din_frostschutz:
     name: Extern Frostschutz
