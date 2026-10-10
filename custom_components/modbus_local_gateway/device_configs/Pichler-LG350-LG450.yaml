@@ -13,8 +13,10 @@ device:
 # Modbus RTU: enable "Modbus TCP" (177), set "Modbus TCP Port" (180, factory
 # default 0) to 502, then restart the unit via "System Zurücksetzen" -> "Neustart"
 # (63). The settings only take effect after the restart. RTU keeps working
-# alongside TCP. Switching Modbus TCP off over TCP cuts the connection. The unit
-# accepts a single Modbus TCP client at a time; further clients get no answer.
+# alongside TCP. Switching Modbus TCP off or changing the port likewise takes
+# effect at the next restart, which can also be a power cut days later; from then
+# on the unit is reachable only over Modbus RTU. The unit accepts a single Modbus
+# TCP client at a time; further clients get no answer.
 
 read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
   betriebsmodus_sommer_winter_select:
