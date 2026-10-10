@@ -4,7 +4,19 @@ device:
   max_register_read: 100
 
 # docs: https://www.pichlerluft.at/unterlagen.html
-# modbus lists: https://www.pichlerluft.at/unterlagen.html?file=files/content/downloads/LOGIN/LG%20350_LG%20450_LG%20740_LG%201000%20SK/LIST_Modbus_ES2020_FW_LG350_LG450_LG740_LG1000_v2.0.0.xlsx
+# modbus lists: https://www.pichlerluft.at/unterlagen.html?file=files/content/downloads/LOGIN/LG%20350_LG%20450_LG%20740_LG%201000%20SK/LIST_Modbus_ES2020_FW_LG350_LG450_LG740_LG1000_v2.1.0.xlsx
+# Registers 2202-2213 and 5200-5251 of list v2.1.0 answer with Modbus exception 2
+# (illegal data address) over Modbus TCP on an LG 350 with firmware 1.6 and are
+# left out; users report them readable over Modbus RTU.
+#
+# Modbus TCP (firmware 1.6 or later) cannot be enabled on the touch display. Over
+# Modbus RTU: enable "Modbus TCP" (177), set "Modbus TCP Port" (180, factory
+# default 0) to 502, then restart the unit via "System Zurücksetzen" -> "Neustart"
+# (63). The settings only take effect after the restart. RTU keeps working
+# alongside TCP. Switching Modbus TCP off or changing the port likewise takes
+# effect at the next restart, which can also be a power cut days later; from then
+# on the unit is reachable only over Modbus RTU. The unit accepts a single Modbus
+# TCP client at a time; further clients get no answer.
 
 read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
   betriebsmodus_sommer_winter_select:
@@ -216,7 +228,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     unit_of_measurement: h
     icon: mdi:air-filter
     entity_category: config
-    entity_registry_enabled_default: False
 
   #  nachheizregister_vermutlich_number:
   #    name: Nachheizregister (vermutlich)
@@ -631,7 +642,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan-speed-1
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 083. Luftstufe1 ABL-Balance - Disbalance air volume flow ventilation level 1 (-500 - 500 m³/h)
 
   abluftbalance_stufe2_number:
@@ -646,7 +656,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan-speed-2
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 084. Luftstufe2 ABL-Balance - Disbalance air volume flow ventilation level 2 (-500 - 500 m³/h)
 
   abluftbalance_stufe3_number:
@@ -661,7 +670,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan-speed-3
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 085. Luftstufe3 ABL-Balance - Disbalance air volume flow ventilation level 3 (-500 - 500 m³/h)
 
   abluftbalance_grundluftung_number:
@@ -676,7 +684,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 086. Grundluftung ABL-Balance - Disbalance air volume flow basic ventilation level (-500 - 500 m³/h)
 
   freigabe_heizen_select:
@@ -727,6 +734,205 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     entity_registry_enabled_default: False
     # Official Doc: 104. Zeitprogramm Temperaturregelung (0=Inaktiv, 1=Aktiv)
 
+  firmware_version_touch_display:
+    name: Firmware Version TouchDisplay
+    address: 105
+    control: sensor
+    multiplier: 0.1
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 105. FirmwareVersion TouchDisplay (nur lesbar)
+
+  vhr_max_temperatur_number:
+    name: Maximale VHR Temperatur
+    address: 147
+    control: number
+    multiplier: 0.1
+    offset: -100
+    number:
+      min: 0
+      max: 50
+    unit_of_measurement: °C
+    device_class: temperature
+    icon: mdi:thermometer-high
+    entity_category: config
+    # Official Doc: 147. PreHeaterMaxTemperature (1000 - 1500, 1 Dezimalstelle, Offset -1000)
+
+  ventilatorregelung_select:
+    name: Ventilatorregelung
+    address: 80
+    control: select
+    options:
+      0: Volumenstromkonstant
+      1: Druckkonstant
+    icon: mdi:fan
+    entity_category: config
+    # Official Doc: 080. FagRegType (0=Volumenstromkonstant, 1=Druckkonstant)
+
+  filteralarm_select:
+    name: Filteralarm
+    address: 157
+    control: select
+    options:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:air-filter
+    entity_category: config
+    # Official Doc: 157. EnableAirfilterAlarm
+
+  rauchabzug_select:
+    name: Rauchabzug
+    address: 158
+    control: select
+    options:
+      0: Aus
+      1: Schließer (NO)
+      2: Öffner (NC)
+    icon: mdi:smoke
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 158. EnableExtractSmoke (0=aus, 1=NO, 2=NC)
+
+  epb_co2_select:
+    name: EPB CO2
+    address: 82
+    control: select
+    options:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:molecule-co2
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 082. EPB_Activate
+
+  epb_co2_steuerung_select:
+    name: EPB CO2 Steuerung
+    address: 108
+    control: select
+    options:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:molecule-co2
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 108. EPB_CO2control
+
+  display_luftqualitaet_select:
+    name: Touch Display Luftqualitätsbildschirm
+    address: 135
+    control: select
+    options:
+      0: Inaktiv
+      1: Aktiv
+    icon: mdi:monitor
+    entity_category: config
+    entity_registry_enabled_default: False
+    # Official Doc: 135. DisplayShowAirQulity
+
+  modbus_sensoren_aktiv:
+    name: Modbus-Sensoren aktiv (Bitmaske)
+    address: 59
+    control: sensor
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 059. ModbusSensorsEnabled (bis zu 6 Sensoren)
+
+  modbus_sensorbus_baudrate:
+    name: Sensor-Modbus-Baudrate L17
+    address: 136
+    control: sensor
+    map:
+      0: "9600"
+      1: "19200"
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 136. BaudRateSensorBus (0=9600, 1=19200)
+
+  modbus_rtu_adresse:
+    name: Modbus RTU Adresse
+    address: 208
+    control: sensor
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 208. ModbusAdresse (1-247)
+
+  modbus_rtu_baudrate:
+    name: Modbus RTU Baudrate
+    address: 209
+    control: sensor
+    map:
+      0: "9600"
+      1: "19200"
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 209. ModbusBaudrate (0=9600, 1=19200)
+
+  modbus_rtu_paritaet:
+    name: Modbus RTU Parität
+    address: 210
+    control: sensor
+    map:
+      0: Keine
+      1: Gerade
+      2: Ungerade
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 210. ModbusParität (0=Keine, 1=Gerade, 2=Ungerade)
+
+  modbus_tcp_switch:
+    name: Modbus TCP
+    address: 177
+    control: switch
+    switch:
+      "on": 1
+      "off": 0
+    icon: mdi:lan
+    entity_category: config
+    # Official Doc: 0177. ModbusTCP_ONOFF (1=Ein, 0=Aus), ab FW 1.6, wirksam nach Neustart
+
+  modbus_tcp_port_number:
+    name: Modbus TCP Port
+    address: 180
+    control: number
+    number:
+      min: 0
+      max: 65535
+      mode: box
+    icon: mdi:lan
+    entity_category: config
+    # Official Doc: 0180. ModbusTCP_Port, ab FW 1.6, wirksam nach Neustart
+
+  modbus_tcp_adressvergabe:
+    name: Modbus TCP Adressvergabe
+    address: 164
+    control: sensor
+    map:
+      0: DHCP
+      1: Statisch
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 0164. ModbusTCP_Static_IP (0=dynamisch, 1=statisch), ab FW 1.6
+
+  modbus_tcp_rtu:
+    name: Modbus TCP RTU-Framing
+    address: 179
+    control: sensor
+    map:
+      0: Aus
+      1: Ein
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 0179. ModbusTCP_RTU (1=aktiviert, 0=deaktiviert), ab FW 1.6
+
+  modbus_tcp_timeout:
+    name: Modbus TCP Timeout
+    address: 178
+    control: sensor
+    unit_of_measurement: min
+    entity_category: diagnostic
+    icon: mdi:information
+    # Official Doc: 0178. ModbusTCP_Timeout in Minuten (0=kein Timeout), ab FW 1.6
+
 read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
   # Analog Inputs (2-3, 13, 103)
   l5_ai1_co2_sensor:
@@ -766,7 +972,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
 
   l7_ai4_abluft_extern:
     name: L7/Ai4 Abluft externer Sensor
@@ -835,7 +1040,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
     # Official Doc: T9_TouchDisplay - Room temperature touch display (-30 - 130 °C)
 
   # Control Signals (11-12, 26)
@@ -908,7 +1112,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:fan
     control: binary_sensor
     device_class: running
-    entity_registry_enabled_default: False
     # Official Doc: Relais_H67_Fans - Fans (0=Off, 1=On)
 
   bypassklappe_status:
@@ -925,7 +1128,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:valve
     control: binary_sensor
     device_class: opening
-    entity_registry_enabled_default: False
     # Official Doc: Relais_H9_ODA/EHA damper - Outdoor & exhaust air dampers (0=Off, 1=On)
 
   relais_h10_heizpumpe:
@@ -961,7 +1163,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Relais_H12B - Air filter indication
 
   # Main Temperature Sensors (30-34)
@@ -1028,7 +1229,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
     # Official Doc: T5_VHR - Air temperature preheater (-30 - 130 °C)
 
   # External Digital Inputs (37-38)
@@ -1162,7 +1362,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
     # Official Doc: Zuluft_Temperatursollwert_berechnet - Calculated supply air temperature (-30 - 130 °C)
 
   co2_regelsignal:
@@ -1218,7 +1417,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z02 - Error operating panel
 
   fehler_frostschutz_nhr:
@@ -1256,7 +1454,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z06 - Error outdoor air temperature sensor
 
   fehler_t2_fortluft:
@@ -1266,7 +1463,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z07 - Error exhaust air temperature sensor
 
   fehler_t3_abluft:
@@ -1276,7 +1472,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z08 - Error extract air temperature sensor
 
   fehler_t4_zuluft:
@@ -1286,7 +1481,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z09 - Error supply air temperature sensor
 
   fehler_t5_vorheizregister:
@@ -1296,7 +1490,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z10 - Error preheater temperature sensor
 
   fehler_t6_zuluft_extern:
@@ -1451,8 +1644,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
   firmware_version:
     name: Firmware Version
     address: 23
-    unit_of_measurement: ""
-    state_class: measurement
+    multiplier: 0.1
     entity_category: diagnostic
     icon: mdi:information
     # Official Doc: FW_Version - Firmware version
@@ -1464,18 +1656,12 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
       0: LG350
       1: LG450
       2: LG740
+      350: LG350
+      450: LG450
+      740: LG740
     icon: mdi:information
     entity_category: diagnostic
     # Official Doc: LG_Modell - Air handling unit type (0=LG350, 1=LG450, 2=LG740)
-
-  firmware_version_touch_display:
-    name: Firmware Version TouchDisplay
-    address: 105
-    unit_of_measurement: ""
-    state_class: measurement
-    entity_category: diagnostic
-    icon: mdi:information
-    # Official Doc: FirmwareVersion TouchDisplay - Firmware version (read-only)
 
   # External Digital Inputs (108)
   e3_din_frostschutz:
