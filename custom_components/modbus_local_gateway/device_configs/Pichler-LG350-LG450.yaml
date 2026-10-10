@@ -6,7 +6,8 @@ device:
 # docs: https://www.pichlerluft.at/unterlagen.html
 # modbus lists: https://www.pichlerluft.at/unterlagen.html?file=files/content/downloads/LOGIN/LG%20350_LG%20450_LG%20740_LG%201000%20SK/LIST_Modbus_ES2020_FW_LG350_LG450_LG740_LG1000_v2.1.0.xlsx
 # Registers 2202-2213 and 5200-5251 of list v2.1.0 answer with Modbus exception 2
-# (illegal data address) on an LG 350 with firmware 1.6 and are left out.
+# (illegal data address) over Modbus TCP on an LG 350 with firmware 1.6 and are
+# left out; users report them readable over Modbus RTU.
 #
 # Modbus TCP (firmware 1.6 or later) cannot be enabled on the touch display. Over
 # Modbus RTU: enable "Modbus TCP" (177), set "Modbus TCP Port" (180, factory
