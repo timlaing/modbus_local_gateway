@@ -12,7 +12,8 @@ device:
 # Modbus RTU: enable "Modbus TCP" (177), set "Modbus TCP Port" (180, factory
 # default 0) to 502, then restart the unit via "System Zurücksetzen" -> "Neustart"
 # (63). The settings only take effect after the restart. RTU keeps working
-# alongside TCP. Switching Modbus TCP off over TCP cuts the connection.
+# alongside TCP. Switching Modbus TCP off over TCP cuts the connection. The unit
+# accepts a single Modbus TCP client at a time; further clients get no answer.
 
 read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
   betriebsmodus_sommer_winter_select:
@@ -224,7 +225,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     unit_of_measurement: h
     icon: mdi:air-filter
     entity_category: config
-    entity_registry_enabled_default: False
 
   #  nachheizregister_vermutlich_number:
   #    name: Nachheizregister (vermutlich)
@@ -639,7 +639,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan-speed-1
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 083. Luftstufe1 ABL-Balance - Disbalance air volume flow ventilation level 1 (-500 - 500 m³/h)
 
   abluftbalance_stufe2_number:
@@ -654,7 +653,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan-speed-2
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 084. Luftstufe2 ABL-Balance - Disbalance air volume flow ventilation level 2 (-500 - 500 m³/h)
 
   abluftbalance_stufe3_number:
@@ -669,7 +667,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan-speed-3
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 085. Luftstufe3 ABL-Balance - Disbalance air volume flow ventilation level 3 (-500 - 500 m³/h)
 
   abluftbalance_grundluftung_number:
@@ -684,7 +681,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     device_class: volume_flow_rate
     icon: mdi:fan
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 086. Grundluftung ABL-Balance - Disbalance air volume flow basic ventilation level (-500 - 500 m³/h)
 
   freigabe_heizen_select:
@@ -975,7 +971,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
 
   l7_ai4_abluft_extern:
     name: L7/Ai4 Abluft externer Sensor
@@ -1044,7 +1039,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
     # Official Doc: T9_TouchDisplay - Room temperature touch display (-30 - 130 °C)
 
   # Control Signals (11-12, 26)
@@ -1117,7 +1111,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:fan
     control: binary_sensor
     device_class: running
-    entity_registry_enabled_default: False
     # Official Doc: Relais_H67_Fans - Fans (0=Off, 1=On)
 
   bypassklappe_status:
@@ -1134,7 +1127,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     icon: mdi:valve
     control: binary_sensor
     device_class: opening
-    entity_registry_enabled_default: False
     # Official Doc: Relais_H9_ODA/EHA damper - Outdoor & exhaust air dampers (0=Off, 1=On)
 
   relais_h10_heizpumpe:
@@ -1170,7 +1162,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Relais_H12B - Air filter indication
 
   # Main Temperature Sensors (30-34)
@@ -1237,7 +1228,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
     # Official Doc: T5_VHR - Air temperature preheater (-30 - 130 °C)
 
   # External Digital Inputs (37-38)
@@ -1371,7 +1361,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     device_class: temperature
     state_class: measurement
     icon: mdi:thermometer
-    entity_registry_enabled_default: False
     # Official Doc: Zuluft_Temperatursollwert_berechnet - Calculated supply air temperature (-30 - 130 °C)
 
   co2_regelsignal:
@@ -1427,7 +1416,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z02 - Error operating panel
 
   fehler_frostschutz_nhr:
@@ -1465,7 +1453,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z06 - Error outdoor air temperature sensor
 
   fehler_t2_fortluft:
@@ -1475,7 +1462,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z07 - Error exhaust air temperature sensor
 
   fehler_t3_abluft:
@@ -1485,7 +1471,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z08 - Error extract air temperature sensor
 
   fehler_t4_zuluft:
@@ -1495,7 +1480,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z09 - Error supply air temperature sensor
 
   fehler_t5_vorheizregister:
@@ -1505,7 +1489,6 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     control: binary_sensor
     device_class: problem
     entity_category: diagnostic
-    entity_registry_enabled_default: False
     # Official Doc: Fehler Z10 - Error preheater temperature sensor
 
   fehler_t6_zuluft_extern:
