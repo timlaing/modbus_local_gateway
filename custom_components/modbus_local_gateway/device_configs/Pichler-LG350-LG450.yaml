@@ -885,7 +885,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
       "off": 0
     icon: mdi:lan
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 0177. ModbusTCP_ONOFF (1=Ein, 0=Aus), ab FW 1.6, wirksam nach Neustart
 
   modbus_tcp_port_number:
@@ -898,7 +897,6 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
       mode: box
     icon: mdi:lan
     entity_category: config
-    entity_registry_enabled_default: False
     # Official Doc: 0180. ModbusTCP_Port, ab FW 1.6, wirksam nach Neustart
 
   modbus_tcp_adressvergabe:
