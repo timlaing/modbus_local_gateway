@@ -9,7 +9,7 @@ class ModbusClientError(ModbusException):
 
     def __init__(self, string: str) -> None:
         """Initialize the error."""
-        super().__init__(string)  # type: ignore[no-untyped-call]
+        super().__init__(string)  # type: ignore[no-untyped-call,unused-ignore]
         self.string = string
 
 
