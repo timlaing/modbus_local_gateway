@@ -9,6 +9,39 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.6] - 2026-10-14
+
+### Added
+
+- **Pichler LG350/LG450 firmware 1.6 features**: add support for the new feature
+  set exposed by firmware 1.6 on Pichler LG350/LG450 devices
+  ([#390](https://github.com/timlaing/modbus_local_gateway/pull/390)).
+
+### Fixed
+
+- **Main-branch CI unblocked after pymodbus 3.16**: exclude the yanked pymodbus
+  3.16.0 release and adapt the strict type checks to pymodbus 3.16 changing
+  `registers`/`bits` from `list` to `Sequence`
+  ([#393](https://github.com/timlaing/modbus_local_gateway/pull/393)).
+- **CodeRabbit follow-up for #393**: retain the targeted `no-untyped-call`
+  suppression on `ModbusException.__init__` for older supported pymodbus versions
+  and add a tuple regression test for `_swap_registers`.
+- **Device-registry test updated for Home Assistant 2026.10**: use
+  `DeviceEntry.config_entry_id` instead of the deprecated `config_entries`
+  ([#397](https://github.com/timlaing/modbus_local_gateway/pull/397)).
+- **Type-checking compatibility with Home Assistant 2026.10**: tolerate the new
+  `probatio` schema types in `config_flow.py`
+  ([#398](https://github.com/timlaing/modbus_local_gateway/pull/398)).
+
+### Dependencies
+
+- Home Assistant `>=2026.9,<2026.10` → `>=2026.9,<2026.11`
+  ([#391](https://github.com/timlaing/modbus_local_gateway/pull/391)).
+- tox `4.64.9` → `4.65.3`
+  ([#392](https://github.com/timlaing/modbus_local_gateway/pull/392)).
+- release-drafter `7.9.0` → `7.10.0`
+  ([#389](https://github.com/timlaing/modbus_local_gateway/pull/389)).
+
 ## [v2026.10.5] - 2026-10-09
 
 ### Fixed
