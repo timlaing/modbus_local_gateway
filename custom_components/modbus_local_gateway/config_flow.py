@@ -162,7 +162,7 @@ class DeviceSubentryFlowHandler(ConfigSubentryFlow):
         return self.async_show_form(
             step_id=str(self.source),
             data_schema=self.add_suggested_values_to_schema(  # type: ignore[arg-type,unused-ignore]
-                data_schema=_device_schema(devices_data),
+                data_schema=_device_schema(devices_data),  # type: ignore[arg-type,unused-ignore]
                 suggested_values=dict(subentry.data) if subentry else None,
             ),
             errors=errors,
@@ -355,7 +355,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=self.add_suggested_values_to_schema(  # type: ignore[arg-type,unused-ignore]
-                data_schema=_gateway_schema(
+                data_schema=_gateway_schema(  # type: ignore[arg-type,unused-ignore]
                     entry.data[CONF_HOST],
                     entry.data[CONF_PORT],
                     get_connection_type(entry.data),
