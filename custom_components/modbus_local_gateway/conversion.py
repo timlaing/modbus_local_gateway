@@ -1,5 +1,6 @@
 """Conversion register functions"""
 
+from collections.abc import Sequence
 import logging
 from typing import Any
 
@@ -50,10 +51,10 @@ class Conversion:
         self.client: type[AsyncModbusTcpClient] = client
 
     def _swap_registers(
-        self, registers: list[int], desc: ModbusEntityDescription
+        self, registers: Sequence[int], desc: ModbusEntityDescription
     ) -> list[int]:
         """Do swap as needed."""
-        _registers: list[int] = registers.copy()
+        _registers: list[int] = list(registers)
         if desc.conv_swap in (SwapType.BYTE, SwapType.WORD_BYTE):
             # convert [12][34] --> [21][43]
             for i, register in enumerate(_registers):

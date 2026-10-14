@@ -446,14 +446,16 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                         len(temp_response.registers),
                         current_address - read_count,
                     )
-                    response.registers += temp_response.registers
+                    response.registers = list(response.registers) + list(
+                        temp_response.registers
+                    )
                 else:  # Coils or discrete inputs
                     _LOGGER.debug(
                         "Appending %d bits from address %d",
                         len(temp_response.bits),
                         current_address - read_count,
                     )
-                    response.bits += temp_response.bits
+                    response.bits = list(response.bits) + list(temp_response.bits)
 
         return response
 
@@ -714,7 +716,7 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
                 f"{entity.desc.key} at {read_address} - "
                 "aborting bit field write"
             )
-        return response.registers
+        return list(response.registers)
 
     async def _write_composite(
         self,
