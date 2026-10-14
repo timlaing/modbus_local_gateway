@@ -9,6 +9,15 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.7] - 2026-10-14
+
+### Fixed
+
+- **Follow-up Home Assistant 2026.10 mypy compatibility**: complete the
+  `probatio` schema type handling in `config_flow.py` so strict type checking
+  passes under Home Assistant 2026.10
+  ([#399](https://github.com/timlaing/modbus_local_gateway/pull/399)).
+
 ## [v2026.10.6] - 2026-10-14
 
 ### Added
