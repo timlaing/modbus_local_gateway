@@ -9,6 +9,26 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.10.6] - 2026-10-14
+
+### Added
+
+- **Pichler LG350/LG450 firmware 1.6 features**: add support for the new feature
+  set exposed by firmware 1.6 on Pichler LG350/LG450 devices ([#390]).
+
+### Fixed
+
+- **Main-branch CI unblocked after pymodbus 3.16**: exclude the yanked pymodbus
+  3.16.0 release and adapt the strict type checks to pymodbus 3.16 changing
+  `registers`/`bits` from `list` to `Sequence` ([#393]).
+- **CodeRabbit follow-up**: keep the `no-untyped-call` suppression on
+  `ModbusException.__init__` for older supported pymodbus versions and add a tuple
+  regression test for `_swap_registers` ([#393]).
+
+### Dependencies
+
+- release-drafter `7.9.0` → `7.10.0` ([#389]).
+
 ## [v2026.10.5] - 2026-10-09
 
 ### Fixed
