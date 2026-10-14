@@ -152,7 +152,7 @@ async def test_gateway_device_belongs_to_the_entry_not_a_subentry(
         if GATEWAY_IDENTIFIER in device.identifiers
     )
     assert gateway.config_subentry_id is None
-    assert gateway.config_entries == {entry.entry_id}
+    assert gateway.config_entry_id == entry.entry_id
 
 
 @pytest.mark.asyncio
