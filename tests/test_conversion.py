@@ -765,6 +765,23 @@ def test_swap_registers_does_not_modify_input() -> None:
     assert original == input_copy
 
 
+def test_swap_registers_accepts_tuple() -> None:
+    """Test that _swap_registers accepts a non-list Sequence."""
+    conversion = Conversion(client=AsyncModbusTcpClient)
+    desc = ModbusSensorEntityDescription(
+        register_address=1,
+        key="test",
+        conv_swap=SwapType.WORD_BYTE,
+        data_type=ModbusDataType.INPUT_REGISTER,
+    )
+    original: tuple[int, ...] = (0x1234, 0x5678)
+
+    result = conversion._swap_registers(original, desc)
+
+    assert result == [0x7856, 0x3412]
+    assert original == (0x1234, 0x5678)
+
+
 @pytest.mark.parametrize(
     "signed,size,expected",
     [
