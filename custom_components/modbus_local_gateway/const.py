@@ -36,6 +36,30 @@ CONF_DEFAULT_PORT = 502
 CONF_PREFIX = "prefix"
 CONF_CONNECTION_TYPE = "connection_type"
 CONF_DEFAULT_CONNECTION_TYPE = FramerType.SOCKET.value
+
+# Gateway connection transports. Entries without CONF_TRANSPORT are network
+# gateways (Modbus TCP or RTU over TCP) and keep the entry data they have.
+CONF_TRANSPORT = "transport"
+TRANSPORT_NETWORK = "network"
+TRANSPORT_SERIAL_PROXY = "serial_proxy"
+
+# Home Assistant Connect AUX-2 (ESPHome serial proxy). A serial entry stores
+# the proxy port to open plus its UART settings; none of these are framer
+# values, so CONF_CONNECTION_TYPES never lists them.
+DOMAIN_ESPHOME = "esphome"
+SERIAL_PORT_SCHEME = "esphome-hass"
+CONF_DEVICE = "device"
+CONF_SERIAL_NUMBER = "serial_number"
+CONF_BAUDRATE = "baudrate"
+CONF_BYTESIZE = "bytesize"
+CONF_PARITY = "parity"
+CONF_STOPBITS = "stopbits"
+SERIAL_DEFAULT_BAUDRATE = 9600
+SERIAL_DEFAULT_BYTESIZE = 8
+SERIAL_DEFAULT_PARITY = "N"
+SERIAL_DEFAULT_STOPBITS = 1
+# What a port probe that fails is reported as lives with the probe itself,
+# in serial_proxy: it is what the proxy said, not a setting of the entry.
 OPTIONS_REFRESH = "refresh"
 OPTIONS_DEFAULT_REFRESH = 30
 OPTIONS_WRITE_FUNCTION = "write_function"

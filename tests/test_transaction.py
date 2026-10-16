@@ -2,13 +2,19 @@
 # pylint: disable=unexpected-keyword-arg, protected-access
 
 from asyncio import InvalidStateError
-from typing import cast
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.pdu.pdu import ModbusPDU
+from pymodbus.transport import CommParams, CommType
+from pymodbus.transport.serialtransport import (
+    create_serial_connection as pymodbus_create_serial_connection,
+)
 import pytest
 
+from custom_components.modbus_local_gateway import serial_proxy
+from custom_components.modbus_local_gateway.const import SERIAL_PORT_SCHEME
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
 )
@@ -158,3 +164,85 @@ async def test_callback_data_counts_a_second_answer_to_one_request() -> None:
     assert ctx.unsolicited_frames == 1
     assert ctx.mismatched_frames == 0
     assert ctx.desynced
+
+
+def _serial_params(host: str) -> CommParams:
+    """The parameters of a serial connection, proxy URL or local port alike."""
+    return CommParams(
+        comm_type=CommType.SERIAL,
+        host=host,
+        baudrate=19200,
+        bytesize=7,
+        parity="E",
+        stopbits=2,
+        timeout_connect=3.0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_connect_listen_routes_a_proxy_url_through_serialx() -> None:
+    """A serial proxy port is opened through serialx, not through pyserial"""
+    manager = MyTransactionManager(
+        params=_serial_params("esphome-hass://esphome/abc123?port_name=uart0"),
+        framer=MagicMock(),
+        retries=0,
+        is_server=False,
+        trace_connect=None,
+        trace_packet=None,
+        trace_pdu=None,
+    )
+
+    # pymodbus types call_create as a plain callable, not as the partial it is.
+    call_create: Any = manager.call_create
+    assert call_create.func is serial_proxy.create_serial_connection
+    assert call_create.args[0] is manager.loop
+    assert call_create.args[1].__self__ is manager
+    assert call_create.args[1].__name__ == "handle_new_connection"
+    assert call_create.args[2].startswith(SERIAL_PORT_SCHEME)
+    assert call_create.keywords == {
+        "baudrate": 19200,
+        "bytesize": 7,
+        "parity": "E",
+        "stopbits": 2,
+        "timeout": 3.0,
+    }
+
+
+@pytest.mark.asyncio
+async def test_connect_listen_leaves_a_local_serial_port_to_pymodbus() -> None:
+    """A serial port that is not a proxy URL is pyserial's to open"""
+    manager = MyTransactionManager(
+        params=_serial_params("/dev/ttyUSB0"),
+        framer=MagicMock(),
+        retries=0,
+        is_server=False,
+        trace_connect=None,
+        trace_packet=None,
+        trace_pdu=None,
+    )
+
+    call_create: Any = manager.call_create
+    assert call_create.func is pymodbus_create_serial_connection
+
+
+@pytest.mark.asyncio
+async def test_connect_listen_leaves_a_network_connection_alone() -> None:
+    """A connection over the network is untouched by the proxy routing"""
+    manager = MyTransactionManager(
+        params=CommParams(
+            comm_type=CommType.TCP,
+            host="localhost",
+            port=502,
+            timeout_connect=1.5,
+        ),
+        framer=MagicMock(),
+        retries=0,
+        is_server=False,
+        trace_connect=None,
+        trace_packet=None,
+        trace_pdu=None,
+    )
+
+    call_create: Any = manager.call_create
+    assert call_create.func == manager.loop.create_connection
+    assert call_create.args == (manager.handle_new_connection, "localhost", 502)

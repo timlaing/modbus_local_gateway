@@ -1,4 +1,5 @@
 
+aiousbwatcher==1.1.2
 coverage>=7.6.8
 fuzzywuzzy>=0.18.0
 homeassistant>=2026.9,<2026.11
