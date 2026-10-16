@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 import logging
 from types import MappingProxyType
 from typing import Any
@@ -36,25 +36,41 @@ from homeassistant.helpers.selector import (
 import voluptuous as vol
 
 from .const import (
+    CONF_BAUDRATE,
+    CONF_BYTESIZE,
     CONF_CONNECTION_TYPE,
     CONF_CONNECTION_TYPES,
     CONF_DEFAULT_CONNECTION_TYPE,
     CONF_DEFAULT_DEVICE_ID,
     CONF_DEFAULT_PORT,
+    CONF_DEVICE,
     CONF_DEVICE_ID,
+    CONF_GATEWAY_TYPE,
     CONF_LEGACY_ENTITY_IDS,
     CONF_LEGACY_ENTITY_IDS_DEFAULT,
+    CONF_PARITY,
     CONF_PREFIX,
+    CONF_PROXY_DEVICE,
     CONF_RESTORE_ENTITY_IDS,
+    CONF_SERIAL_NUMBER,
+    CONF_STOPBITS,
+    CONF_TRANSPORT,
     CONF_WRITE_FUNCTION_TYPES,
     DOMAIN,
+    GATEWAY_TYPES,
     OPTIONS_DEFAULT_EXPECTED_OFFLINE,
     OPTIONS_DEFAULT_REFRESH,
     OPTIONS_DEFAULT_WRITE_FUNCTION,
     OPTIONS_EXPECTED_OFFLINE,
     OPTIONS_REFRESH,
     OPTIONS_WRITE_FUNCTION,
+    SERIAL_CONNECTION_TYPE,
+    SERIAL_DEFAULT_BAUDRATE,
+    SERIAL_DEFAULT_BYTESIZE,
+    SERIAL_DEFAULT_PARITY,
+    SERIAL_DEFAULT_STOPBITS,
     SUBENTRY_TYPE_DEVICE,
+    TRANSPORT_SERIAL_PROXY,
 )
 from .coordinator import async_restore_legacy_entity_ids
 from .entity_management.device_loader import create_device_info, load_devices
@@ -66,11 +82,22 @@ from .helpers import (
     get_device_identifiers,
     get_device_key,
     get_device_title,
+    get_transport,
     is_supported_home_assistant,
+)
+from .serial_proxy import (
+    ProxyPort,
+    SerialSupportUnavailable,
+    async_get_proxy_ports,
+    async_validate_port,
 )
 from .tcp_client import AsyncModbusTcpClientGateway
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
+
+# What the parity of a serial line is offered as: the letter the entry
+# stores, under the name it is known by.
+_SERIAL_PARITY: dict[str, str] = {"N": "None", "E": "Even", "O": "Odd"}
 
 
 def _number(minimum: float, maximum: float) -> NumberSelector:
@@ -222,6 +249,15 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialise Modbus Local Gateway flow."""
         self.client: AsyncModbusTcpClientGateway | None = None
+        # What kind of connection the flow is building: a framer for a
+        # network gateway, or TRANSPORT_SERIAL_PROXY for an AUX-2.
+        self._gateway_type: str = CONF_DEFAULT_CONNECTION_TYPE
+        # What the AUX-2 steps know so far: the ports Home Assistant can
+        # see, the device chosen among them, and the entry - if any - this
+        # flow is reconfiguring rather than adding.
+        self._proxy_ports: list[ProxyPort] = []
+        self._proxy_device: str = ""
+        self._reconfiguring: ConfigEntry | None = None
 
     def is_matching(self, other_flow: ConfigFlowHandler) -> bool:
         """Check if the other flow matches this one."""
@@ -248,14 +284,52 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the gateway connection."""
+        """Ask what kind of gateway connection this is.
+
+        The kind comes first because everything after it depends on it: a
+        network gateway is asked for a host and a port, an AUX-2 for the
+        device and port to open. Whether an AUX-2 can be asked for at all
+        is checked here, so a missing device or library is said where the
+        choice is made rather than on a form that has nothing to offer.
+        """
         if not is_supported_home_assistant():
             return self.async_abort(reason="unsupported_home_assistant_version")
 
         errors: dict[str, str] = {}
+        if user_input is not None:
+            self._gateway_type = str(user_input[CONF_GATEWAY_TYPE])
+            if self._gateway_type == TRANSPORT_SERIAL_PROXY:
+                errors = await self._async_proxy_ports()
+                if not errors:
+                    return await self.async_step_aux2()
+            else:
+                return await self.async_step_network()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_gateway_type_schema(  # type: ignore[arg-type,unused-ignore]
+                self._gateway_type
+            ),
+            errors=errors,
+        )
+
+    async def async_step_network(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle a gateway reached over the network.
+
+        The connection type starts on the kind chosen at the gateway step,
+        so the framer of that choice carries over and is still offered
+        here - a network gateway is one of the two framers, never an AUX-2.
+        """
+        errors: dict[str, str] = {}
         host: Any = ""
         port: Any = CONF_DEFAULT_PORT
-        connection_type: Any = CONF_DEFAULT_CONNECTION_TYPE
+        connection_type: Any = (
+            self._gateway_type
+            if self._gateway_type in CONF_CONNECTION_TYPES
+            else CONF_DEFAULT_CONNECTION_TYPE
+        )
 
         if user_input is not None:
             host = user_input[CONF_HOST]
@@ -275,16 +349,187 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                         CONF_LEGACY_ENTITY_IDS, CONF_LEGACY_ENTITY_IDS_DEFAULT
                     ),
                 }
-                return self.async_create_entry(
-                    title=f"Modbus Gateway ({get_connection_key(data)})", data=data
-                )
+                return self.async_create_entry(title=_gateway_title(data), data=data)
 
             errors["base"] = "Gateway connection"
 
         return self.async_show_form(
-            step_id="user",
+            step_id="network",
             data_schema=_gateway_schema(host, port, connection_type),  # type: ignore[arg-type,unused-ignore]
             errors=errors,
+        )
+
+    async def async_step_aux2(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask which AUX-2 the gateway connects through.
+
+        A port only means something next to the device it is on, so device
+        and port are asked one after the other rather than as one long
+        list. An entry being reconfigured starts here too, opened on the
+        device it already has, so its port can be moved - or another AUX-2
+        chosen - exactly the way it was added.
+        """
+        errors: dict[str, str] = {}
+        if not self._proxy_ports:
+            # Reconfiguring reaches this step without passing the gateway
+            # step, so the ports may not have been read yet.
+            errors = await self._async_proxy_ports()
+
+        devices: dict[str, str] = {
+            port.entry_id: port.device_name for port in self._proxy_ports
+        }
+
+        if user_input is not None and not errors:
+            device: str = str(user_input[CONF_PROXY_DEVICE])
+            if device in devices:
+                self._proxy_device = device
+                return await self.async_step_aux2_port()
+            errors[CONF_PROXY_DEVICE] = "no_proxy_ports"
+
+        return self.async_show_form(
+            step_id="aux2",
+            data_schema=vol.Schema({  # type: ignore[arg-type,unused-ignore]
+                vol.Required(
+                    CONF_PROXY_DEVICE, default=_prefill(self._proxy_device, devices)
+                ): _dropdown(devices),
+            }),
+            errors=errors,
+        )
+
+    async def async_step_aux2_port(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask which port of the AUX-2 to open, and how to talk on it.
+
+        The settings are stored only once the port has taken them: a baud
+        rate the device cannot do, or a port somebody else is holding, is
+        refused on this form rather than by every read afterwards - a proxy
+        port only reports those when it is opened, so this probe is the one
+        honest place to ask.
+        """
+        errors: dict[str, str] = {}
+        ports: list[ProxyPort] = [
+            port for port in self._proxy_ports if port.entry_id == self._proxy_device
+        ]
+
+        if user_input is not None:
+            port = next(
+                (known for known in ports if known.url == user_input[CONF_DEVICE]),
+                None,
+            )
+            if port is None:
+                # The port was gone from the list before it was submitted.
+                errors[CONF_DEVICE] = "no_proxy_ports"
+            else:
+                data: dict[str, Any] = _serial_data(port, user_input)
+                failure: str | None = await self._async_port_error(port, data)
+                if failure == "already_configured" and self._reconfiguring is None:
+                    # A port belongs to one entry: while adding, this is not
+                    # a setting to change but nowhere to go. Reconfiguring
+                    # keeps the form, as it does for a network gateway.
+                    return self.async_abort(reason="already_configured")
+                if failure is not None:
+                    errors["base"] = failure
+                else:
+                    return self._async_store_serial(data)
+
+        last: dict[str, Any] = (
+            dict(user_input)
+            if user_input
+            else dict(
+                self._reconfiguring.data if self._reconfiguring is not None else {}
+            )
+        )
+        return self.async_show_form(
+            step_id="aux2_port",
+            data_schema=_serial_schema(  # type: ignore[arg-type,unused-ignore]
+                ports, last
+            ),
+            errors=errors,
+        )
+
+    async def _async_proxy_ports(self) -> dict[str, str]:
+        """Read the proxy ports Home Assistant can see, as form errors.
+
+        Whether AUX-2 can be configured at all is only known by looking:
+        the library may be missing, and ports only exist once a device has
+        been adopted. Both are returned as errors rather than raised, so
+        the form can be submitted again once things are in place. When the
+        flow is a reconfiguration, the device already stored is picked so
+        the form opens on it.
+        """
+        try:
+            self._proxy_ports = await async_get_proxy_ports(self.hass)
+        except SerialSupportUnavailable as err:
+            self._proxy_ports = []
+            return {"base": err.reason}
+
+        if not self._proxy_ports:
+            return {"base": "no_proxy_ports"}
+
+        if self._reconfiguring is not None and not self._proxy_device:
+            current = self._reconfiguring.data.get(CONF_DEVICE)
+            known = next(
+                (port for port in self._proxy_ports if port.url == current), None
+            )
+            if known is not None:
+                self._proxy_device = known.entry_id
+        return {}
+
+    async def _async_port_error(
+        self, port: ProxyPort, data: Mapping[str, Any]
+    ) -> str | None:
+        """Return what stops `port` being stored as this connection, if any.
+
+        Another entry on the same URL is refused before the port is probed:
+        the probe would open a port the other entry is entitled to hold.
+        """
+        entry = self._reconfiguring
+        if self._serial_port_taken(
+            str(data[CONF_DEVICE]), skip=entry.entry_id if entry is not None else None
+        ):
+            return "already_configured"
+        return await async_validate_port(
+            self.hass,
+            port,
+            baudrate=int(data[CONF_BAUDRATE]),
+            bytesize=int(data[CONF_BYTESIZE]),
+            parity=str(data[CONF_PARITY]),
+            stopbits=int(data[CONF_STOPBITS]),
+        )
+
+    def _async_store_serial(self, data: dict[str, Any]) -> ConfigFlowResult:
+        """Store the AUX-2 connection: a new entry, or the changed one.
+
+        An entry that now points at another port is reloaded, because its
+        client, its gateway device and every read behind it belong to the
+        connection and have to follow it.
+        """
+        entry = self._reconfiguring
+        if entry is None:
+            return self.async_create_entry(title=_gateway_title(data), data=data)
+
+        stored: dict[str, Any] = {**entry.data, **data}
+        self.hass.config_entries.async_update_entry(
+            entry, data=stored, title=_gateway_title(stored)
+        )
+        self.hass.config_entries.async_schedule_reload(entry.entry_id)
+        return self.async_abort(reason="reconfigure_successful")
+
+    def _serial_port_taken(self, url: str, skip: str | None = None) -> bool:
+        """Return whether a config entry already points at this proxy port.
+
+        One port is one connection with one set of UART settings, so two
+        entries on one URL would fight over a port that can be held only
+        once, and would share the serial number their gateway device is
+        keyed by.
+        """
+        return any(
+            entry.entry_id != skip
+            and get_transport(entry.data) == TRANSPORT_SERIAL_PROXY
+            and entry.data.get(CONF_DEVICE) == url
+            for entry in self.hass.config_entries.async_entries(DOMAIN)
         )
 
     async def _async_gateway_reachable(
@@ -316,6 +561,13 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
         or port without anybody having to rename anything.
         """
         entry: ConfigEntry = self._get_reconfigure_entry()
+        if get_transport(entry.data) == TRANSPORT_SERIAL_PROXY:
+            # The AUX-2 forms are the same ones the entry was added with, so
+            # the port can be moved - or another AUX-2 chosen - without the
+            # devices behind it being touched either.
+            self._reconfiguring = entry
+            return await self.async_step_aux2(user_input)
+
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -344,7 +596,7 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 self.hass.config_entries.async_update_entry(
                     entry,
                     data=data,
-                    title=f"Modbus Gateway ({get_connection_key(data)})",
+                    title=_gateway_title(data),
                 )
                 # The client and the gateway device belong to the connection.
                 self.hass.config_entries.async_schedule_reload(entry.entry_id)
@@ -537,6 +789,19 @@ def _device_schema(devices_data: Mapping[str, str]) -> vol.Schema:
     })
 
 
+def _gateway_type_schema(gateway_type: Any) -> vol.Schema:
+    """Return the form asking what kind of gateway connection this is.
+
+    The two network kinds are the framers the gateway speaks, so the choice
+    *is* the connection type and carries on to the network step as it; the
+    AUX-2 is a device rather than a framer, and carries on to the steps
+    that ask which one instead.
+    """
+    return vol.Schema({
+        vol.Required(CONF_GATEWAY_TYPE, default=gateway_type): _dropdown(GATEWAY_TYPES),
+    })
+
+
 def _gateway_schema(
     host: Any, port: Any, connection_type: Any, restore: bool = False
 ) -> vol.Schema:
@@ -558,3 +823,72 @@ def _gateway_schema(
     if restore:
         schema[vol.Required(CONF_RESTORE_ENTITY_IDS, default=False)] = BooleanSelector()
     return vol.Schema(schema)
+
+
+def _gateway_title(data: Mapping[str, Any]) -> str:
+    """Return what the config entry for this gateway connection is called."""
+    return f"Modbus Gateway ({get_connection_key(data)})"
+
+
+def _serial_data(port: ProxyPort, settings: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the settings of a gateway on one AUX-2 port, as stored.
+
+    Transport and connection type are not asked for: a proxy port is
+    reached over one scheme and speaks one framer, so what is asked for is
+    the port itself and the UART settings of the line behind it. The serial
+    number keys the connection, because the URL names the ESPHome config
+    entry that adopts the device, which is not the same thing.
+    """
+    return {
+        CONF_TRANSPORT: TRANSPORT_SERIAL_PROXY,
+        CONF_CONNECTION_TYPE: SERIAL_CONNECTION_TYPE,
+        CONF_DEVICE: port.url,
+        CONF_SERIAL_NUMBER: port.serial_number,
+        CONF_BAUDRATE: int(settings[CONF_BAUDRATE]),
+        CONF_BYTESIZE: int(settings[CONF_BYTESIZE]),
+        CONF_PARITY: str(settings[CONF_PARITY]),
+        CONF_STOPBITS: int(settings[CONF_STOPBITS]),
+    }
+
+
+def _serial_schema(ports: Sequence[ProxyPort], last: Mapping[str, Any]) -> vol.Schema:
+    """Return the form asking for the port to open and how to talk on it.
+
+    `last` is whatever is already known: what was submitted when the form
+    comes back with an error, the entry's own settings when it is being
+    reconfigured, and the usual serial defaults when there is neither.
+    What a device does or does not take is deliberately not asked here:
+    that is only reported when a port is opened, which is what the probe
+    of the chosen port is for.
+    """
+    options: dict[str, str] = {port.url: port.port_label for port in ports}
+    return vol.Schema({
+        vol.Required(
+            CONF_DEVICE, default=_prefill(str(last.get(CONF_DEVICE, "")), options)
+        ): _dropdown(options),
+        vol.Required(
+            CONF_BAUDRATE,
+            default=int(last.get(CONF_BAUDRATE, SERIAL_DEFAULT_BAUDRATE)),
+        ): _number(300, 921600),
+        vol.Required(
+            CONF_BYTESIZE,
+            default=int(last.get(CONF_BYTESIZE, SERIAL_DEFAULT_BYTESIZE)),
+        ): _number(5, 8),
+        vol.Required(
+            CONF_PARITY, default=str(last.get(CONF_PARITY, SERIAL_DEFAULT_PARITY))
+        ): _dropdown(_SERIAL_PARITY),
+        vol.Required(
+            CONF_STOPBITS,
+            default=int(last.get(CONF_STOPBITS, SERIAL_DEFAULT_STOPBITS)),
+        ): _number(1, 2),
+    })
+
+
+def _prefill(value: str, options: Mapping[str, str]) -> str:
+    """Return `value` when the form offers it, else the first option it does.
+
+    The device or port an entry already points at is what its form should
+    open on, but that may have been unplugged or renamed meanwhile: the
+    form still has to show something that can be submitted.
+    """
+    return value if value in options else next(iter(options), "")

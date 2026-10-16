@@ -7,12 +7,57 @@
     },
     "error": {
       "Gateway connection": "Cannot connect to the gateway",
-      "already_configured": "This gateway is already configured"
+      "already_configured": "This gateway is already configured",
+      "cannot_connect": "The AUX-2 port could not be opened. Check that the device is turned on and adopted in Home Assistant.",
+      "no_proxy_ports": "No AUX-2 serial ports were found. Connect the Home Assistant Connect AUX-2 and adopt it in Home Assistant first.",
+      "port_busy": "The AUX-2 port is already in use. Close whatever else holds it open and try again.",
+      "serial_support_unavailable": "Serial proxy ports cannot be read here. Check that the USB and ESPHome integrations are set up.",
+      "unsupported_settings": "The AUX-2 port does not accept these settings. Check the baud rate, data bits, parity and stop bits expected by the devices on the line."
     },
     "initiate_flow": {
       "user": "Add gateway"
     },
     "step": {
+      "aux2": {
+        "data": {
+          "proxy_device": "Device"
+        },
+        "data_description": {
+          "proxy_device": "Only AUX-2 devices adopted in Home Assistant show up here, with the serial ports they expose."
+        },
+        "description": "Choose the AUX-2 whose serial port this gateway connects through. Devices behind it are added to this connection afterwards.",
+        "title": "Home Assistant Connect AUX-2"
+      },
+      "aux2_port": {
+        "data": {
+          "baudrate": "Baud rate",
+          "bytesize": "Data bits",
+          "device": "Serial port",
+          "parity": "Parity",
+          "stopbits": "Stop bits"
+        },
+        "data_description": {
+          "device": "AUX-2 ports are RS-232: a Modbus bus on RS-485 needs an adapter between it and this port.",
+          "parity": "None, even or odd, as the devices on the line expect."
+        },
+        "description": "Choose the port of the AUX-2 to connect through, and how it talks to the devices wired to it. The port is opened once to check the settings before anything is stored.",
+        "title": "Serial port"
+      },
+      "network": {
+        "data": {
+          "connection_type": "Connection type",
+          "host": "Host",
+          "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
+          "port": "Port",
+          "restore_entity_ids": "Restore entity ids of this integration"
+        },
+        "data_description": {
+          "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
+          "restore_entity_ids": "Moves the entities this integration named after the gateway host back onto the entity id they had before that prefix existed. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
+        },
+        "description": "Configure the connection to your Modbus gateway. Devices behind it are added to this connection afterwards.",
+        "title": "Modbus gateway"
+      },
       "reconfigure": {
         "data": {
           "connection_type": "Connection type",
@@ -30,17 +75,12 @@
       },
       "user": {
         "data": {
-          "connection_type": "Connection type",
-          "host": "Host",
-          "legacy_entity_ids": "Use the pre 2026.02.0 entity ids",
-          "port": "Port",
-          "restore_entity_ids": "Restore entity ids of this integration"
+          "gateway_type": "Gateway type"
         },
         "data_description": {
-          "legacy_entity_ids": "Only applies to entities created from now on. Existing entity ids are never changed by this integration.",
-          "restore_entity_ids": "Moves the entities this integration named after the gateway host back onto the entity id they had before that prefix existed. Renaming entity ids breaks the automations and dashboards using them, so this only happens when you ask for it."
+          "gateway_type": "An AUX-2 reaches this integration over USB and proxies a serial port of its own: pick it when the Modbus devices are wired to that port rather than to the network."
         },
-        "description": "Configure the connection to your Modbus gateway. Devices behind it are added to this connection afterwards.",
+        "description": "Choose how this gateway is reached: over the network, or through a Home Assistant Connect AUX-2.",
         "title": "Modbus gateway"
       }
     }

@@ -111,7 +111,11 @@ def serial_gateway_data(
     connection_type: str = "rtu",
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Return the data of an AUX-2 serial proxy gateway config entry."""
+    """Return the data of an AUX-2 serial proxy gateway config entry.
+
+    No entity id choice is stored: restoring pre-2026.02.0 entity ids is a
+    question about host-named entities, which a serial gateway never had.
+    """
     return {
         CONF_TRANSPORT: TRANSPORT_SERIAL_PROXY,
         CONF_DEVICE: url,
@@ -121,7 +125,6 @@ def serial_gateway_data(
         CONF_BYTESIZE: 7,
         CONF_PARITY: "E",
         CONF_STOPBITS: 2,
-        CONF_LEGACY_ENTITY_IDS: CONF_LEGACY_ENTITY_IDS_DEFAULT,
         **kwargs,
     }
 

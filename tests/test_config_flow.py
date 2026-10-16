@@ -1,5 +1,5 @@
 """Tests for the Modbus Local Gateway config flow."""
-# pylint: disable=unexpected-keyword-arg, protected-access
+# pylint: disable=too-many-lines, unexpected-keyword-arg, protected-access
 
 import json
 from pathlib import Path
@@ -28,25 +28,43 @@ from custom_components.modbus_local_gateway.config_flow import (
     _dropdown,
 )
 from custom_components.modbus_local_gateway.const import (
+    CONF_BAUDRATE,
+    CONF_BYTESIZE,
     CONF_CONNECTION_TYPE,
+    CONF_DEVICE,
     CONF_DEVICE_ID,
+    CONF_GATEWAY_TYPE,
     CONF_LEGACY_ENTITY_IDS,
     CONF_LEGACY_ENTITY_IDS_DEFAULT,
+    CONF_PARITY,
     CONF_PREFIX,
+    CONF_PROXY_DEVICE,
     CONF_RESTORE_ENTITY_IDS,
+    CONF_STOPBITS,
     DOMAIN,
     OPTIONS_EXPECTED_OFFLINE,
     OPTIONS_REFRESH,
     OPTIONS_WRITE_FUNCTION,
     SUBENTRY_TYPE_DEVICE,
+    TRANSPORT_SERIAL_PROXY,
 )
 from custom_components.modbus_local_gateway.entity_management.const import WriteFunction
 from custom_components.modbus_local_gateway.helpers import get_device_config
+from custom_components.modbus_local_gateway.serial_proxy import (
+    ProxyPort,
+    SerialSupportUnavailable,
+)
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
 )
 
-from .conftest import device_data, gateway_data, mock_gateway_entry
+from .conftest import (
+    device_data,
+    gateway_data,
+    mock_gateway_entry,
+    mock_serial_gateway_entry,
+    serial_gateway_data,
+)
 
 DEVICE_INPUT = {
     CONF_DEVICE_ID: 1,
@@ -56,10 +74,56 @@ DEVICE_INPUT = {
     OPTIONS_WRITE_FUNCTION: WriteFunction.SINGLE.value,
 }
 
+# One AUX-2 port and the form that asks for it: the URL and serial number
+# are the ones `serial_gateway_data` stores, and the settings are the ones
+# it holds, so a gateway added through this form is that entry exactly.
+AUX2_URL = "esphome-hass://esphome/abc123?port_name=uart0"
+AUX2_PORT_INPUT = {
+    CONF_DEVICE: AUX2_URL,
+    CONF_BAUDRATE: 19200,
+    CONF_BYTESIZE: 7,
+    CONF_PARITY: "E",
+    CONF_STOPBITS: 2,
+}
+
+
+def _aux2_port(**overrides: Any) -> ProxyPort:
+    """Return one AUX-2 port, as the scan of proxy ports reports it."""
+    values: dict[str, Any] = {
+        "url": AUX2_URL,
+        "serial_number": "aabbccddeeff-uart0",
+        "entry_id": "abc123",
+        "port_name": "uart0",
+        "device_name": "Home Assistant Connect AUX-2",
+        "port_label": "uart0 (RS232)",
+    }
+    values.update(overrides)
+    return ProxyPort(**values)
+
+
+def _proxy_ports(ports: list[ProxyPort]) -> Any:
+    """Patch the reading of proxy ports to find `ports`."""
+    return patch(
+        "custom_components.modbus_local_gateway.config_flow.async_get_proxy_ports",
+        return_value=ports,
+    )
+
+
+def _probe(report: str | None) -> Any:
+    """Patch the probe of a port to report `report` for opening it."""
+    return patch(
+        "custom_components.modbus_local_gateway.config_flow.async_validate_port",
+        return_value=report,
+    )
+
 
 @pytest.mark.asyncio
 async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> None:
-    """Test the user step of the config flow."""
+    """Test the gateway steps of the config flow.
+
+    The kind of gateway is asked for first, and a network gateway is then
+    asked for its connection exactly as it always was.
+    """
     flow = ConfigFlowHandler()
     flow.hass = hass
 
@@ -69,6 +133,12 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
         return_value=mock_client,
     ):
         result = await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: FramerType.SOCKET.value}
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "network"
+
+        result = await flow.async_step_network(
             user_input={
                 CONF_HOST: "127.0.0.1",
                 CONF_PORT: 502,
@@ -79,7 +149,7 @@ async def test_async_step_user(hass: HomeAssistant, mock_client: AsyncMock) -> N
         assert result["errors"] == {"base": "Gateway connection"}
 
         mock_client.connected = True
-        result = await flow.async_step_user(
+        result = await flow.async_step_network(
             user_input={
                 CONF_HOST: "127.0.0.1",
                 CONF_PORT: 502,
@@ -110,7 +180,10 @@ async def test_async_step_user_stores_the_entity_id_choice(
         ".async_get_client_connection",
         return_value=mock_client,
     ):
-        result = await flow.async_step_user(
+        await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: FramerType.SOCKET.value}
+        )
+        result = await flow.async_step_network(
             user_input={
                 CONF_HOST: "127.0.0.1",
                 CONF_PORT: 502,
@@ -141,7 +214,10 @@ async def test_async_step_user_default_is_prefixed_entity_ids(
         ".async_get_client_connection",
         return_value=mock_client,
     ):
-        result = await flow.async_step_user(
+        await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: FramerType.SOCKET.value}
+        )
+        result = await flow.async_step_network(
             user_input={CONF_HOST: "127.0.0.1", CONF_PORT: 502}
         )
 
@@ -153,24 +229,46 @@ async def test_async_step_user_default_is_prefixed_entity_ids(
 async def test_async_step_user_offers_standard_connection_type_names(
     hass: HomeAssistant,
 ) -> None:
-    """The framer is offered under its protocol name, not an internal one.
+    """The connections are offered under their protocol names.
 
     The stored value is the `FramerType`, so the label has to describe the
-    protocol on the wire for a user to pick the right one.
+    protocol on the wire for a user to pick the right one. The gateway step
+    offers the same names beside the AUX-2, which is a device rather than
+    a framer, and the kind chosen there is the connection type the network
+    step opens on.
     """
     flow = ConfigFlowHandler()
     flow.hass = hass
 
     result = await flow.async_step_user(user_input=None)
     assert result["type"] == FlowResultType.FORM
-
     assert result["data_schema"] is not None
+
     options = next(
         validator.config["options"]
         for key, validator in result["data_schema"].schema.items()
-        if str(key.schema) == CONF_CONNECTION_TYPE
+        if str(key.schema) == CONF_GATEWAY_TYPE
     )
     assert options == [
+        {"value": FramerType.SOCKET.value, "label": "Modbus TCP"},
+        {"value": FramerType.RTU.value, "label": "Modbus RTU over TCP"},
+        {"value": TRANSPORT_SERIAL_PROXY, "label": "Home Assistant Connect AUX-2"},
+    ]
+
+    result = await flow.async_step_user(
+        user_input={CONF_GATEWAY_TYPE: FramerType.RTU.value}
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "network"
+    assert result["data_schema"] is not None
+
+    key, validator = next(
+        (key, validator)
+        for key, validator in result["data_schema"].schema.items()
+        if str(key.schema) == CONF_CONNECTION_TYPE
+    )
+    assert key.default() == FramerType.RTU.value
+    assert validator.config["options"] == [
         {"value": FramerType.SOCKET.value, "label": "Modbus TCP"},
         {"value": FramerType.RTU.value, "label": "Modbus RTU over TCP"},
     ]
@@ -195,7 +293,10 @@ async def test_async_step_user_aborts_on_a_known_gateway(
         ".async_get_client_connection",
         return_value=mock_client,
     ):
-        result = await flow.async_step_user(
+        await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: FramerType.SOCKET.value}
+        )
+        result = await flow.async_step_network(
             user_input={
                 CONF_HOST: "localhost",
                 CONF_PORT: 123,
@@ -227,6 +328,185 @@ async def test_async_step_user_aborts_on_an_unsupported_home_assistant(
 
 
 @pytest.mark.asyncio
+async def test_the_aux2_choice_lists_the_devices(hass: HomeAssistant) -> None:
+    """An AUX-2 is offered under the name Home Assistant knows it by.
+
+    A port only means something next to its device, so the device is asked
+    for first and the ports of that device after it, rather than as one
+    long list of ports whose device is nowhere to be seen.
+    """
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+
+    with _proxy_ports([_aux2_port()]):
+        result = await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: TRANSPORT_SERIAL_PROXY}
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "aux2"
+    assert result["data_schema"] is not None
+    options = next(
+        validator.config["options"]
+        for key, validator in result["data_schema"].schema.items()
+        if str(key.schema) == CONF_PROXY_DEVICE
+    )
+    assert options == [{"value": "abc123", "label": "Home Assistant Connect AUX-2"}]
+
+
+@pytest.mark.asyncio
+async def test_an_aux2_gateway_is_stored_with_its_port(hass: HomeAssistant) -> None:
+    """The whole AUX-2 path: device, port, settings, probe, entry.
+
+    Nothing is stored before the port has taken the settings, and nothing
+    but the port and those settings is asked for - the transport and the
+    framer are not choices a proxy port has.
+    """
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+
+    with _proxy_ports([_aux2_port()]), _probe(None) as probe:
+        result = await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: TRANSPORT_SERIAL_PROXY}
+        )
+        assert result["step_id"] == "aux2"
+
+        result = await flow.async_step_aux2(user_input={CONF_PROXY_DEVICE: "abc123"})
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "aux2_port"
+
+        result = await flow.async_step_aux2_port(user_input=dict(AUX2_PORT_INPUT))
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["title"] == "Modbus Gateway (aabbccddeeff-uart0)"
+    assert result["data"] == serial_gateway_data()
+    assert result["version"] == 2
+
+    assert probe.await_args is not None
+    assert probe.await_args.args[1].url == AUX2_URL
+    assert probe.await_args.kwargs == {
+        "baudrate": 19200,
+        "bytesize": 7,
+        "parity": "E",
+        "stopbits": 2,
+    }
+
+
+@pytest.mark.asyncio
+async def test_an_aux2_is_asked_for_again_when_none_were_found(
+    hass: HomeAssistant,
+) -> None:
+    """No ports is something to fix, not a dead end.
+
+    The device may still be in the middle of being adopted, so the choice
+    is offered again rather than the flow ending: submitting the form once
+    it is adopted gets on with it.
+    """
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+
+    with _proxy_ports([]):
+        result = await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: TRANSPORT_SERIAL_PROXY}
+        )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "no_proxy_ports"}
+
+    with _proxy_ports([_aux2_port()]):
+        result = await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: TRANSPORT_SERIAL_PROXY}
+        )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "aux2"
+
+
+@pytest.mark.asyncio
+async def test_the_aux2_choice_says_when_ports_cannot_be_read(
+    hass: HomeAssistant,
+) -> None:
+    """A library that is not there is not the same as a device that is not.
+
+    One is an installation problem and the other a device waiting to be
+    adopted, and each needs its own instruction.
+    """
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+
+    with patch(
+        "custom_components.modbus_local_gateway.config_flow.async_get_proxy_ports",
+        side_effect=SerialSupportUnavailable("serial_support_unavailable"),
+    ):
+        result = await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: TRANSPORT_SERIAL_PROXY}
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "serial_support_unavailable"}
+
+
+@pytest.mark.asyncio
+async def test_a_second_gateway_on_the_same_port_is_refused(
+    hass: HomeAssistant,
+) -> None:
+    """One proxy port is one gateway entry.
+
+    A port can be held only once, and two entries on it would share the
+    serial number their gateway device is keyed by.
+    """
+    mock_serial_gateway_entry().add_to_hass(hass)
+
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+
+    with _proxy_ports([_aux2_port()]), _probe(None) as probe:
+        await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: TRANSPORT_SERIAL_PROXY}
+        )
+        await flow.async_step_aux2(user_input={CONF_PROXY_DEVICE: "abc123"})
+        result = await flow.async_step_aux2_port(user_input=dict(AUX2_PORT_INPUT))
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    # The other entry holds the port: it is not even opened to find that out.
+    probe.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_a_port_that_refuses_the_settings_is_shown_on_the_form(
+    hass: HomeAssistant,
+) -> None:
+    """A refusal from the port comes back on the form that asked for it.
+
+    The device only reports what it can do when its port is opened, so the
+    failure arrives here - with the settings that were asked for still on
+    the form to be changed, and no entry stored.
+    """
+    flow = ConfigFlowHandler()
+    flow.hass = hass
+
+    with _proxy_ports([_aux2_port()]), _probe("port_busy"):
+        await flow.async_step_user(
+            user_input={CONF_GATEWAY_TYPE: TRANSPORT_SERIAL_PROXY}
+        )
+        await flow.async_step_aux2(user_input={CONF_PROXY_DEVICE: "abc123"})
+        result = await flow.async_step_aux2_port(user_input=dict(AUX2_PORT_INPUT))
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "aux2_port"
+    assert result["errors"] == {"base": "port_busy"}
+    assert result["data_schema"] is not None
+    defaults = {
+        str(key.schema): key.default()
+        for key in result["data_schema"].schema
+        if key.default is not vol.UNDEFINED
+    }
+    assert defaults == AUX2_PORT_INPUT
+    assert not hass.config_entries.async_entries(DOMAIN)
+
+
+@pytest.mark.asyncio
 async def test_gateway_flow_asks_for_the_first_device(
     hass: HomeAssistant, mock_client: AsyncMock, enable_custom_integrations: None
 ) -> None:
@@ -240,6 +520,14 @@ async def test_gateway_flow_asks_for_the_first_device(
     )
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "user"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_GATEWAY_TYPE: FramerType.SOCKET.value},
+    )
+    await hass.async_block_till_done()
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "network"
 
     with (
         patch(
@@ -476,6 +764,66 @@ async def test_async_step_reconfigure_refuses_a_known_gateway(
 
     assert result["type"] == FlowResultType.FORM
     assert result["errors"] == {"base": "already_configured"}
+
+
+@pytest.mark.asyncio
+async def test_async_step_reconfigure_moves_an_aux2_gateway(
+    hass: HomeAssistant, enable_custom_integrations: None
+) -> None:
+    """Reconfiguring an AUX-2 asks the same forms it was added with.
+
+    Both open on the device and port the entry already has, so the port
+    can be moved - or another AUX-2 chosen - and only which port the reads
+    go out of changes: the devices behind the gateway keep everything they
+    are identified by.
+    """
+    entry = mock_serial_gateway_entry()
+    entry.add_to_hass(hass)
+
+    with _proxy_ports([_aux2_port()]), _probe(None):
+        result = await entry.start_reconfigure_flow(hass)
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "aux2"
+        assert result["data_schema"] is not None
+        device = next(
+            key.default()
+            for key in result["data_schema"].schema
+            if str(key.schema) == CONF_PROXY_DEVICE
+        )
+        assert device == "abc123"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_PROXY_DEVICE: "abc123"},
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "aux2_port"
+        assert result["data_schema"] is not None
+        defaults = {
+            str(key.schema): key.default()
+            for key in result["data_schema"].schema
+            if key.default is not vol.UNDEFINED
+        }
+        assert defaults == AUX2_PORT_INPUT
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                **AUX2_PORT_INPUT,
+                CONF_BAUDRATE: 9600,
+                CONF_BYTESIZE: 8,
+                CONF_PARITY: "N",
+                CONF_STOPBITS: 1,
+            },
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data == serial_gateway_data(
+        baudrate=9600, bytesize=8, parity="N", stopbits=1
+    )
+    assert entry.title == "Modbus Gateway (aabbccddeeff-uart0)"
 
 
 @pytest.mark.asyncio
@@ -950,6 +1298,38 @@ def test_translations_name_the_gateway_and_the_device(name: str) -> None:
     assert translations["config_subentries"]["device"]["initiate_flow"]["user"] == (
         "Add device"
     )
+
+
+@pytest.mark.parametrize("name", ["strings.json", "translations/en.json"])
+def test_translations_name_the_aux2_fields_and_errors(name: str) -> None:
+    """Every field and error the AUX-2 forms can show has words to show.
+
+    Home Assistant renders the key itself for a field or error it has no
+    translation for, which is a worse answer than any of these.
+    """
+    translations = _translation(name)
+    steps = translations["config"]["step"]
+
+    assert steps["user"]["data"]["gateway_type"] == "Gateway type"
+    assert steps["aux2"]["data"]["proxy_device"] == "Device"
+    assert set(steps["aux2_port"]["data"]) == {
+        CONF_DEVICE,
+        CONF_BAUDRATE,
+        CONF_BYTESIZE,
+        CONF_PARITY,
+        CONF_STOPBITS,
+    }
+    assert steps["network"]["data"]["host"]
+
+    errors = translations["config"]["error"]
+    for key in (
+        "no_proxy_ports",
+        "serial_support_unavailable",
+        "port_busy",
+        "cannot_connect",
+        "unsupported_settings",
+    ):
+        assert errors[key]
 
 
 def test_drop_in_labels_the_framer_types() -> None:
