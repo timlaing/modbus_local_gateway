@@ -1,11 +1,13 @@
 {
   "domain": "modbus_local_gateway",
   "name": "Modbus Local Gateway",
+  "after_dependencies": [
+    "usb"
+  ],
   "codeowners": [
     "@timlaing"
   ],
   "config_flow": true,
-  "diagnostics": true,
   "documentation": "https://github.com/timlaing/modbus_local_gateway",
   "integration_type": "device",
   "iot_class": "local_polling",
@@ -15,7 +17,7 @@
   ],
   "requirements": [
     "pymodbus>=3.13.1,!=3.16.0",
-    "serialx==1.11.0"
+    "serialx>=1.11.0"
   ],
   "version": "2026.10.7"
 }
