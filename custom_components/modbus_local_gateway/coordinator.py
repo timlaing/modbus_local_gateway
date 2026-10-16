@@ -49,7 +49,7 @@ from .entity_management.base import (
 from .entity_management.const import WriteFunction
 from .entity_management.modbus_device_info import ModbusDeviceInfo
 from .exceptions import ModbusNoResponseError
-from .tcp_client import AsyncModbusTcpClientGateway, DevicePolicy
+from .tcp_client import DevicePolicy, GatewayClient
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -355,14 +355,14 @@ class ModbusCoordinator(TimestampDataUpdateCoordinator):
         hass: HomeAssistant,
         config_entry: ConfigEntry,
         gateway_device: dr.DeviceEntry | None,
-        client: AsyncModbusTcpClientGateway,
+        client: GatewayClient,
         gateway: str,
         update_interval: int = 30,
         subentry: ConfigSubentry | None = None,
         device_info: ModbusDeviceInfo | None = None,
     ) -> None:
         """Initialise the coordinator"""
-        self.client: AsyncModbusTcpClientGateway = client
+        self.client: GatewayClient = client
         self._gateway: str = gateway
         self._max_read_size: int = 1
         self._gateway_device: dr.DeviceEntry | None = gateway_device

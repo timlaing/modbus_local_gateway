@@ -1,5 +1,5 @@
 """Setup, unload, migration and version guard tests"""
-# pylint: disable=unexpected-keyword-arg, protected-access
+# pylint: disable=too-many-lines, unexpected-keyword-arg, protected-access
 
 from types import MappingProxyType
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -28,8 +28,12 @@ from custom_components.modbus_local_gateway.const import (
     SUBENTRY_TYPE_DEVICE,
 )
 from custom_components.modbus_local_gateway.coordinator import ModbusCoordinator
+from custom_components.modbus_local_gateway.serial_client import (
+    AsyncModbusSerialProxyClientGateway,
+)
 from custom_components.modbus_local_gateway.tcp_client import (
     AsyncModbusTcpClientGateway,
+    GatewayClient,
 )
 
 from .conftest import (
@@ -38,6 +42,7 @@ from .conftest import (
     gateway_data,
     mock_gateway_entry,
     mock_runtime,
+    mock_serial_gateway_entry,
 )
 
 
@@ -88,6 +93,88 @@ async def test_setup_entry_without_client_is_not_ready(hass: HomeAssistant) -> N
         patch(
             "custom_components.modbus_local_gateway."
             "AsyncModbusTcpClientGateway.async_get_client_connection",
+            return_value=None,
+        ),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            return_value=True,
+        ),
+        pytest.raises(ConfigEntryNotReady),
+    ):
+        await async_setup_entry(hass, entry)
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_of_a_proxy_port_builds_a_serial_client(
+    hass: HomeAssistant,
+) -> None:
+    """An AUX-2 entry opens its port through the serial client, not TCP.
+
+    The entry says which transport it is on, and setup follows that to the
+    client whose connection the port - and its UART settings - needs.
+    """
+    entry = mock_serial_gateway_entry(slave_ids=[1, 2])
+    entry.add_to_hass(hass)
+    client = MagicMock(spec=GatewayClient)
+
+    with (
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusSerialProxyClientGateway.async_get_client_connection",
+            return_value=client,
+        ) as get_serial_client,
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusTcpClientGateway.async_get_client_connection",
+        ) as get_tcp_client,
+        patch(
+            "custom_components.modbus_local_gateway.create_device_info",
+            return_value=MagicMock(model="Model", manufacturer="Manufacturer"),
+        ),
+        patch(
+            "homeassistant.config_entries.ConfigEntries.async_forward_entry_setups",
+            return_value=True,
+        ),
+        patch.object(ModbusCoordinator, "async_schedule_initial_poll"),
+    ):
+        await async_setup_entry(hass, entry)
+
+    get_serial_client.assert_called_once_with(
+        "esphome-hass://esphome/abc123?port_name=uart0",
+        "rtu",
+        baudrate=19200,
+        bytesize=7,
+        parity="E",
+        stopbits=2,
+    )
+    get_tcp_client.assert_not_called()
+
+    coordinators = entry.runtime_data.coordinators
+    assert {coordinator.gateway for coordinator in coordinators.values()} == {
+        "test-aabbccddeeff-uart0:1",
+        "test-aabbccddeeff-uart0:2",
+    }
+    # A proxy port is not a Modbus TCP device of its own, so the connection
+    # gets no gateway device to hang the devices behind it from.
+    assert (
+        dr.async_get(hass).async_get_device_by_identifier(
+            (DOMAIN, "ModbusGateway-aabbccddeeff-uart0"), entry.entry_id
+        )
+        is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_of_a_proxy_port_without_client_is_not_ready(
+    hass: HomeAssistant,
+) -> None:
+    """A port that cannot be opened must not be set up."""
+    entry = mock_serial_gateway_entry()
+    entry.add_to_hass(hass)
+    with (
+        patch(
+            "custom_components.modbus_local_gateway."
+            "AsyncModbusSerialProxyClientGateway.async_get_client_connection",
             return_value=None,
         ),
         patch(
@@ -291,6 +378,28 @@ async def test_async_unload_entry_without_devices(hass: HomeAssistant) -> None:
     ):
         assert await async_unload_entry(hass, entry) is True
         client.close_cached.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_unload_entry_closes_a_serial_client(hass: HomeAssistant) -> None:
+    """The last entry holding a proxy port releases it on unload.
+
+    The port is exclusive: a client left open would keep it with nothing
+    reading it, and no other entry could open the port again.
+    """
+    entry = mock_serial_gateway_entry()
+    client = MagicMock(spec=AsyncModbusSerialProxyClientGateway)
+    entry.runtime_data = mock_runtime({"sub": _coordinator(client)}, client)
+
+    with (
+        patch.object(
+            hass.config_entries, "async_unload_platforms", AsyncMock(return_value=True)
+        ),
+        patch.object(hass.config_entries, "async_loaded_entries", return_value=[entry]),
+    ):
+        assert await async_unload_entry(hass, entry) is True
+
+    client.close_cached.assert_called_once()
 
 
 @pytest.mark.asyncio

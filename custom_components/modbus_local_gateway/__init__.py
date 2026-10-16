@@ -27,12 +27,17 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    CONF_BAUDRATE,
+    CONF_BYTESIZE,
     CONF_CONNECTION_TYPE,
     CONF_DEFAULT_CONNECTION_TYPE,
+    CONF_DEVICE,
     CONF_DEVICE_ID,
     CONF_LEGACY_ENTITY_IDS,
     CONF_MIGRATED_LEGACY_ENTITY_IDS,
+    CONF_PARITY,
     CONF_PREFIX,
+    CONF_STOPBITS,
     DOMAIN,
     MIN_HOMEASSISTANT_VERSION,
     OPTIONS_DEFAULT_EXPECTED_OFFLINE,
@@ -42,7 +47,12 @@ from .const import (
     OPTIONS_REFRESH,
     OPTIONS_WRITE_FUNCTION,
     PLATFORMS,
+    SERIAL_DEFAULT_BAUDRATE,
+    SERIAL_DEFAULT_BYTESIZE,
+    SERIAL_DEFAULT_PARITY,
+    SERIAL_DEFAULT_STOPBITS,
     SUBENTRY_TYPE_DEVICE,
+    TRANSPORT_SERIAL_PROXY,
 )
 from .coordinator import ModbusCoordinator
 from .entity_management.base import ModbusEntityDescription
@@ -57,9 +67,11 @@ from .helpers import (
     get_device_key,
     get_device_title,
     get_gateway_device_identifier,
+    get_transport,
     is_supported_home_assistant,
 )
-from .tcp_client import AsyncModbusTcpClientGateway
+from .serial_client import AsyncModbusSerialProxyClientGateway
+from .tcp_client import AsyncModbusTcpClientGateway, GatewayClient
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -74,10 +86,12 @@ class GatewayRuntime:
 
     The client is kept next to the coordinators instead of being looked up
     again on unload: the settings of the entry can have changed since setup,
-    and a gateway may have no devices at all.
+    and a gateway may have no devices at all. Which connection it is - a
+    socket or a serial proxy port - was decided at setup and is what the
+    client already holds.
     """
 
-    client: AsyncModbusTcpClientGateway
+    client: GatewayClient
     coordinators: dict[str, ModbusCoordinator] = field(default_factory=dict)
 
 
@@ -129,13 +143,7 @@ async def async_setup_entry(
     connection_type: str = get_connection_type(entry.data)
     connection_key: str = get_connection_key(entry.data)
 
-    client: AsyncModbusTcpClientGateway | None = (
-        AsyncModbusTcpClientGateway.async_get_client_connection(
-            host=entry.data[CONF_HOST],
-            port=entry.data[CONF_PORT],
-            connection_type=connection_type,
-        )
-    )
+    client: GatewayClient | None = _async_get_client(entry)
     if client is None:
         raise ConfigEntryNotReady(f"Unable to connect to {connection_key}")
 
@@ -193,6 +201,31 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+def _async_get_client(entry: ConfigEntry) -> GatewayClient | None:
+    """Return the one client that talks to this entry's gateway.
+
+    The transport of the entry says which client that is: a network gateway
+    keeps its host and port, a serial proxy port its URL and UART settings.
+    Either way the client comes out of its own cache, so entries that point at
+    one connection share one client - which they have to for a proxy port,
+    since the port can only be held once.
+    """
+    if get_transport(entry.data) == TRANSPORT_SERIAL_PROXY:
+        return AsyncModbusSerialProxyClientGateway.async_get_client_connection(
+            entry.data[CONF_DEVICE],
+            get_connection_type(entry.data),
+            baudrate=entry.data.get(CONF_BAUDRATE, SERIAL_DEFAULT_BAUDRATE),
+            bytesize=entry.data.get(CONF_BYTESIZE, SERIAL_DEFAULT_BYTESIZE),
+            parity=entry.data.get(CONF_PARITY, SERIAL_DEFAULT_PARITY),
+            stopbits=entry.data.get(CONF_STOPBITS, SERIAL_DEFAULT_STOPBITS),
+        )
+    return AsyncModbusTcpClientGateway.async_get_client_connection(
+        host=entry.data[CONF_HOST],
+        port=entry.data[CONF_PORT],
+        connection_type=get_connection_type(entry.data),
+    )
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
@@ -201,7 +234,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return False
 
     runtime: GatewayRuntime = entry.runtime_data
-    client: AsyncModbusTcpClientGateway = runtime.client
+    client: GatewayClient = runtime.client
     for coordinator in runtime.coordinators.values():
         # The first poll is still outstanding for every device that has not been
         # read yet, and it is holding on to the client: drop it before the client
@@ -209,9 +242,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator.async_cancel_initial_poll()
     runtime.coordinators.clear()
 
-    # The client is cached per host/port/framer and shared by every entry
-    # pointing at the same gateway, so it can only be closed once no other
-    # loaded entry is using it. Leaving it open keeps the socket - and pymodbus'
+    # The client is cached per gateway connection - host/port/framer for the
+    # network, port URL/framer for a proxy port - and shared by every entry
+    # pointing at the same one, so it can only be closed once no other loaded
+    # entry is using it. Leaving it open keeps the connection - and pymodbus'
     # retries - alive after the entry is gone.
     if {client}.isdisjoint(_async_clients_in_use(hass, entry.entry_id)):
         client.close_cached()
@@ -219,11 +253,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-def _async_clients_in_use(
-    hass: HomeAssistant, entry_id: str
-) -> set[AsyncModbusTcpClientGateway]:
+def _async_clients_in_use(hass: HomeAssistant, entry_id: str) -> set[GatewayClient]:
     """Return the clients used by every other loaded config entry."""
-    clients: set[AsyncModbusTcpClientGateway] = set()
+    clients: set[GatewayClient] = set()
     for other in hass.config_entries.async_loaded_entries(DOMAIN):
         if other.entry_id == entry_id:
             continue
