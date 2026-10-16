@@ -5,6 +5,7 @@
     "@timlaing"
   ],
   "config_flow": true,
+  "diagnostics": true,
   "documentation": "https://github.com/timlaing/modbus_local_gateway",
   "integration_type": "device",
   "iot_class": "local_polling",
