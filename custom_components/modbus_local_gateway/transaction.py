@@ -50,7 +50,6 @@ class MyTransactionManager(TransactionManager):
                 bytesize=self.comm_params.bytesize,
                 parity=self.comm_params.parity,
                 stopbits=self.comm_params.stopbits,
-                timeout=self.comm_params.timeout_connect,
             )
             return
         super().init_setup_connect_listen(host, port)

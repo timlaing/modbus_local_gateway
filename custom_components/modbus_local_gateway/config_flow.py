@@ -434,13 +434,10 @@ class ConfigFlowHandler(ConfigFlow, domain=DOMAIN):
                 else:
                     return self._async_store_serial(data)
 
-        last: dict[str, Any] = (
-            dict(user_input)
-            if user_input
-            else dict(
-                self._reconfiguring.data if self._reconfiguring is not None else {}
-            )
+        reconfiguring = (
+            self._reconfiguring.data if self._reconfiguring is not None else {}
         )
+        last: dict[str, Any] = dict(user_input) if user_input else dict(reconfiguring)
         return self.async_show_form(
             step_id="aux2_port",
             data_schema=_serial_schema(  # type: ignore[arg-type,unused-ignore]

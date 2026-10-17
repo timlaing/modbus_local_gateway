@@ -204,7 +204,6 @@ async def test_connect_listen_routes_a_proxy_url_through_serialx() -> None:
         "bytesize": 7,
         "parity": "E",
         "stopbits": 2,
-        "timeout": 3.0,
     }
 
 

@@ -185,7 +185,6 @@ async def create_serial_connection(
     bytesize: int,
     parity: str,
     stopbits: int,
-    timeout: float | None = None,
 ) -> tuple[asyncio.Transport, asyncio.BaseProtocol]:
     """Open `url` as an asyncio transport for `protocol_factory`.
 
@@ -195,12 +194,10 @@ async def create_serial_connection(
     busy port, a device that went away and a library that is not installed all
     end the same way there, and each of them says why in its message.
 
-    `timeout` is the pymodbus connect budget, passed on to every transport
-    factory there is. It is not passed on here: the ESPHome transport times
-    its own connect out, and the outer `asyncio.wait_for` around this call
-    cancels it well before the request timeout would matter.
+    The pymodbus connect budget is not applied here: the ESPHome transport
+    times its own connect out, and the outer `asyncio.wait_for` around this
+    call cancels it well before the request timeout would matter.
     """
-    del timeout
     if not serialx_available():
         raise OSError(errno.ENODEV, f"serialx is not installed; cannot open {url}")
 
@@ -307,7 +304,7 @@ def _proxy_port(hass: HomeAssistant, device: SerialDevice) -> ProxyPort:
     """Describe one scanned proxy port for a form and for storage."""
     entry_id, port_name = _parse_url(device.device)
     entry: ConfigEntry | None = hass.config_entries.async_get_entry(entry_id)
-    device_name = _device_name(hass, entry, entry_id, device.description, port_name)
+    device_name = _device_name(entry, entry_id, device.description, port_name)
     port_type = _port_type(entry, port_name)
     return ProxyPort(
         url=device.device,
@@ -328,7 +325,6 @@ def _parse_url(url: str) -> tuple[str, str]:
 
 
 def _device_name(
-    hass: HomeAssistant,
     entry: ConfigEntry | None,
     entry_id: str,
     description: str | None,
