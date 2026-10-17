@@ -56,11 +56,27 @@ Add devices via the Home Assistant UI:
 
 #### Step 1: Gateway Connection Details
 
-A config entry is a gateway: the Modbus TCP server itself.
+A config entry is a gateway: the connection the Modbus devices are reached over. First choose what that connection is:
+
+- **Gateway type**: `Modbus TCP`, `Modbus RTU over TCP`, or `Home Assistant Connect AUX-2`.
+
+For a gateway on the network, the next form asks:
 
 - **Host**: Gateway IP/hostname (e.g., `192.168.1.100`).
 - **Port**: TCP port (default: `502`).
 - **Connection type**: `Modbus TCP` or `Modbus RTU over TCP`.
+
+##### The Home Assistant Connect AUX-2
+
+A Home Assistant Connect AUX-2 exposes its serial ports to Home Assistant over USB, so a Modbus device wired to one of them is reached over that port instead of the network — with no Modbus TCP gateway in between. Before adding it here, connect the AUX-2 and adopt it in Home Assistant: its ports only show up once it is adopted.
+
+Choosing the AUX-2 asks for:
+
+- **Device**: the AUX-2 the device is wired to, under the name Home Assistant knows it by.
+- **Serial port**: which of that device's ports to open, labelled with its electrical type. AUX-2 ports are RS-232, so a Modbus bus on RS-485 needs an adapter between the bus and the port.
+- **Baud rate**, **Data bits**, **Parity**, **Stop bits**: the UART settings the device on the line expects (defaults: `9600`, `8`, None, `1`).
+
+The port is opened once with those settings before anything is stored: a baud rate the AUX-2 cannot do, or a port something else is holding, is refused on the form rather than by every read afterwards. One port is one gateway, and a second gateway on the same port is refused. The devices behind it are added exactly as those behind a network gateway are, and reconfiguring the gateway can move it to another port without touching them.
 
 #### Step 2: Add the Devices Behind the Gateway
 

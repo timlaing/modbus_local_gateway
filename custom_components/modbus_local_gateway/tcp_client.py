@@ -13,7 +13,7 @@ import logging
 from time import monotonic
 from typing import Any, NoReturn, cast
 
-from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.client import AsyncModbusTcpClient, ModbusBaseClient
 from pymodbus.exceptions import (
     ConnectionException,
     ModbusException,
@@ -127,10 +127,19 @@ class DevicePolicy:
     expected_offline: bool = False
 
 
-class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
-    """Custom Modbus TCP client with request batching based on device and locking."""
+class GatewayClient(ModbusBaseClient):
+    """What every gateway connection does, whichever way the bytes travel.
 
-    _CLIENT: dict[str, AsyncModbusTcpClientGateway] = {}
+    Reading, writing, polling and the connection handling around them are the
+    same for a gateway reached over the network and for Modbus RTU on a serial
+    proxy port; only the bytes on the wire differ, and pymodbus owns those. So
+    everything above the wire lives here, and each transport subclass says
+    only how to connect and what its connections are cached under.
+    """
+
+    # One client per connection, shared by every config entry pointing at the
+    # same gateway: two entries on one gateway are one connection, not two.
+    _CLIENT: dict[str, GatewayClient] = {}
 
     # Diagnostics: how often a read did not leave the stream in a usable state
     # and the connection had to be resynchronised before the next request. A
@@ -140,14 +149,15 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
     # order: only a new connection gets rid of the queued answers.
     _needs_reconnect: bool = False
 
-    def __init__(
-        self,
-        host: str,
-        port: int = 502,
-        framer: FramerType = FramerType.SOCKET,
-        source_address: tuple[str, int] | None = None,
-        **kwargs: Any,
-    ) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Set up what every gateway client holds, around pymodbus's own.
+
+        The transport subclass describes itself to pymodbus first - a TCP
+        host, or a proxy URL with the UART settings of its port - and then
+        this finishes the job: the transaction manager this integration swaps
+        in, and the bookkeeping of devices and gateways that stopped
+        answering. None of it knows which of those transports it is.
+        """
         self._data_type_function_mapping: dict[str, Callable[..., Any]] = {
             ModbusDataType.HOLDING_REGISTER: self.read_holding_registers,
             ModbusDataType.INPUT_REGISTER: self.read_input_registers,
@@ -155,17 +165,15 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             ModbusDataType.DISCRETE_INPUT: self.read_discrete_inputs,
         }
         self.lock = asyncio.Lock()
-        # The key this client is cached under, filled in by
-        # `async_get_client_connection` once it knows host, port and framer.
+        # The key this client is cached under, filled in by the transport
+        # subclass that creates it.
         self._cache_key: str = ""
         # Devices that have answered a preset single register write. Silence
         # from a device outside this set means the function is not implemented
         # rather than that a response went missing, which is what makes retrying
         # such a write with preset multiple registers safe.
         self._devices_answering_fc06: set[int] = set()
-        super().__init__(
-            host=host, port=port, framer=framer, source_address=source_address, **kwargs
-        )
+        super().__init__(*args, **kwargs)
         self.ctx = MyTransactionManager(
             params=self.ctx.comm_params,
             framer=self.ctx.framer,
@@ -1514,28 +1522,6 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
             self._flag_desync()
             return False
 
-    @classmethod
-    def async_get_client_connection(
-        cls, host: str, port: int, connection_type: str
-    ) -> AsyncModbusTcpClientGateway:
-        """Gets a modbus client object"""
-        key: str = f"{host}:{port}:{connection_type}"
-
-        framer_type: FramerType = FramerType(connection_type)
-
-        if key not in cls._CLIENT:
-            _LOGGER.debug("Connecting to gateway %s", key)
-            client = AsyncModbusTcpClientGateway(
-                host=host,
-                port=port,
-                framer=framer_type,
-                timeout=1.5,
-                retries=5,
-            )
-            client._cache_key = key
-            cls._CLIENT[key] = client
-        return cls._CLIENT[key]
-
     def close_cached(self) -> None:
         """Close this client and drop it from the cache.
 
@@ -1557,3 +1543,59 @@ class AsyncModbusTcpClientGateway(AsyncModbusTcpClient):
         if type(self)._CLIENT.pop(key, None) is not None:
             _LOGGER.debug("Closing connection to gateway %s", key)
             self.close()
+
+
+class AsyncModbusTcpClientGateway(GatewayClient, AsyncModbusTcpClient):
+    """A gateway reached over the network, speaking Modbus TCP.
+
+    Only how to connect and what a connection is cached under lives here;
+    reading, writing and the connection handling around them are inherited
+    from `GatewayClient`.
+    """
+
+    def __init__(
+        self,
+        host: str,
+        *,
+        port: int = 502,
+        framer: FramerType = FramerType.SOCKET,
+        source_address: tuple[str, int] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Describe a Modbus TCP gateway to pymodbus, then set up the rest.
+
+        The signature matches pymodbus's own TCP client so that this can be
+        dropped wherever that can, with `GatewayClient` finishing the shared
+        setup once pymodbus has described the connection.
+        """
+        super().__init__(
+            host,
+            port=port,
+            framer=framer,
+            source_address=source_address,
+            **kwargs,
+        )
+
+    @classmethod
+    def async_get_client_connection(
+        cls, host: str, port: int, connection_type: str
+    ) -> AsyncModbusTcpClientGateway:
+        """Gets a modbus client object"""
+        key: str = f"{host}:{port}:{connection_type}"
+
+        framer_type: FramerType = FramerType(connection_type)
+
+        if key not in cls._CLIENT:
+            _LOGGER.debug("Connecting to gateway %s", key)
+            client = cls(
+                host=host,
+                port=port,
+                framer=framer_type,
+                timeout=1.5,
+                retries=5,
+            )
+            client._cache_key = key
+            cls._CLIENT[key] = client
+        # Only TCP gateways are ever cached under a host:port:framer key, so
+        # what comes back out of the cache is one of these.
+        return cast(AsyncModbusTcpClientGateway, cls._CLIENT[key])

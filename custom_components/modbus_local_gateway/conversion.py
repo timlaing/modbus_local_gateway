@@ -1,10 +1,9 @@
 """Conversion register functions"""
 
-from collections.abc import Sequence
+from collections.abc import Awaitable, Sequence
 import logging
 from typing import Any
 
-from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu import ModbusPDU
 from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
@@ -47,8 +46,10 @@ class ValueUnavailable(Exception):
 class Conversion:
     """Register conversion class"""
 
-    def __init__(self, client: type[AsyncModbusTcpClient]) -> None:
-        self.client: type[AsyncModbusTcpClient] = client
+    def __init__(self, client: type[ModbusClientMixin[Awaitable[ModbusPDU]]]) -> None:
+        # Only the mixin's register conversions are used here, so any client -
+        # over the network or through a serial proxy port - can be converted.
+        self.client: type[ModbusClientMixin[Awaitable[ModbusPDU]]] = client
 
     def _swap_registers(
         self, registers: Sequence[int], desc: ModbusEntityDescription

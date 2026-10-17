@@ -9,15 +9,24 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.modbus_local_gateway import GatewayRuntime
 from custom_components.modbus_local_gateway.const import (
+    CONF_BAUDRATE,
+    CONF_BYTESIZE,
+    CONF_CONNECTION_TYPE,
+    CONF_DEVICE,
     CONF_DEVICE_ID,
     CONF_LEGACY_ENTITY_IDS,
     CONF_LEGACY_ENTITY_IDS_DEFAULT,
+    CONF_PARITY,
     CONF_PREFIX,
+    CONF_SERIAL_NUMBER,
+    CONF_STOPBITS,
+    CONF_TRANSPORT,
     DOMAIN,
     OPTIONS_DEFAULT_EXPECTED_OFFLINE,
     OPTIONS_DEFAULT_REFRESH,
     OPTIONS_DEFAULT_WRITE_FUNCTION,
     SUBENTRY_TYPE_DEVICE,
+    TRANSPORT_SERIAL_PROXY,
 )
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusEntityDescription,
@@ -89,6 +98,57 @@ def mock_gateway_entry(
             device_subentry(
                 device_data(slave_id, prefix=prefix, filename=filename),
                 unique_id=f"{prefix}-{data['host']}:{data['port']}:{slave_id}",
+                title=f"slave {slave_id}",
+            )
+            for slave_id in (slave_ids if slave_ids is not None else [1])
+        ],
+    )
+
+
+def serial_gateway_data(
+    url: str = "esphome-hass://esphome/abc123?port_name=uart0",
+    serial_number: str = "aabbccddeeff-uart0",
+    connection_type: str = "rtu",
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """Return the data of an AUX-2 serial proxy gateway config entry.
+
+    No entity id choice is stored: restoring pre-2026.02.0 entity ids is a
+    question about host-named entities, which a serial gateway never had.
+    """
+    return {
+        CONF_TRANSPORT: TRANSPORT_SERIAL_PROXY,
+        CONF_DEVICE: url,
+        CONF_SERIAL_NUMBER: serial_number,
+        CONF_CONNECTION_TYPE: connection_type,
+        CONF_BAUDRATE: 19200,
+        CONF_BYTESIZE: 7,
+        CONF_PARITY: "E",
+        CONF_STOPBITS: 2,
+        **kwargs,
+    }
+
+
+def mock_serial_gateway_entry(
+    slave_ids: list[int] | None = None,
+    prefix: str = "test",
+    filename: str = "test.yaml",
+    **kwargs: Any,
+) -> MockConfigEntry:
+    """Return a config entry of an AUX-2 port with one sub-entry per slave id.
+
+    The sub-entry unique ids follow the same key `get_device_key` builds, keyed
+    by the serial number like the connection it belongs to.
+    """
+    data = serial_gateway_data(**kwargs)
+    return MockConfigEntry(
+        domain=DOMAIN,
+        data=data,
+        version=2,
+        subentries_data=[
+            device_subentry(
+                device_data(slave_id, prefix=prefix, filename=filename),
+                unique_id=f"{prefix}-{data['serial_number']}:{slave_id}",
                 title=f"slave {slave_id}",
             )
             for slave_id in (slave_ids if slave_ids is not None else [1])

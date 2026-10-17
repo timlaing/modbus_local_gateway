@@ -18,9 +18,13 @@ from .const import (
     CONF_DEFAULT_CONNECTION_TYPE,
     CONF_DEVICE_ID,
     CONF_PREFIX,
+    CONF_SERIAL_NUMBER,
+    CONF_TRANSPORT,
     DOMAIN,
     MIN_HOMEASSISTANT_VERSION,
     SUBENTRY_TYPE_DEVICE,
+    TRANSPORT_NETWORK,
+    TRANSPORT_SERIAL_PROXY,
 )
 from .coordinator import (
     ModbusContext,
@@ -46,13 +50,30 @@ def is_supported_home_assistant() -> bool:
     return Version(HA_VERSION) >= Version(MIN_HOMEASSISTANT_VERSION)
 
 
+def get_transport(config: Mapping[str, Any]) -> str:
+    """Return the transport this gateway is reached by.
+
+    An entry written before AUX-2 support says nothing about a transport and is
+    a network gateway, so existing entries need no migration to keep meaning
+    exactly what they meant before.
+    """
+    return str(config.get(CONF_TRANSPORT, TRANSPORT_NETWORK))
+
+
 def get_connection_key(config: Mapping[str, Any]) -> str:
     """Return the key of the gateway connection itself.
 
     This identifies the gateway device and titles the config entry. It carries no
     prefix: the prefix is a per-device setting, so it belongs to the device
     sub-entries and their unique ids, never to the connection.
+
+    A proxy port is keyed by the serial number Home Assistant derives from the
+    port rather than by its URL: the URL carries the ESPHome config entry id,
+    which is a different thing when Home Assistant is reinstalled, and
+    identifiers built from this key have to stay the same.
     """
+    if get_transport(config) == TRANSPORT_SERIAL_PROXY:
+        return str(config[CONF_SERIAL_NUMBER])
     return f"{config[CONF_HOST]}:{config[CONF_PORT]}"
 
 
@@ -66,12 +87,13 @@ def get_device_key(config: Mapping[str, Any]) -> str:
 
     This is the device's first registry identifier and the unique id of its
     config sub-entry, so a gateway cannot end up with two devices claiming the
-    same slave id.
+    same slave id. The connection part follows `get_connection_key`, so the two
+    never drift apart for one transport or the other.
     """
     prefix: str = config.get(CONF_PREFIX) or ""
     return (
         f"{prefix + '-' if prefix else ''}"
-        f"{config[CONF_HOST]}:{config[CONF_PORT]}:{config[CONF_DEVICE_ID]}"
+        f"{get_connection_key(config)}:{config[CONF_DEVICE_ID]}"
     )
 
 

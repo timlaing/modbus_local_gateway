@@ -1,11 +1,16 @@
 """TCP Client for Modbus Local Gateway"""
 
 from asyncio import InvalidStateError
+from functools import partial
 from typing import Any
 
 from pymodbus.exceptions import ModbusIOException
 from pymodbus.pdu.pdu import ModbusPDU
 from pymodbus.transaction import TransactionManager
+from pymodbus.transport import CommType
+
+from . import serial_proxy
+from .const import SERIAL_PORT_SCHEME
 
 
 class MyTransactionManager(TransactionManager):
@@ -23,6 +28,32 @@ class MyTransactionManager(TransactionManager):
         self.mismatched_frames: int = 0
         # Answers that arrived with no request waiting for them.
         self.unsolicited_frames: int = 0
+
+    def init_setup_connect_listen(self, host: str, port: int) -> None:
+        """Build the transport of this connection, proxy port or not.
+
+        pymodbus wires a SERIAL connection to pyserial, which knows nothing
+        about a proxy URL and is not installed by Home Assistant. The ESPHome
+        integration registers a `serialx` transport for those URLs, so a
+        serial proxy port is opened through that; every other connection is
+        pymodbus's own choice, untouched.
+        """
+        if self.comm_params.comm_type == CommType.SERIAL and host.startswith(
+            SERIAL_PORT_SCHEME
+        ):
+            self.call_create = partial(
+                serial_proxy.create_serial_connection,
+                self.loop,
+                self.handle_new_connection,
+                host,
+                baudrate=self.comm_params.baudrate,
+                bytesize=self.comm_params.bytesize,
+                parity=self.comm_params.parity,
+                stopbits=self.comm_params.stopbits,
+                timeout=self.comm_params.timeout_connect,
+            )
+            return
+        super().init_setup_connect_listen(host, port)
 
     @property
     def desynced(self) -> bool:
