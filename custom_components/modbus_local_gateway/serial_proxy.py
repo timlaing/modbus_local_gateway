@@ -124,6 +124,10 @@ async def async_get_proxy_ports(hass: HomeAssistant) -> list[ProxyPort]:
     reason = _support_reason(hass)
     if reason is not None:
         raise SerialSupportUnavailable(reason)
+    if DOMAIN_ESPHOME not in hass.config.components:
+        # No adopted ESPHome device means no proxy port can exist, so there
+        # is nothing to scan for - and no usb integration to scan with yet.
+        return []
 
     from homeassistant.components import usb
 

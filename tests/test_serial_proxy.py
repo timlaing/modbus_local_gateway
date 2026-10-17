@@ -65,6 +65,8 @@ def _scanned(device: str, **overrides: Any) -> SerialDevice:
 @pytest.mark.asyncio
 async def test_only_proxy_urls_are_offered(hass: HomeAssistant) -> None:
     """A local serial port belongs to another integration; only proxies count"""
+    hass.config.components.add(DOMAIN_ESPHOME)
+    hass.config.components.add("usb")
     scan = AsyncMock(
         return_value=[
             _scanned(
@@ -108,8 +110,25 @@ async def test_ports_are_read_through_the_usb_scan(hass: HomeAssistant) -> None:
 
 
 @pytest.mark.asyncio
+async def test_nothing_is_scanned_without_an_adopted_device(
+    hass: HomeAssistant,
+) -> None:
+    """No adopted ESPHome device means no proxy ports and no scan to ask"""
+    scan = AsyncMock(return_value=[])
+
+    with patch("homeassistant.components.usb.async_scan_serial_ports", scan):
+        assert await async_get_proxy_ports(hass) == []
+
+    # The scan needs a set-up usb integration that this fixture never had, so
+    # it must not be reached: the missing device settles the answer first.
+    scan.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_ports_are_sorted_for_the_form(hass: HomeAssistant) -> None:
     """Devices come out in name order and their ports in port name order"""
+    hass.config.components.add(DOMAIN_ESPHOME)
+    hass.config.components.add("usb")
     scan = AsyncMock(
         return_value=[
             _scanned(
@@ -139,6 +158,8 @@ async def test_ports_are_sorted_for_the_form(hass: HomeAssistant) -> None:
 @pytest.mark.asyncio
 async def test_a_loaded_device_names_its_ports(hass: HomeAssistant) -> None:
     """A loaded ESPHome entry names its device and says what a port is"""
+    hass.config.components.add(DOMAIN_ESPHOME)
+    hass.config.components.add("usb")
     entry = MockConfigEntry(
         domain=DOMAIN_ESPHOME,
         entry_id="abc123",
@@ -173,6 +194,8 @@ async def test_a_port_the_scan_says_little_about_still_gets_a_row(
     hass: HomeAssistant,
 ) -> None:
     """With no entry and no description the port still describes itself"""
+    hass.config.components.add(DOMAIN_ESPHOME)
+    hass.config.components.add("usb")
     url = f"{SERIAL_PORT_SCHEME}://esphome/deadbeef1234"
     scan = AsyncMock(return_value=[_scanned(url, serial_number=None, description=None)])
 
@@ -193,6 +216,8 @@ async def test_a_description_without_the_port_in_it_is_used_whole(
     hass: HomeAssistant,
 ) -> None:
     """A description that names only the device still says what it is"""
+    hass.config.components.add(DOMAIN_ESPHOME)
+    hass.config.components.add("usb")
     scan = AsyncMock(return_value=[_scanned(URL, description="Prolific Adapter")])
 
     with patch("homeassistant.components.usb.async_scan_serial_ports", scan):
