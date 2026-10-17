@@ -36,7 +36,6 @@ async def async_get_config_entry_diagnostics(
     devices are behind the gateway are all kept. Only where the gateway is
     is left out of what a user would paste into an issue.
     """
-    del hass  # The entry says everything; no handle on Home Assistant is needed.
     data: dict[str, Any] = {
         "state": entry.state.value,
         "version": entry.version,
@@ -50,6 +49,8 @@ async def async_get_config_entry_diagnostics(
     }
     if get_transport(entry.data) == TRANSPORT_SERIAL_PROXY:
         # Whether the library that opens proxy ports is installed at all is
-        # the first thing to know when a serial gateway does not work.
-        data["serial_support"] = serialx_available()
+        # the first thing to know when a serial gateway does not work. An
+        # `importlib` spec lookup touches the filesystem, so it runs off the
+        # event loop.
+        data["serial_support"] = await hass.async_add_executor_job(serialx_available)
     return data

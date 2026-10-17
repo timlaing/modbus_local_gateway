@@ -383,12 +383,11 @@ async def test_the_factory_hands_the_settings_to_serialx() -> None:
             bytesize=7,
             parity="E",
             stopbits=2,
-            timeout=1.5,
         )
 
     assert result == (transport, protocol)
-    # `timeout` is the pymodbus connect budget, not a setting of the port:
-    # the ESPHome transport budgets its own connect.
+    # The pymodbus connect budget is not a setting of the port: the ESPHome
+    # transport budgets its own connect, so no `timeout` is forwarded.
     open_port.assert_awaited_once_with(
         loop,
         factory,
@@ -401,12 +400,12 @@ async def test_the_factory_hands_the_settings_to_serialx() -> None:
 
 
 @pytest.mark.asyncio
-async def test_a_setting_serialx_has_no_name_for_is_refused() -> None:
+@patch("serialx.create_serial_connection", new_callable=AsyncMock)
+async def test_a_setting_serialx_has_no_name_for_is_refused(
+    open_port: AsyncMock,
+) -> None:
     """A parity the entry was edited to carry is refused as an OSError"""
-    with (
-        patch("serialx.create_serial_connection", new_callable=AsyncMock) as open_port,
-        pytest.raises(OSError) as err,
-    ):
+    with pytest.raises(OSError) as err:
         await create_serial_connection(
             MagicMock(),
             MagicMock(),
@@ -430,14 +429,13 @@ async def test_a_setting_serialx_has_no_name_for_is_refused() -> None:
     ],
 )
 @pytest.mark.asyncio
+@patch("serialx.create_serial_connection", new_callable=AsyncMock)
 async def test_a_refused_open_comes_back_as_an_os_error(
-    failure: Exception, expected_errno: int
+    open_port: AsyncMock, failure: Exception, expected_errno: int
 ) -> None:
     """pymodbus reads OSError as "not connected", so that is what it gets"""
-    with (
-        patch("serialx.create_serial_connection", new=AsyncMock(side_effect=failure)),
-        pytest.raises(OSError) as err,
-    ):
+    open_port.side_effect = failure
+    with pytest.raises(OSError) as err:
         await create_serial_connection(
             MagicMock(),
             MagicMock(),
@@ -453,16 +451,16 @@ async def test_a_refused_open_comes_back_as_an_os_error(
 
 
 @pytest.mark.asyncio
-async def test_a_port_cannot_be_opened_without_the_library() -> None:
+@patch("serialx.create_serial_connection", new_callable=AsyncMock)
+@patch(
+    "custom_components.modbus_local_gateway.serial_proxy.serialx_available",
+    return_value=False,
+)
+async def test_a_port_cannot_be_opened_without_the_library(
+    available: MagicMock, open_port: AsyncMock
+) -> None:
     """With serialx missing the open fails as an OSError, not an ImportError"""
-    with (
-        patch(
-            "custom_components.modbus_local_gateway.serial_proxy.serialx_available",
-            return_value=False,
-        ),
-        patch("serialx.create_serial_connection", new_callable=AsyncMock) as open_port,
-        pytest.raises(OSError) as err,
-    ):
+    with pytest.raises(OSError) as err:
         await create_serial_connection(
             MagicMock(),
             MagicMock(),
@@ -474,4 +472,5 @@ async def test_a_port_cannot_be_opened_without_the_library() -> None:
         )
 
     assert err.value.errno == errno.ENODEV
+    available.assert_called_once_with()
     open_port.assert_not_awaited()

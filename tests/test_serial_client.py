@@ -133,7 +133,6 @@ async def test_connect_waits_for_the_last_connection_to_let_go() -> None:
         bytesize=SERIAL_DEFAULT_BYTESIZE,
         parity=SERIAL_DEFAULT_PARITY,
         stopbits=SERIAL_DEFAULT_STOPBITS,
-        timeout=3.0,
     )
 
 
