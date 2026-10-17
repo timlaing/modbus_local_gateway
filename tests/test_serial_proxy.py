@@ -405,10 +405,12 @@ async def test_a_setting_serialx_has_no_name_for_is_refused(
     open_port: AsyncMock,
 ) -> None:
     """A parity the entry was edited to carry is refused as an OSError"""
+    loop: Any = MagicMock()
+    factory: Any = MagicMock()
     with pytest.raises(OSError) as err:
         await create_serial_connection(
-            MagicMock(),
-            MagicMock(),
+            loop,
+            factory,
             URL,
             baudrate=9600,
             bytesize=8,
@@ -435,10 +437,12 @@ async def test_a_refused_open_comes_back_as_an_os_error(
 ) -> None:
     """pymodbus reads OSError as "not connected", so that is what it gets"""
     open_port.side_effect = failure
+    loop: Any = MagicMock()
+    factory: Any = MagicMock()
     with pytest.raises(OSError) as err:
         await create_serial_connection(
-            MagicMock(),
-            MagicMock(),
+            loop,
+            factory,
             URL,
             baudrate=9600,
             bytesize=8,
@@ -460,10 +464,12 @@ async def test_a_port_cannot_be_opened_without_the_library(
     available: MagicMock, open_port: AsyncMock
 ) -> None:
     """With serialx missing the open fails as an OSError, not an ImportError"""
+    loop: Any = MagicMock()
+    factory: Any = MagicMock()
     with pytest.raises(OSError) as err:
         await create_serial_connection(
-            MagicMock(),
-            MagicMock(),
+            loop,
+            factory,
             URL,
             baudrate=9600,
             bytesize=8,
