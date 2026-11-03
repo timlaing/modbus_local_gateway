@@ -8,11 +8,17 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 from pymodbus.exceptions import ModbusException, ModbusIOException
-from pymodbus.pdu.bit_message import ReadCoilsResponse, ReadDiscreteInputsResponse
+from pymodbus.pdu.bit_message import (
+    ReadCoilsResponse,
+    ReadDiscreteInputsResponse,
+    WriteSingleCoilResponse,
+)
+from pymodbus.pdu.exceptionresponse import ExceptionResponse
 from pymodbus.pdu.pdu import ModbusPDU
 from pymodbus.pdu.register_message import (
     ReadHoldingRegistersResponse,
     ReadInputRegistersResponse,
+    WriteMultipleRegistersResponse,
     WriteSingleRegisterResponse,
 )
 import pytest
@@ -155,7 +161,9 @@ async def test_read_registers_multiple() -> None:
 async def test_write_no_registers() -> None:
     """Test successful write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteSingleRegisterResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
 
     with patch(
@@ -174,9 +182,13 @@ async def test_write_no_registers() -> None:
 async def test_write_single_register_success() -> None:
     """Test successful write of a single register."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with patch(
@@ -204,9 +216,13 @@ async def test_write_single_register_refused_retries_with_multiple() -> None:
     out, so there is no read-back to do.
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: True
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
     cast(Any, client).read_holding_registers = AsyncMock(
         return_value=ReadHoldingRegistersResponse(registers=[0])
@@ -243,7 +259,9 @@ async def test_write_single_register_unanswered_retries_with_multiple() -> None:
     cast(Any, client).write_register = AsyncMock(
         side_effect=ModbusIOException("No response received after 5 retries")
     )
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
     cast(Any, client).read_holding_registers = AsyncMock(
         return_value=ReadHoldingRegistersResponse(registers=[0])
@@ -275,7 +293,9 @@ async def test_write_single_register_timeout_retries_with_multiple() -> None:
     """A timeout on FC 0x06 is treated the same as an unanswered write."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).write_register = AsyncMock(side_effect=TimeoutError)
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
     cast(Any, client).read_holding_registers = AsyncMock(
         return_value=ReadHoldingRegistersResponse(registers=[0])
@@ -305,7 +325,9 @@ async def test_write_single_register_unanswered_but_applied() -> None:
     cast(Any, client).write_register = AsyncMock(
         side_effect=ModbusIOException("No response received after 5 retries")
     )
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
     cast(Any, client).read_holding_registers = AsyncMock(
         return_value=ReadHoldingRegistersResponse(registers=[3])
@@ -343,7 +365,9 @@ async def test_write_single_register_unanswered_after_fc06_worked() -> None:
     cast(Any, client).read_holding_registers = AsyncMock(
         return_value=ReadHoldingRegistersResponse(registers=[0])
     )
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     await client._custom_write_registers(address=301, values=[3], device_id=1)
 
@@ -365,7 +389,9 @@ async def test_write_single_register_unanswered_read_back_fails() -> None:
     cast(Any, client).write_register = AsyncMock(
         side_effect=ModbusIOException("No response received after 5 retries")
     )
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
     cast(Any, client).read_holding_registers = AsyncMock(
         side_effect=ModbusIOException("no answer either")
@@ -388,9 +414,13 @@ async def test_write_single_register_fallback_also_fails() -> None:
     called exactly once.
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: True
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: True
 
     with patch(
@@ -424,9 +454,13 @@ async def test_write_single_register_does_not_repeat_single_function() -> None:
     not retry it again.
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: True
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: True
 
     with patch(
@@ -447,9 +481,13 @@ async def test_write_single_register_does_not_repeat_single_function() -> None:
 async def test_write_single_register_multiple_function() -> None:
     """A single value goes out as FC 0x10 when that function is selected."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
 
     await client._custom_write_registers(
@@ -470,7 +508,9 @@ async def test_write_single_register_multiple_function() -> None:
 async def test_write_single_register_single_function() -> None:
     """The default keeps a single value on FC 0x06."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
 
     await client._custom_write_registers(
@@ -492,7 +532,9 @@ async def test_write_data_passes_write_function() -> None:
     client = AsyncModbusTcpClientGateway(host="localhost")
     connected = PropertyMock(return_value=True)
     cast(Any, type(client)).connected = connected
-    cast(Any, client)._custom_write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client)._custom_write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client)._custom_write_registers.return_value.isError = lambda: False
 
     ctx = ModbusContext(
@@ -519,7 +561,9 @@ async def test_write_data_passes_write_function() -> None:
 async def test_write_multiple_registers_success() -> None:
     """Test successful write of a multiple registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with patch(
@@ -544,9 +588,13 @@ async def test_write_multiple_registers_success() -> None:
 async def test_write_multiple_registers_failure() -> None:
     """Test failed write of a multiple registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: True
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: True
 
     with patch(
@@ -574,9 +622,13 @@ async def test_write_multiple_registers_failure() -> None:
 async def test_write_multiple_registers_success_individual() -> None:
     """Test failed write of a multiple registers, successfully individually."""
     client = AsyncModbusTcpClientGateway(host="localhost")
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: True
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
 
     with patch(
@@ -1089,7 +1141,9 @@ async def test_write_data_holding_registers_success() -> None:
     """Test successful write to holding registers."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     entity = ModbusContext(
@@ -1133,10 +1187,14 @@ async def test_write_data_holding_registers_error_raises() -> None:
     """An error response to a register write must not be reported as success."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: True
     # Both write functions are refused, so the FC 0x10 fallback fails too
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: True
 
     entity = ModbusContext(
@@ -1164,7 +1222,7 @@ async def test_write_data_coil_error_raises() -> None:
     """An error response to a coil write must not be reported as success."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_coil = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_coil = AsyncMock(return_value=WriteSingleCoilResponse())
     cast(Any, client).write_coil.return_value.isError = lambda: True
 
     entity = ModbusContext(
@@ -1191,7 +1249,7 @@ async def test_write_data_coils_success() -> None:
     """Test successful write to coils."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_coil = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_coil = AsyncMock(return_value=WriteSingleCoilResponse())
     cast(Any, client).write_coil.return_value.isError = lambda: False
 
     entity = ModbusContext(
@@ -1358,7 +1416,9 @@ async def test_write_data_bitfield_read_modify_write() -> None:
     """Writing a bit field reads the register and merges into it."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteSingleRegisterResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
 
     with (
@@ -1389,7 +1449,9 @@ async def test_write_data_bitfield_read_failure_aborts_write() -> None:
     neighbours, which is worse than not writing at all."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteSingleRegisterResponse()
+    )
 
     entity = _bitfield_entity()
     with (
@@ -1411,7 +1473,9 @@ async def test_write_data_bitfield_error_response_aborts_write() -> None:
     """An error PDU from the read is a failed read, not a value of zero."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteSingleRegisterResponse()
+    )
 
     error_response = ReadHoldingRegistersResponse(registers=[0])
     cast(Any, error_response).isError = lambda: True
@@ -1438,7 +1502,9 @@ async def test_write_data_non_bitfield_does_not_read_first() -> None:
     """Plain registers keep the single-transaction write they always had."""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteSingleRegisterResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
 
     entity = ModbusContext(
@@ -1475,7 +1541,9 @@ async def test_write_data_bitfield_with_write_with_rewrites_pair() -> None:
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     entity = ModbusContext(
@@ -1525,7 +1593,9 @@ async def test_write_data_with_write_with_whole_register() -> None:
     """write_with also covers entities that own the whole register"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with (
@@ -1572,7 +1642,9 @@ async def test_write_data_with_write_with_incorrect_register_count() -> None:
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     entity = ModbusContext(
         device_id=1,
@@ -1617,7 +1689,7 @@ async def test_write_data_with_write_with_refusal_is_not_split() -> None:
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    error_response = ModbusPDU()
+    error_response = WriteMultipleRegistersResponse()
     cast(Any, error_response).isError = lambda: True
     write_registers = AsyncMock(return_value=error_response)
     cast(Any, client).write_registers = write_registers
@@ -1838,7 +1910,9 @@ async def test_write_composite_contiguous_is_one_request() -> None:
     """One value writes every adjacent field in a single request"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with patch.object(
@@ -1858,7 +1932,9 @@ async def test_write_composite_write_offset_only_on_the_way_out() -> None:
     """A field write offset reaches the device without changing what is read"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with patch.object(
@@ -1881,7 +1957,9 @@ async def test_write_composite_single_write_function_is_one_request_per_register
     """A composite that declares single is written register by register"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
     cast(Any, client).write_registers = AsyncMock()
 
@@ -1911,7 +1989,9 @@ async def test_write_composite_single_write_function_gapped_runs() -> None:
     """Every run of a composite declared single is written register by register"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
     cast(Any, client).write_registers = AsyncMock()
 
@@ -1953,9 +2033,9 @@ async def test_write_composite_single_write_function_error_response_aborts_write
     """
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    ok_response = ModbusPDU()
+    ok_response = ExceptionResponse(0x01, 0x01)
     cast(Any, ok_response).isError = lambda: False
-    error_response = ModbusPDU()
+    error_response = ExceptionResponse(0x01, 0x01)
     cast(Any, error_response).isError = lambda: True
 
     def _answer(address: int, **_: Any) -> ModbusPDU:
@@ -1988,7 +2068,9 @@ async def test_write_composite_single_write_function_honoured_for_one_register()
     """A run of one register is still written with the function declared"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_register.return_value.isError = lambda: False
     cast(Any, client).write_registers = AsyncMock()
 
@@ -2015,7 +2097,9 @@ async def test_write_composite_multiple_write_function_honoured_for_one_register
     """A composite declaring multiple is written in one request, entry or not"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
     cast(Any, client).write_register = AsyncMock()
 
@@ -2047,7 +2131,9 @@ async def test_write_composite_gapped_runs() -> None:
     """Each run of adjacent fields is written with its own request"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
     cast(Any, client).write_registers.return_value.isError = lambda: False
 
     with patch.object(
@@ -2085,7 +2171,7 @@ async def test_write_composite_error_response_aborts_write() -> None:
     """An error response for a run must not be reported as a successful write"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    error_response = ModbusPDU()
+    error_response = WriteMultipleRegistersResponse()
     cast(Any, error_response).isError = lambda: True
     # Both write functions are refused, so the FC 0x10 fallback fails too
     cast(Any, client).write_registers = AsyncMock(return_value=error_response)
@@ -2108,7 +2194,9 @@ async def test_write_composite_input_register_is_refused() -> None:
     """A read-only composite cannot be written"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     entity = _composite_entity(
         fields=(("year", 45), ("month", 46), ("day", 47)),
@@ -2165,7 +2253,9 @@ async def test_write_composite_bit_fields_keep_other_bits() -> None:
         return_value=ReadHoldingRegistersResponse(registers=[0xC900])
     )
     cast(Any, client).read_holding_registers = read_holding
-    cast(Any, client).write_register = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_register = AsyncMock(
+        return_value=WriteSingleRegisterResponse()
+    )
 
     with patch.object(
         AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
@@ -2191,7 +2281,9 @@ async def test_write_composite_bit_fields_need_no_read_when_none() -> None:
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
     cast(Any, client).read_holding_registers = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     with patch.object(
         AsyncModbusTcpClientGateway, "connected", PropertyMock(return_value=True)
@@ -2208,10 +2300,12 @@ async def test_write_composite_bit_field_read_failure_aborts() -> None:
     """A failed merge read must not write onto a guess"""
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
-    error_response = ModbusPDU()
+    error_response = WriteMultipleRegistersResponse()
     cast(Any, error_response).isError = lambda: True
     cast(Any, client).read_holding_registers = AsyncMock(return_value=error_response)
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     entity = _packed_composite_entity()
     value = datetime(2026, 9, 22, 22, 45)
@@ -2235,7 +2329,9 @@ async def test_write_composite_bit_fields_span_read_once() -> None:
         return_value=ReadHoldingRegistersResponse(registers=[0xC900, 0xC700])
     )
     cast(Any, client).read_holding_registers = read_holding
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     entity = ModbusContext(
         device_id=1,
@@ -2277,7 +2373,9 @@ async def test_write_composite_write_with_rewrites_pair_together() -> None:
         return_value=ReadHoldingRegistersResponse(registers=[0x1100, 0x1300])
     )
     cast(Any, client).read_holding_registers = read_holding
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     entity = ModbusContext(
         device_id=1,
@@ -2321,7 +2419,9 @@ async def test_write_composite_input_register_bit_fields_refused() -> None:
     client = AsyncModbusTcpClientGateway(host="localhost")
     cast(Any, client).connect = AsyncMock()
     cast(Any, client).read_holding_registers = AsyncMock()
-    cast(Any, client).write_registers = AsyncMock(return_value=ModbusPDU())
+    cast(Any, client).write_registers = AsyncMock(
+        return_value=WriteMultipleRegistersResponse()
+    )
 
     entity = _packed_composite_entity(data_type=ModbusDataType.INPUT_REGISTER)
     value = datetime(2026, 9, 22, 22, 45)
