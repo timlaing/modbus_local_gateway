@@ -19,8 +19,6 @@ on:
         "Validate with hassfest",
       ]
     types: [completed]
-  schedule:
-    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions: {}
