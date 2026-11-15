@@ -130,6 +130,7 @@ read_only_word:
     size: 2
 
   Power Factor:
+    device_class: power_factor
     address: 30
     name: Power Factor
     precision: 2
@@ -180,9 +181,10 @@ read_only_word:
     max_change: 500.0
 
   Import Reactive Energy:
+    device_class: reactive_energy
     address: 76
     name: Import Reactive Energy
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
     state_class: total_increasing
@@ -190,9 +192,10 @@ read_only_word:
     never_resets: true
 
   Export Reactive Energy:
+    device_class: reactive_energy
     address: 78
     name: Export Reactive Energy
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
     state_class: total_increasing
@@ -231,9 +234,10 @@ read_only_word:
     max_change: 500.0
 
   Total Reactive Energy:
+    device_class: reactive_energy
     address: 344
     name: Total Reactive Energy
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
     state_class: total_increasing

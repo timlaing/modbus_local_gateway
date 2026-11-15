@@ -130,7 +130,7 @@ read_write_word:
     name: "AI3C Analog Input AI3"
     address: 5244
     precision: 0
-    unit_of_measurement: uA
+    unit_of_measurement: μA
     device_class: current
     entity_category: diagnostic
     entity_registry_enabled_default: False

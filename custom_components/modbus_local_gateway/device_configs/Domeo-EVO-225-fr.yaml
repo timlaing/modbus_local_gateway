@@ -216,6 +216,7 @@ read_write_word:
     entity_category: diagnostic
 
   debit_correction:
+    device_class: volume_flow_rate
     name: "débit correction(40005)"
     address: 4
     signed: true

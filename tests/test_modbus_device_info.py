@@ -5,7 +5,12 @@ import contextlib
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor.const import (
+    DEVICE_CLASS_STATE_CLASSES,
+    DEVICE_CLASS_UNITS,
+    SensorDeviceClass,
+    SensorStateClass,
+)
 from homeassistant.core import HomeAssistant
 import pytest
 import yaml
@@ -590,3 +595,44 @@ def test_entity_invalid_write_with(
     descriptions = _load_write_with(section, {"test": entity}, caplog)
     assert not descriptions
     assert expected_log in caplog.text
+
+
+async def test_device_sensor_classes_and_units_are_valid(hass: HomeAssistant) -> None:
+    """Shipped sensors use HA classes with compatible units and statistics."""
+    devices = await load_devices(hass=hass)
+    for name, device in devices.items():
+        for entity in device.entity_descriptions:
+            if not isinstance(entity, ModbusSensorEntityDescription):
+                continue
+            if entity.device_class is None:
+                continue
+            context = f"{name}: {entity.key}"
+            assert entity.device_class in SensorDeviceClass, context
+            assert entity.native_unit_of_measurement in DEVICE_CLASS_UNITS.get(
+                entity.device_class, {None}
+            ), context
+            if entity.state_class is not None:
+                assert (
+                    entity.state_class
+                    in DEVICE_CLASS_STATE_CLASSES[entity.device_class]
+                ), context
+
+
+def test_classless_sensor_preserves_explicit_statistics() -> None:
+    """Classless measurements retain statistics without classifying status codes."""
+    entities = _load_write_with(
+        "read_only_word",
+        {
+            "thd": {
+                "address": 1,
+                "unit_of_measurement": "%",
+                "state_class": "measurement",
+            },
+            "status": {"address": 2},
+        },
+    )
+    assert isinstance(entities[0], ModbusSensorEntityDescription)
+    assert isinstance(entities[1], ModbusSensorEntityDescription)
+    assert entities[0].device_class is None
+    assert entities[0].state_class == SensorStateClass.MEASUREMENT
+    assert entities[1].state_class is None

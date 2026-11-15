@@ -435,6 +435,7 @@ read_only_word:
     precision: 2
     multiplier: 0.1
   IPF:
+    device_class: power_factor
     name: Inverter output Power Factor
     address: 3100
     state_class: measurement

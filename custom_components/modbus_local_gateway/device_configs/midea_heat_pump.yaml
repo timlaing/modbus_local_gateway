@@ -100,6 +100,7 @@ read_write_word:
   # Protocol range is 20-75 C. Your unit is commissioned to something narrower - read it
   # from dhw_upper_limit / dhw_lower_limit (registers 207/208) and narrow this to match.
   dhw_setpoint:
+    device_class: temperature
     name: DHW Setpoint
     address: 4
     precision: 0
@@ -141,6 +142,7 @@ read_write_word:
     scan_interval: 10
 
   curve_water_temp_upper:
+    device_class: temperature
     name: Curve 9 Upper Water Temp
     address: 265
     precision: 0
@@ -153,6 +155,7 @@ read_write_word:
       step: 1
 
   curve_water_temp_lower:
+    device_class: temperature
     name: Curve 9 Lower Water Temp
     address: 266
     precision: 0
@@ -165,6 +168,7 @@ read_write_word:
       step: 1
 
   curve_outdoor_temp_upper:
+    device_class: temperature
     name: Curve 9 Upper Outdoor Temp
     address: 267
     signed: true
@@ -178,6 +182,7 @@ read_write_word:
       step: 1
 
   curve_outdoor_temp_lower:
+    device_class: temperature
     name: Curve 9 Lower Outdoor Temp
     address: 268
     signed: true

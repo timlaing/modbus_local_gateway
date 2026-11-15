@@ -206,6 +206,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 024. Abluftsollwert - Setpoint extract air temperature (-100 - 100 °C)
 
   ext_e2_luftstufe3_nachlaufzeit_number:
+    device_class: duration
     name: Lüftungsstufe 3 Nachlaufzeit (External Din2)
     address: 31
     control: number
@@ -219,6 +220,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 031. EXT_E2_Luftstufe3_Nachlaufzeit - Time in ventilation level 3 with external contact Din2 (0 - 1000 min)
 
   filter_tauschintervall_stunden_number:
+    device_class: duration
     name: Tauschintervall Filter
     address: 29
     control: number
@@ -307,7 +309,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
       min: 0
       max: 2000
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     icon: mdi:molecule-co2
     entity_category: config
     entity_registry_enabled_default: False
@@ -340,6 +342,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 045. Luftfeuchte-Sollwert - Relative humidity setpoint Summer (0 - 100 %)
 
   feuchte_regelung_ls3_max_zeit_number:
+    device_class: duration
     name: Feuchte Regelung LS3 maximale Zeit
     address: 46
     control: number
@@ -507,6 +510,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 069. Automatische Umschaltung Sommer/Winter (0=Aus, 1=Ein)
 
   para_max_zeit_luftungsstufe_3_number:
+    device_class: duration
     name: Lüftungsstufe 3 Maximale Zeit
     address: 70
     control: number
@@ -925,6 +929,7 @@ read_write_word: # Holding registers (Setpoints - Modbus Function Code 03/06)
     # Official Doc: 0179. ModbusTCP_RTU (1=aktiviert, 0=deaktiviert), ab FW 1.6
 
   modbus_tcp_timeout:
+    device_class: duration
     name: Modbus TCP Timeout
     address: 178
     control: sensor
@@ -942,7 +947,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     multiplier: 0.4884
     precision: 0
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     state_class: measurement
     icon: mdi:molecule-co2
     entity_registry_enabled_default: False
@@ -1044,6 +1049,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
 
   # Control Signals (11-12, 26)
   mischer_heizen_0_10v:
+    device_class: voltage
     name: Heizmischer Steuersignal
     address: 11
     size: 1
@@ -1056,6 +1062,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     # Official Doc: Mischer_0_10V_Heizen - Heat mixing valve control signal (0 - 10 V)
 
   mischer_kuhlen_0_10v:
+    device_class: voltage
     name: Kühlmischer Steuersignal
     address: 12
     size: 1
@@ -1068,6 +1075,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     # Official Doc: Mischer_0_10V_Kühlen - Cooling mixing valve control signal (0 - 10 V)
 
   mischer_kombi_0_10v:
+    device_class: voltage
     name: Kombiregister Mischer Steuersignal
     address: 26
     size: 1
@@ -1292,7 +1300,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     name: CO2 Modbus Sensor 1
     address: 44
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     state_class: measurement
     icon: mdi:molecule-co2
     entity_registry_enabled_default: False
@@ -1343,6 +1351,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     # Official Doc: Betriebsstatus - Operating status (0=CPU startup, 1=Stdby, 2=Start, 3=Operation, 4=Lag, 5=StdbyPowersafe, 6=Testmode)
 
   filter_reststandzeit:
+    device_class: duration
     name: Filter Reststandzeit
     address: 50
     unit_of_measurement: h
@@ -1584,7 +1593,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     name: CO2 Sensor 1
     address: 89
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     state_class: measurement
     icon: mdi:molecule-co2
     entity_registry_enabled_default: False
@@ -1594,7 +1603,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     name: CO2 Sensor 2
     address: 90
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     state_class: measurement
     icon: mdi:molecule-co2
     entity_registry_enabled_default: False
@@ -1624,7 +1633,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     name: CO2 Modbus Sensor 2
     address: 97
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     state_class: measurement
     icon: mdi:molecule-co2
     entity_registry_enabled_default: False
@@ -1699,6 +1708,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
 
   # Operating Hours (81-87)
   betriebsstunden_luftungsstufe_2:
+    device_class: duration
     name: Betriebsstunden Stufe 2
     address: 81
     unit_of_measurement: h
@@ -1707,6 +1717,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_category: diagnostic
 
   betriebsstunden_luftungsstufe_3:
+    device_class: duration
     name: Betriebsstunden Stufe 3
     address: 82
     unit_of_measurement: h
@@ -1715,6 +1726,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_category: diagnostic
 
   betriebsstunden_grundluftung:
+    device_class: duration
     name: Betriebsstunden Grundlüftung
     address: 83
     unit_of_measurement: h
@@ -1723,6 +1735,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_category: diagnostic
 
   betriebsstunden_luftungsbetrieb_gesamt:
+    device_class: duration
     name: Betriebsstunden Gesamt
     address: 84
     unit_of_measurement: h
@@ -1731,6 +1744,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_category: diagnostic
 
   betriebsstunden_heizregister:
+    device_class: duration
     name: Betriebsstunden Heizregister
     address: 85
     unit_of_measurement: h
@@ -1739,6 +1753,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_category: diagnostic
 
   betriebsstunden_bypass:
+    device_class: duration
     name: Betriebsstunden Bypass
     address: 86
     unit_of_measurement: h
@@ -1747,6 +1762,7 @@ read_only_word: # Input registers (Datapoints - Modbus Function Code 04)
     entity_category: diagnostic
 
   betriebsstunden_luftungsstufe_1:
+    device_class: duration
     name: Betriebsstunden Stufe 1
     address: 87
     unit_of_measurement: h
