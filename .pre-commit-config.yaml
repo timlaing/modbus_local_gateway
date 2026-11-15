@@ -197,3 +197,9 @@ repos:
         entry: python3 scripts/check_action_refs.py
         files: ^\.github/workflows/.*\.ya?ml$
         pass_filenames: true
+      - id: check-device-configs
+        name: Validate device config metadata
+        language: system
+        entry: .venv/bin/python -m scripts.check_device_configs
+        files: ^(custom_components/modbus_local_gateway/(device_configs/.*\.yaml|entity_management/(const|modbus_device_info)\.py)|scripts/check_device_configs\.py|requirements.*\.txt|uv\.lock)$
+        pass_filenames: false

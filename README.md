@@ -229,6 +229,15 @@ Firmware variations may affect compatibility.
 
 ## Contributing
 
+Validate device config metadata locally with
+`uv run --extra dev python -m scripts.check_device_configs`. This also runs as
+part of `prek` and the pull request lint workflow. The validator checks raw YAML
+against the installed Home Assistant version: platform device classes, compatible
+units and sensor state classes, including inherited unit defaults. It requires
+classes for known measurement units and named power-factor readings; generic
+percentages, RPM and status values may remain classless. Diagnostics identify the
+file, section and entity key. This checks metadata, not device register accuracy.
+
 We welcome contributions! Please open an issue to discuss your ideas or submit a PR against the `main` branch. Ensure your code follows the existing style, passes the test suite, and update this README with any new instructions.
 
 ## License

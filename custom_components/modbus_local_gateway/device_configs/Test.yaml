@@ -48,7 +48,6 @@ read_write_word:
     swap: word
     multiplier: 0.1
     unit_of_measurement: "DM"
-    state_class: measurement
     precision: 1
     scan_interval: 2
 

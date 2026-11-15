@@ -146,7 +146,6 @@ read_write_word:
       mode: box
     scan_interval: 5
     device_class: temperature
-    state_class: measurement
 
   1HY:
     device_class: temperature_delta
@@ -304,7 +303,6 @@ read_write_word:
       step: 0.1
       mode: box
     device_class: temperature
-    state_class: measurement
 
   2DF:
     device_class: temperature_delta

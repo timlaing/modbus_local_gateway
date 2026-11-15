@@ -45,4 +45,6 @@ jobs:
         run: npm ci
 
       - name: Run prek
-        run: .venv/bin/prek run --all-files
+        run: |
+          source .venv/bin/activate
+          prek run --all-files
