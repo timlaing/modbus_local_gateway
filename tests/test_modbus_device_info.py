@@ -12,6 +12,8 @@ from homeassistant.components.sensor.const import (
     SensorStateClass,
 )
 from homeassistant.core import HomeAssistant
+from pymodbus.client.mixin import ModbusClientMixin
+from pymodbus.pdu.register_message import ReadInputRegistersResponse
 import pytest
 import yaml
 
@@ -19,6 +21,7 @@ if TYPE_CHECKING:
     from _pytest.logging import LogCaptureFixture
 
 
+from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSensorEntityDescription,
@@ -636,3 +639,54 @@ def test_classless_sensor_preserves_explicit_statistics() -> None:
     assert entities[0].device_class is None
     assert entities[0].state_class == SensorStateClass.MEASUREMENT
     assert entities[1].state_class is None
+
+
+def test_enum_string_sensor_preserves_options() -> None:
+    """Valid enum string metadata survives loading without numeric statistics."""
+    entities = _load_write_with(
+        "read_only_word",
+        {
+            "status": {
+                "address": 1,
+                "string": True,
+                "device_class": "enum",
+                "options": ["running", "stopped"],
+            }
+        },
+    )
+    assert len(entities) == 1
+    entity = entities[0]
+    assert isinstance(entity, ModbusSensorEntityDescription)
+    assert entity.device_class == SensorDeviceClass.ENUM
+    assert entity.options == ["running", "stopped"]
+    assert entity.native_unit_of_measurement is None
+    assert entity.state_class is None
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["MIC-2500TL-X", "MIN-6000TL-XH", "MOD-10KTL3-XH", "MOD-6000TL-X"],
+)
+def test_growatt_ipf_remains_raw(filename: str) -> None:
+    """Do not classify an encoded register as an unscaled physical power factor."""
+    device = modbus_device_info.ModbusDeviceInfo(f"{filename}.yaml")
+    entity = next(
+        entity for entity in device.entity_descriptions if entity.key == "IPF"
+    )
+    assert isinstance(entity, ModbusSensorEntityDescription)
+    assert entity.register_address == 3100
+    assert entity.name == "Inverter output PF register (raw)"
+    assert entity.device_class is None
+    assert entity.native_unit_of_measurement is None
+    assert entity.state_class == SensorStateClass.MEASUREMENT
+    assert entity.conv_multiplier is None
+    assert entity.conv_offset is None
+    conversion = Conversion(client=ModbusClientMixin)
+    # Include the readings observed on MIC/MIN and intermediate encoded values.
+    for raw in (0, 8000, 10000, 18000, 20000):
+        assert (
+            conversion.convert_from_response(
+                response=ReadInputRegistersResponse(registers=[raw]), desc=entity
+            )
+            == raw
+        )

@@ -15,6 +15,7 @@ from homeassistant.components.number.const import DEVICE_CLASS_UNITS as NUMBER_U
 from homeassistant.components.sensor.const import (
     DEVICE_CLASS_STATE_CLASSES,
     DEVICE_CLASS_UNITS,
+    STATE_CLASS_UNITS,
     SensorDeviceClass,
     SensorStateClass,
 )
@@ -119,8 +120,21 @@ def _validate_measurement(
     errors: list[str] = []
     state_class = data.get(STATE_CLASS)
     if data.get("string", False):
-        if device_class is not None or state_class is not None:
+        if (
+            device_class not in (None, SensorDeviceClass.ENUM)
+            or state_class is not None
+        ):
             errors.append("string values cannot declare numeric classes or statistics")
+        if unit is not None:
+            errors.append("string values cannot declare units")
+        if device_class == SensorDeviceClass.ENUM:
+            options = data.get("options")
+            if (
+                not isinstance(options, list)
+                or not options
+                or any(not isinstance(option, str) for option in options)
+            ):
+                errors.append("enum string sensors require a non-empty list of strings")
         return errors
     aliases = {"kVArh": "kvarh", "uA": "μA", "minutes": "min", "Tag/e": "d"}
     if unit in aliases:
@@ -132,6 +146,18 @@ def _validate_measurement(
         errors.append(
             f"expected device_class in {sorted(required)}, got {device_class!r}"
         )
+    effective_state = (
+        data.get(STATE_CLASS, default_state if device_class is not None else None)
+        if control == "sensor"
+        else None
+    )
+    state_units = (
+        STATE_CLASS_UNITS.get(SensorStateClass(effective_state))
+        if effective_state is not None
+        else None
+    )
+    if state_units is not None and unit not in state_units:
+        errors.append(f"unit {unit!r} is invalid for state_class {effective_state!r}")
     if device_class is None:
         return errors
     units = (
@@ -141,18 +167,14 @@ def _validate_measurement(
     )
     if unit not in units:
         errors.append(f"unit {unit!r} is invalid for {control} class {device_class!r}")
-    if control == "sensor":
-        effective_state = data.get(STATE_CLASS, default_state)
-        if (
-            effective_state is not None
-            and effective_state
-            not in DEVICE_CLASS_STATE_CLASSES.get(
-                SensorDeviceClass(device_class), set()
-            )
-        ):
-            errors.append(
-                f"state_class {effective_state!r} is invalid for {device_class!r}"
-            )
+    if control == "sensor" and (
+        effective_state is not None
+        and effective_state
+        not in DEVICE_CLASS_STATE_CLASSES.get(SensorDeviceClass(device_class), set())
+    ):
+        errors.append(
+            f"state_class {effective_state!r} is invalid for {device_class!r}"
+        )
     return errors
 
 
