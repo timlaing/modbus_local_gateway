@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from contextlib import redirect_stdout
+from contextlib import nullcontext, redirect_stdout
 from copy import deepcopy
 import importlib.util
 import io
@@ -158,10 +158,8 @@ class ApplyTests(unittest.TestCase):
             patch.object(Path, "read_text", return_value=json.dumps(policy)),
             redirect_stdout(io.StringIO()),
         ):
-            if mismatch:
-                with self.assertRaises(SystemExit):
-                    POLICY.main()
-            else:
+            expected = self.assertRaises(SystemExit) if mismatch else nullcontext()
+            with expected:
                 POLICY.main()
         return calls
 
