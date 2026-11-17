@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
+import action_pins
 from action_pins import invalid_references
 import yaml
 
@@ -26,6 +30,15 @@ class ActionPinTests(unittest.TestCase):
                 "jobs:\n  check:\n    steps:\n" + entry.replace(sha, sha + "!"),
             )
             self.assertEqual(invalid_references(mutated), ["owner/action@" + sha + "!"])
+
+    def test_empty_workflow_directory_is_an_error(self) -> None:
+        """An empty scan cannot report that immutable references were validated."""
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(action_pins, "WORKFLOW_DIR", Path(directory)),
+            self.assertRaisesRegex(SystemExit, "No workflow files"),
+        ):
+            action_pins.main()
 
     def test_examples_in_scripts_are_not_action_invocations(self) -> None:
         """A quoted mutable reference in a script does not become a false positive."""

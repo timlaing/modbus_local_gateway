@@ -138,6 +138,8 @@ jobs:
           settings = os.environ['SCANNER_SETTINGS']
           if os.environ['RUN_EVENT'] == 'pull_request':
               for key, value in [('key', os.environ['PR_NUMBER']), ('branch', os.environ['PR_BRANCH']), ('base', os.environ['BASE_BRANCH'])]:
+                  if '${' in value:
+                      raise SystemExit('Scanner placeholders are not valid PR metadata')
                   value = value.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
                   settings += 'sonar.pullrequest.' + key + '=' + value + '\n'
           Path(os.environ['SETTINGS']).write_text(settings)

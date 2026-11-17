@@ -7,5 +7,4 @@ reviews:
   auto_approvals:
     enabled: true
     allow_author_approval: false
-    max_merge_risk: critical
 inheritance: true

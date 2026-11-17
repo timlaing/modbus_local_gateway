@@ -196,7 +196,7 @@ test("review is requested only after validation, then approval completes the gat
           conclusion: "success",
         });
       }
-      if (tick === 2)
+      if (tick === 3)
         reviews.push({
           user: { login: "coderabbitai[bot]" },
           commit_id: sha,

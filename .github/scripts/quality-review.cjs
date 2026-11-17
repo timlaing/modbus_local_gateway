@@ -82,7 +82,8 @@ async function run({
     "pending",
     "Waiting for validation and current-commit CodeRabbit approval",
   );
-  const marker = `<!-- quality-review:${pr.head.sha} -->`;
+  const prefix = `<!-- quality-review:${pr.head.sha}:`;
+  const marker = `${prefix}${context.runId}:${process.env.GITHUB_RUN_ATTEMPT || "1"} -->`;
   try {
     for (let i = 0; i < attempts; i++) {
       const { data: current } = await github.rest.pulls.get({
@@ -146,6 +147,8 @@ async function run({
               c.body?.includes(marker),
           )
         ) {
+          const prior = comments.filter((c) => c.user?.login === "github-actions[bot]" && c.body?.includes(prefix));
+          if (prior.length >= 3) throw new Error("Three review requests failed for this revision; request review manually");
           await github.rest.issues.createComment({
             owner,
             repo,

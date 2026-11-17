@@ -22,9 +22,15 @@ def invalid_references(document: dict[str, Any]) -> list[str]:
     return invalid
 
 
+WORKFLOW_DIR = Path(__file__).resolve().parents[1] / "workflows"
+
+
 def main() -> None:
     """Check workflow files without matching examples embedded in run scripts."""
-    for path in Path(".github/workflows").glob("*y*ml"):
+    paths = sorted(WORKFLOW_DIR.glob("*y*ml"))
+    if not paths:
+        raise SystemExit("No workflow files found")
+    for path in paths:
         document = yaml.safe_load(path.read_text(encoding="utf-8"))
         invalid = invalid_references(document)
         if invalid:
