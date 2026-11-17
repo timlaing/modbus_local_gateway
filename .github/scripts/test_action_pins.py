@@ -15,6 +15,16 @@ import yaml
 class ActionPinTests(unittest.TestCase):
     """Exercise YAML forms that line-based checks can accidentally overlook."""
 
+    def test_reviews_wait_for_validation(self) -> None:
+        """Push-triggered reviews must not race validation-gated requests."""
+        config = yaml.safe_load(
+            (Path(__file__).resolve().parents[2] / ".coderabbit.yaml").read_text(),
+        )
+        automatic = config["reviews"]["auto_review"]
+        self.assertIs(automatic["enabled"], False)
+        self.assertIs(automatic["auto_incremental_review"], False)
+        self.assertEqual(automatic["description_keyword"], "")
+
     def test_yaml_forms_preserve_the_complete_reference(self) -> None:
         """Quoted keys, folded values and flow mappings are all inspected."""
         sha = "a" * 40
