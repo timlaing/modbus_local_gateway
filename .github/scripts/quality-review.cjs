@@ -31,7 +31,31 @@ function readiness(required, checks, statuses) {
       .sort((left, right) => right.id - left.id)[0];
     if (status?.state === "success") passed.add(name);
   }
-  return required.filter((name) => !passed.has(name));
+  const missing = new Set(required.filter((name) => !passed.has(name)));
+  // Review jobs and their own status must not wait on themselves. Every other
+  // reported check must finish successfully (conditionally skipped jobs are OK).
+  const reviewNames = new Set([
+    "CodeRabbit",
+    "Review passed",
+    "CodeRabbit after checks",
+  ]);
+  const latestChecks = new Map();
+  for (const check of [...checks].sort((left, right) => left.id - right.id))
+    latestChecks.set(check.name, check);
+  for (const [name, check] of latestChecks) {
+    if (reviewNames.has(name)) continue;
+    if (
+      check.status !== "completed" ||
+      !["success", "skipped"].includes(check.conclusion)
+    )
+      missing.add(name);
+  }
+  const latestStatuses = new Map();
+  for (const status of [...statuses].sort((left, right) => left.id - right.id))
+    latestStatuses.set(status.context, status);
+  for (const [name, status] of latestStatuses)
+    if (!reviewNames.has(name) && status.state !== "success") missing.add(name);
+  return [...missing];
 }
 async function currentPull(github, context) {
   const upstream = context.payload.workflow_run;

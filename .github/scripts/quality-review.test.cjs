@@ -448,3 +448,57 @@ test("an invalid request token cannot publish a successful review gate", async (
   assert.deepEqual(data.states, ["pending", "failure"]);
   assert.equal(data.requests, 0);
 });
+
+test("optional checks also block review until successful", () => {
+  const required = {
+    id: 1,
+    name: "Validate ci",
+    app: { slug: "github-actions" },
+    status: "completed",
+    conclusion: "success",
+  };
+  const extra = {
+    ...required,
+    id: 2,
+    name: "Security gate",
+    conclusion: "failure",
+  };
+  assert.deepEqual(readiness([required.name], [required, extra], []), [
+    extra.name,
+  ]);
+  assert.deepEqual(
+    readiness(
+      [required.name],
+      [required, { ...extra, status: "in_progress", conclusion: null }],
+      [],
+    ),
+    [extra.name],
+  );
+  assert.deepEqual(
+    readiness(
+      [required.name],
+      [required, { ...extra, conclusion: "success" }],
+      [],
+    ),
+    [],
+  );
+  assert.deepEqual(
+    readiness(
+      [required.name],
+      [required],
+      [{ id: 1, context: "External analysis", state: "failure" }],
+    ),
+    ["External analysis"],
+  );
+  assert.deepEqual(
+    readiness(
+      [required.name],
+      [
+        required,
+        { ...extra, name: "CodeRabbit after checks", status: "in_progress" },
+      ],
+      [{ id: 1, context: "Review passed", state: "pending" }],
+    ),
+    [],
+  );
+});
