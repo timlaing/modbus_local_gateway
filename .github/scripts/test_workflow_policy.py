@@ -218,5 +218,62 @@ class ApplyTests(unittest.TestCase):
             self.assertIsNone(POLICY.api("automated-security-fixes", "PUT"))
 
 
+class SelectionTests(unittest.TestCase):
+    """A policy excluding main must never be selected or changed."""
+
+    def test_exclusion_wins_over_inclusion(self) -> None:
+        """Exact names, aliases, and matching wildcards exclude main."""
+        for excluded in [
+            "refs/heads/main",
+            "~DEFAULT_BRANCH",
+            "~ALL",
+            "refs/heads/m*",
+            "refs/heads/*",
+        ]:
+            ruleset = {
+                "target": "branch",
+                "conditions": {
+                    "ref_name": {"include": ["~ALL"], "exclude": [excluded]}
+                },
+            }
+            with self.subTest(excluded=excluded):
+                self.assertFalse(POLICY.applies_to_main(ruleset))
+        ruleset["conditions"]["ref_name"]["exclude"] = ["refs/heads/release/*"]
+        self.assertTrue(POLICY.applies_to_main(ruleset))
+
+    def test_selects_applicable_ruleset_instead_of_excluded_one(self) -> None:
+        """Ignore an earlier active ruleset even when it has check requirements."""
+        details = {
+            "rulesets/1": {
+                "id": 1,
+                "target": "branch",
+                "conditions": {
+                    "ref_name": {"include": ["~ALL"], "exclude": ["refs/heads/main"]}
+                },
+                "rules": [{"type": "required_status_checks"}],
+            },
+            "rulesets/2": {
+                "id": 2,
+                "target": "branch",
+                "conditions": {
+                    "ref_name": {"include": ["refs/heads/main"], "exclude": []}
+                },
+                "rules": [],
+            },
+        }
+        candidates = [
+            {"id": number, "source_type": "Repository", "enforcement": "active"}
+            for number in [1, 2]
+        ]
+
+        def api(path: str) -> object:
+            if path.startswith("rulesets?"):
+                return candidates
+            return details[path]
+
+        with patch.object(POLICY, "api", side_effect=api):
+            self.assertEqual(POLICY.main_ruleset()["id"], 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -142,6 +142,15 @@ jobs:
               target = root / os.environ['DEST'] / rel
               target.parent.mkdir(parents=True, exist_ok=True)
               shutil.copyfile(source, target)
+              if rel == 'coverage-workflow/python.xml':
+                  report = ET.parse(target)
+                  for origin in report.findall('./sources/source'):
+                      origin.text = '.'
+                  for entry in report.findall('.//class'):
+                      filename = entry.attrib['filename']
+                      if not filename.startswith('.github/scripts/'):
+                          entry.set('filename', '.github/scripts/' + filename)
+                  report.write(target, encoding='utf-8', xml_declaration=True)
           Path('sonar-project.properties').unlink(missing_ok=True)
           settings = os.environ['SCANNER_SETTINGS']
           if os.environ['RUN_EVENT'] == 'pull_request':

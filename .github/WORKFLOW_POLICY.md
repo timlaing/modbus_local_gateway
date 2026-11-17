@@ -2,7 +2,7 @@
 
 Validation remains in project-specific workflows. Each required aggregate rejects failed, cancelled or skipped dependencies. Sonar input generation runs without secrets; analysis consumes the triggering run’s artifact and trusted scanner configuration.
 
-CodeRabbit is requested only after validation succeeds, including for Dependabot. `Review passed` requires approval on the current head and must not be satisfied by merely requesting a review. Rerun the coordinator for the current SHA after resolving findings.
+CodeRabbit may review automatically on open or push where the service permits it. After validation succeeds, including for Dependabot, the coordinator explicitly requests any missing review. `Review passed` requires approval on the current head and must not be satisfied by merely requesting a review. Rerun the coordinator for the current SHA after resolving findings.
 
 ## Repository settings
 

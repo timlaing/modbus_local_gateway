@@ -12,12 +12,9 @@ from pathlib import Path
 import re
 import sys
 
-WORKFLOW_DIR = Path(".github/workflows")
+import yaml
 
-USES_PATTERN = re.compile(
-    r"^[^#]*['\"]?uses['\"]?\s*:\s*['\"]?"
-    r"(?P<action>[\w.\-]+(?:/[\w.\-]+)+)@(?P<ref>[^\s'\"]+)['\"]?"
-)
+WORKFLOW_DIR = Path(".github/workflows")
 
 FULL_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
@@ -37,29 +34,50 @@ class Reference:
     line_text: str
 
 
+def mapping_value(node: yaml.Node | None, name: str) -> yaml.Node | None:
+    """Read a mapping entry without treating script text as YAML references."""
+    if not isinstance(node, yaml.MappingNode):
+        return None
+    return next((value for key, value in node.value if key.value == name), None)
+
+
+def reference_nodes(document: yaml.Node | None) -> list[yaml.ScalarNode]:
+    """Select only job-level and step-level action invocations."""
+    jobs = mapping_value(document, "jobs")
+    if not isinstance(jobs, yaml.MappingNode):
+        return []
+    references: list[yaml.ScalarNode] = []
+    for _, job in jobs.value:
+        entries = [mapping_value(job, "uses")]
+        steps = mapping_value(job, "steps")
+        if isinstance(steps, yaml.SequenceNode):
+            entries.extend(mapping_value(step, "uses") for step in steps.value)
+        references.extend(node for node in entries if isinstance(node, yaml.ScalarNode))
+    return references
+
+
 def collect_references(paths: list[Path]) -> list[Reference]:
-    """Collect every remote action reference from the given workflow files."""
+    """Parse remote references as complete YAML values and retain line anchors."""
     references: list[Reference] = []
-
     for path in paths:
-        for number, text in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), start=1
-        ):
-            match = USES_PATTERN.search(text)
-
-            if match is None:
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        for node in reference_nodes(yaml.compose(text, Loader=yaml.SafeLoader)):
+            action, separator, ref = node.value.partition("@")
+            if not separator or node.value.startswith("./"):
                 continue
-
+            if re.fullmatch(r"[\w.-]+(?:/[\w.-]+)+", action) is None:
+                continue
+            number = node.start_mark.line + 1
             references.append(
                 Reference(
-                    action=match["action"],
-                    ref=match["ref"],
+                    action=action,
+                    ref=ref,
                     path=path,
                     line=number,
-                    line_text=text,
+                    line_text=lines[number - 1],
                 )
             )
-
     return references
 
 
@@ -143,7 +161,7 @@ def check_consistent_refs(references: list[Reference]) -> int:
                     "error",
                     f"{owner_repo} is referenced with mixed versions ({rendered}). "
                     f"This file uses {reference.ref}; pin every step of an action "
-                    "to the same tag so they cannot resolve to different releases",
+                    "to the same commit so they cannot resolve to different releases",
                     reference,
                 )
                 failures += 1

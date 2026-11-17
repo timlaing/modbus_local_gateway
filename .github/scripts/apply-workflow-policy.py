@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from fnmatch import fnmatchcase
 import json
 from pathlib import Path
 import shutil
@@ -39,6 +40,18 @@ def api(path: str, method: str = "GET", body: dict[str, Any] | None = None) -> A
     return json.loads(result.stdout) if result.stdout.strip() else None
 
 
+def applies_to_main(detail: dict[str, Any]) -> bool:
+    """Honor exclusions before selecting a supported main-branch ruleset."""
+    refs = detail.get("conditions", {}).get("ref_name", {})
+    aliases = ["refs/heads/main", "~DEFAULT_BRANCH", "~ALL"]
+    included = any(pattern in aliases for pattern in refs.get("include", []))
+    excluded = any(
+        pattern in aliases or fnmatchcase("refs/heads/main", pattern)
+        for pattern in refs.get("exclude", [])
+    )
+    return detail["target"] == "branch" and included and not excluded
+
+
 def main_ruleset() -> dict[str, Any]:
     """Find the active main policy while preserving all unrelated protections."""
     candidates = api("rulesets?includes_parents=true")
@@ -50,10 +63,7 @@ def main_ruleset() -> dict[str, Any]:
         ):
             continue
         detail = api(f"rulesets/{candidate['id']}")
-        includes = detail.get("conditions", {}).get("ref_name", {}).get("include", [])
-        if detail["target"] == "branch" and any(
-            item in includes for item in ["refs/heads/main", "~DEFAULT_BRANCH", "~ALL"]
-        ):
+        if applies_to_main(detail):
             rulesets.append(detail)
     if not rulesets:
         raise SystemExit("No active main-branch ruleset; review protection manually")

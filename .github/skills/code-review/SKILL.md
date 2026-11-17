@@ -123,11 +123,11 @@ Project key `timlaing_modbus_local_gateway` (sources `./custom_components/modbus
 | S9081 | Lambda should use `return_value`   | Use `patch(..., return_value=x)` instead of `lambda: x` |
 | S7502 | Untracked asyncio task             | Save `create_task()` return to prevent GC               |
 | S3776 | Cognitive complexity               | Refactor into smaller functions                         |
-| S7637 | Actions pinned by tag not SHA      | Intentionally violated — keep version tags (Section 11) |
+| S7637 | Actions pinned by tag not SHA      | Use full commit SHAs and version comments (Section 11)  |
 
 Verify changed files with the SonarQube MCP before pushing. The project key lives in `sonar-project.properties`; PR decoration requires the SonarQube Cloud GitHub App to be installed on the repo.
 
-S7637 is a deliberate, repo-wide exception: actions are pinned by version tag rather than full commit SHA so Dependabot can open version-update PRs (see Section 11). Never "fix" S7637 by reintroducing a SHA pin.
+S7637 is enforced: pin actions to full commit SHAs and retain version comments so Dependabot can identify version updates (see Section 11).
 
 ## 11. CI & Workflows
 
@@ -135,14 +135,13 @@ S7637 is a deliberate, repo-wide exception: actions are pinned by version tag ra
 - `tests.yml` — Python 3.14 matrix, venv + `uv` install of `requirements_all.txt`, pytest with coverage + junit.
 - `sonar.yml` — trusted scan on push to `main` (generates its own coverage) and a `pull_request_target` scan for fork/bot PRs using `secrets.SONAR_TOKEN` with `persist-credentials: false`.
 - `hacs-validate.yml`, `hassfest-validate.yml`, `codeql.yml`, `release-drafter.yml` — validate the custom-component packaging/security posture.
-- `action-refs.yml` — runs `scripts/check_action_refs.py`, which fails the build on SHA-pinned actions or on the same action repo referenced with mixed versions. The same script is a prek hook (`check-action-refs`), so it also runs locally.
+- `action-refs.yml` — runs `scripts/check_action_refs.py`, which fails the build on mutable action references or on the same action repo referenced with mixed versions. The same script is a prek hook (`check-action-refs`), so it also runs locally.
 - Required check contexts on `main` are `action-refs`, `Analyze` (CodeQL), `prek` (Linting), `test (3.14)` (Tests), `validate-hacs` and `validate-hassfest`. Job names must stay unique — `hacs-validate.yml` and `hassfest-validate.yml` both used `validate`, which made them indistinguishable as required checks.
 - `main` is protected by the `main-checks` ruleset: PR required, required status checks strict, admin bypass limited to merges through a PR. Never land a change by pushing straight to `main`, and never re-apply a Dependabot bump by hand — merge the PR so CI gates it.
-- SonarQube secrets must never be used in untrusted (fork-derived) contexts; keep the privileged scan out of PR-controlled steps.
-- **Every action reference in `.github/workflows/**` must use a version tag (`owner/repo@v4`, `owner/repo@v1.2.3`), never a full commit SHA.** Dependabot's `github-actions` ecosystem (`.github/dependabot.yml`, daily) only opens version-update PRs for tag references, so SHA pins silently stop dependency updates and are a defect, not a hardening measure.
-- Prefer a major-line tag (`@v4`) shared by every step that uses the same action, so `init`/`analyze` or per-platform steps cannot resolve to different releases. Mixed pins have broken CodeQL with a config/runtime version mismatch.
-- Verify the tag actually exists (`gh api repos/<owner>/<repo>/tags`) — a bare `@4` fails to resolve where the action publishes `@v4`.
-- Exceptions that track a branch are listed in `BRANCH_ALLOWLIST` in `scripts/check_action_refs.py` (`hacs/action@main`, `home-assistant/actions/hassfest@master`); add a comment justifying any new one.
+- PR tests and builds run without secrets. The maintainer-approved trusted Sonar worker may scan fork source as data: commands and settings come from the trusted workflow, artifacts and symlinks are validated, Python runs isolated, no PR scripts/builds/tests execute, and the token is scoped to the pinned scanner.
+- Every remote action reference in `.github/workflows/**` must use a full 40-character commit SHA. Retain a version comment where available so Dependabot can identify version updates.
+- Use the same commit for all entry points of an action repository, including CodeQL init and analyze.
+- Resolve updates from the action's published release and verify the commit; branch references have no pinning exception.
 
 ## 12. Commit & PR Conventions
 
