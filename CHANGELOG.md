@@ -9,6 +9,61 @@ Releases up to `v2.0.0` follow SemVer. From `2025.3.1` on, versions are
 CalVer (`YYYY.M.PATCH`) because Home Assistant expects date-based versions for
 custom integrations. Pre-releases are not listed here.
 
+## [v2026.11.0] - 2026-11-17
+
+### Added
+
+- **Home Assistant Connect AUX-2 gateways**: connect through an ESPHome-adopted
+  AUX-2 serial port, with gateway discovery, UART configuration, connection
+  validation, reconfiguration, shared connection lifecycle, and redacted
+  diagnostics ([#402](https://github.com/timlaing/modbus_local_gateway/pull/402)).
+- **Device metadata validation**: validate shipped YAML device classes, units,
+  state classes, and enum options against the installed Home Assistant version
+  during local checks and CI
+  ([#421](https://github.com/timlaing/modbus_local_gateway/pull/421)).
+
+### Fixed
+
+- **Home Assistant device metadata**: assign valid temperature, temperature
+  difference, duration, airflow, battery, power-factor, and electrical classes;
+  correct carbon-dioxide classes and unsupported units. Reactive-energy counters
+  use compatible statistics, while numeric sensors without a device class retain
+  explicitly configured statistics. Growatt IPF registers remain explicitly raw
+  and classless until their physical conversion is established
+  ([#421](https://github.com/timlaing/modbus_local_gateway/pull/421)).
+- **AUX-2 setup and diagnostics quality**: avoid unnecessary USB discovery when
+  ESPHome is not loaded, move the serial dependency check off the event loop,
+  simplify setup handling, and correct test exception assertions
+  ([#402](https://github.com/timlaing/modbus_local_gateway/pull/402),
+  [#403](https://github.com/timlaing/modbus_local_gateway/pull/403)).
+- **License badge link**: point to the repository's `LICENSE.md`
+  ([#404](https://github.com/timlaing/modbus_local_gateway/pull/404)).
+
+### Maintenance
+
+- Gate CodeRabbit reviews on successful checks, restore approval handling, and
+  repair Dependabot auto-merge
+  ([#415](https://github.com/timlaing/modbus_local_gateway/pull/415),
+  [#416](https://github.com/timlaing/modbus_local_gateway/pull/416)).
+- Disable scheduled workflow triggers and update Modbus response mocks to use
+  concrete response classes.
+
+### Dependencies
+
+- Development Home Assistant range: `>=2026.9,<2026.11` → `>=2026.9,<2026.12`
+  ([#419](https://github.com/timlaing/modbus_local_gateway/pull/419)).
+- Development serialx: `1.11.0` → `1.15.1`; the integration keeps the
+  `serialx>=1.11.0` runtime requirement.
+- tox: `4.65.3` → `4.67.13`.
+- Build setuptools range: `>=82.0.1,<84.1` → `>=82.0.1,<84.3`
+  ([#408](https://github.com/timlaing/modbus_local_gateway/pull/408)).
+
+### Upgrade notes
+
+- Reactive-energy units are normalized from `kVArh` to the supported `kvarh`.
+  No legacy-unit equivalence mapping is provided; existing long-term statistics
+  may require correction in Home Assistant after upgrading.
+
 ## [v2026.10.7] - 2026-10-14
 
 ### Fixed
