@@ -144,6 +144,8 @@ class ApplyTests(unittest.TestCase):
                 if mismatch == "checks" and len(calls) > 5:
                     result["rules"][-1]["parameters"]["required_status_checks"] = []
                 return result
+            if path == "actions/permissions/workflow":
+                return {"can_approve_pull_request_reviews": False}
             if path == POLICY.ACTIONS_PERMISSIONS:
                 return {
                     "enabled": True,
@@ -173,6 +175,17 @@ class ApplyTests(unittest.TestCase):
         )
         self.assertEqual(payload["rules"][0], {"type": "deletion"})
         self.assertIn(("automated-security-fixes", "PUT", None), calls)
+        self.assertIn(
+            (
+                "actions/permissions/workflow",
+                "PUT",
+                {
+                    "default_workflow_permissions": "read",
+                    "can_approve_pull_request_reviews": False,
+                },
+            ),
+            calls,
+        )
         self.assertIn(
             ("actions/workflows/coderabbit-after-checks.yml/enable", "PUT", None), calls
         )
@@ -227,17 +240,27 @@ class SelectionTests(unittest.TestCase):
             "~ALL",
             "refs/heads/m*",
             "refs/heads/*",
+            "refs/heads/**/main",
         ]:
             ruleset = {
                 "target": "branch",
                 "conditions": {
-                    "ref_name": {"include": ["~ALL"], "exclude": [excluded]}
+                    "ref_name": {"include": ["refs/heads/main"], "exclude": [excluded]}
                 },
             }
             with self.subTest(excluded=excluded):
                 self.assertFalse(POLICY.applies_to_main(ruleset))
         ruleset["conditions"]["ref_name"]["exclude"] = ["refs/heads/release/*"]
         self.assertTrue(POLICY.applies_to_main(ruleset))
+        ruleset["conditions"]["ref_name"]["exclude"] = ["refs/*main"]
+        self.assertTrue(POLICY.applies_to_main(ruleset))
+        for included in [
+            ["~ALL"],
+            ["refs/heads/m*"],
+            ["refs/heads/main", "refs/heads/release/*"],
+        ]:
+            ruleset["conditions"]["ref_name"] = {"include": included, "exclude": []}
+            self.assertFalse(POLICY.applies_to_main(ruleset))
 
     def test_selects_applicable_ruleset_instead_of_excluded_one(self) -> None:
         """Ignore an earlier active ruleset even when it has check requirements."""

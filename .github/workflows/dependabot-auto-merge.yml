@@ -24,6 +24,7 @@ jobs:
           github-token: ${{ github.token }}
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
+          REQUIRED_CHECKS: '["Validate action-refs", "Validate codeql", "Validate hacs-validate", "Validate hassfest-validate", "Validate linting", "Validate tests", "Analysis passed", "Workflow policy", "Review passed"]'
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         with:
           script: |
@@ -33,7 +34,26 @@ jobs:
             const { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
             if (current.state !== 'open' || current.head.sha !== pr.head.sha || current.user.login !== 'dependabot[bot]')
               throw new Error('Dependabot revision changed');
-            // Queue native auto-merge. Never merge directly or bypass branch protection.
+            if (current.base.ref !== 'main') return;
+            // Stay inactive during rollout until the reviewed gates are enforced.
+            const { data: rules } = await github.request('GET /repos/{owner}/{repo}/rules/branches/{branch}', {
+              ...context.repo, branch: 'main'
+            });
+            const enforced = rules.filter(rule => rule.type === 'required_status_checks')
+              .flatMap(rule => rule.parameters.required_status_checks)
+              .filter(check => check.integration_id === 15368)
+              .map(check => check.context);
+            if (!JSON.parse(process.env.REQUIRED_CHECKS).every(name => enforced.includes(name))) {
+              core.notice('Workflow policy not yet enforced; leaving auto-merge inactive');
+              return;
+            }
+            // Native merge APIs enforce protection for this Actions token.
+            if (current.mergeable_state === 'clean') {
+              await github.rest.pulls.merge({ ...context.repo, pull_number: current.number,
+                sha: current.head.sha, merge_method: 'squash' });
+              return;
+            }
+
             await github.graphql(`mutation($id: ID!, $oid: GitObjectID!) {
               enablePullRequestAutoMerge(input: {pullRequestId: $id, expectedHeadOid: $oid, mergeMethod: SQUASH}) {
                 pullRequest { number }

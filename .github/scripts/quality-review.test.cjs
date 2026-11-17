@@ -1,6 +1,11 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const { approved, readiness, run } = require("./quality-review.cjs");
+const {
+  approved,
+  readiness,
+  mergeChecks,
+  run,
+} = require("./quality-review.cjs");
 const sha = "a".repeat(40);
 test("approval must be the latest CodeRabbit review on the current commit", () => {
   assert.equal(
@@ -501,4 +506,45 @@ test("optional checks also block review until successful", () => {
     ),
     [],
   );
+});
+
+test("merge checks take precedence over later head-only reruns", () => {
+  const failed = {
+    id: 100,
+    name: "Validate ci",
+    app: { slug: "github-actions" },
+    status: "completed",
+    conclusion: "failure",
+  };
+  const passed = { ...failed, id: 101, conclusion: "success" };
+  assert.deepEqual(
+    readiness([failed.name], mergeChecks([failed], [passed]), []),
+    [failed.name],
+  );
+  assert.deepEqual(readiness([failed.name], mergeChecks([], [passed]), []), []);
+});
+
+test("review-event notifications invalidate withdrawn approval and restore a valid gate", async () => {
+  const { data, options } = fixture();
+  options.context.payload.workflow_run.event = "pull_request_review";
+  data.reviews.push({
+    user: { login: "coderabbitai[bot]" },
+    commit_id: sha,
+    state: "APPROVED",
+  });
+  await run(options);
+  data.reviews.push({
+    user: { login: "coderabbitai[bot]" },
+    commit_id: sha,
+    state: "DISMISSED",
+  });
+  await assert.rejects(run(options), /Validation or review incomplete/);
+  assert.deepEqual(data.states, ["pending", "success", "pending", "failure"]);
+  data.reviews.push({
+    user: { login: "coderabbitai[bot]" },
+    commit_id: sha,
+    state: "APPROVED",
+  });
+  await run(options);
+  assert.equal(data.states.at(-1), "success");
 });

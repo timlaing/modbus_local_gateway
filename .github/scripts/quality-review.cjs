@@ -57,9 +57,17 @@ function readiness(required, checks, statuses) {
     if (!reviewNames.has(name) && status.state !== "success") missing.add(name);
   return [...missing];
 }
+function mergeChecks(merge, head) {
+  const names = new Set(merge.map((check) => check.name));
+  return [...merge, ...head.filter((check) => !names.has(check.name))];
+}
 async function currentPull(github, context) {
   const upstream = context.payload.workflow_run;
-  if (upstream && !["push", "pull_request"].includes(upstream.event)) return;
+  if (
+    upstream &&
+    !["push", "pull_request", "pull_request_review"].includes(upstream.event)
+  )
+    return;
   const sha = upstream?.head_sha || process.env.REVISION;
   if (!/^[0-9a-f]{40}$/.test(sha || ""))
     throw new Error("A full triggering revision is required");
@@ -95,18 +103,17 @@ async function validation(github, context, pull, required) {
   const refs = [
     ...new Set([current.merge_commit_sha, current.head.sha].filter(Boolean)),
   ];
-  const checks = (
-    await Promise.all(
-      refs.map((ref) =>
-        github.paginate(github.rest.checks.listForRef, {
-          ...context.repo,
-          ref,
-          filter: "latest",
-          per_page: 100,
-        }),
-      ),
-    )
-  ).flat();
+  const groups = await Promise.all(
+    refs.map((ref) =>
+      github.paginate(github.rest.checks.listForRef, {
+        ...context.repo,
+        ref,
+        filter: "latest",
+        per_page: 100,
+      }),
+    ),
+  );
+  const checks = mergeChecks(groups[0], groups[1] || []);
   const statuses = await github.paginate(
     github.rest.repos.listCommitStatusesForRef,
     { ...context.repo, ref: pull.head.sha, per_page: 100 },
@@ -114,6 +121,7 @@ async function validation(github, context, pull, required) {
   return readiness(required, checks, statuses);
 }
 async function requestReview(github, context, pull, request) {
+  if (request.sent) return;
   if (!request.login) {
     const { data } = await request.client.rest.users.getAuthenticated();
     request.login = data.login;
@@ -139,6 +147,7 @@ async function requestReview(github, context, pull, request) {
     issue_number: pull.number,
     body: `@coderabbitai review\n\n${marker}`,
   });
+  request.sent = true;
 }
 async function checkApproval(github, context, core, pull, required, request) {
   const missing = await validation(github, context, pull, required);
@@ -168,7 +177,7 @@ async function poll(check, sleep, remaining) {
       "Validation or review incomplete; rerun this workflow after resolving the checks",
     );
   if (await check()) return;
-  await sleep(20000);
+  await sleep(60000);
   return poll(check, sleep, remaining - 1);
 }
 async function run({
@@ -176,7 +185,7 @@ async function run({
   context,
   core,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-  attempts = 150,
+  attempts = 45,
   reviewClient = null,
 }) {
   const pull = await currentPull(github, context);
@@ -221,4 +230,4 @@ async function run({
     throw error;
   }
 }
-module.exports = { approved, readiness, run };
+module.exports = { approved, readiness, mergeChecks, run };

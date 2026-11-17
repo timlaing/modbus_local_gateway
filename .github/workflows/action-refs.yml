@@ -18,6 +18,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install YAML parser
+        run: |
+          python3 -m pip install --only-binary=:all: PyYAML==6.0.3
+
       - name: Check action references
         run: python3 scripts/check_action_refs.py .github/workflows
 
