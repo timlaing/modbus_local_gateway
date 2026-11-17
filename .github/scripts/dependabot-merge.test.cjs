@@ -1,4 +1,4 @@
-const { test } = require("node:test");
+const { test, before } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -7,7 +7,7 @@ const workflow = fs.readFileSync(
   "utf8",
 );
 const block = workflow.split("          script: |\n")[1];
-assert.ok(block, "The trusted merge script must be present");
+before(() => assert.ok(block, "The trusted merge script must be present"));
 const script = block
   .split("\n")
   .map((line) => (line.startsWith("            ") ? line.slice(12) : line))

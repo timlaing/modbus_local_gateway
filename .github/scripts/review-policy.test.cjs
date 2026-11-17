@@ -1,5 +1,5 @@
 // cspell:ignore basehead
-const { test } = require("node:test");
+const { test, before } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -11,7 +11,7 @@ const block = workflow
   .split("      - name: Verify trusted action updates")[1]
   .split("      - name: Publish policy result")[0]
   .split("          script: |\n")[1];
-assert.ok(block);
+before(() => assert.ok(block, "The provenance validator must be present"));
 const script = block
   .split("\n")
   .map((line) => (line.startsWith("            ") ? line.slice(12) : line))
@@ -41,9 +41,11 @@ function run(status, tags = []) {
   });
 }
 test("official default-branch ancestors and exact official release tags are allowed", async () => {
-  await run("ahead");
-  await run("identical");
-  await run("diverged", [{ commit: { sha: "b".repeat(40) } }]);
+  await assert.doesNotReject(() => run("ahead"));
+  await assert.doesNotReject(() => run("identical"));
+  await assert.doesNotReject(() =>
+    run("diverged", [{ commit: { sha: "b".repeat(40) } }]),
+  );
 });
 test("an arbitrary fork commit cannot replace the trusted enforcement action", async () => {
   await assert.rejects(run("behind"), /official/);
