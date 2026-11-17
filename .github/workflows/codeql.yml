@@ -1,37 +1,36 @@
-name: "CodeQL"
-
-# yamllint disable-line rule:truthy
-on:
-  push:
-  pull_request:
+name: CodeQL
+"on":
+  push: null
+  pull_request: null
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   analyze:
-    name: Analyze
+    name: ${{ matrix.language == 'python' && 'Analyze' || format('CodeQL {0}', matrix.language) }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     permissions:
       actions: read
       contents: read
       security-events: write
-
     steps:
       - name: Check out code from GitHub
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          languages: python
-
+          languages: ${{ matrix.language }}
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
-          category: "/language:python"
-
+          category: /language:python
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - python
+          - actions
   validation-result:
     name: Validate codeql
     needs:
@@ -44,11 +43,7 @@ jobs:
       - name: Require every validation job to pass
         env:
           RESULTS: ${{ toJSON(needs) }}
-        run: |
-          python3 -I - <<'PY'
-          import json, os
-          results = json.loads(os.environ['RESULTS'])
-          failed = [name for name, job in results.items() if job['result'] != 'success']
-          if failed:
-              raise SystemExit('Validation incomplete: ' + ', '.join(failed))
-          PY
+        run:
+          "python3 -I - <<'PY'\nimport json, os\nresults = json.loads(os.environ['RESULTS'])\nfailed = [name for name, job\
+          \ in results.items() if job['result'] != 'success']\nif failed:\n    raise SystemExit('Validation incomplete: ' +\
+          \ ', '.join(failed))\nPY\n"
