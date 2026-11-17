@@ -64,6 +64,38 @@ class ActionPinTests(unittest.TestCase):
             ],
         )
 
+    def test_workflow_files_are_parsed_and_invalid_pins_fail(self) -> None:
+        """Validate actual files, including a failing action in a later workflow."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "valid.yml").write_text("jobs: {local: {uses: './local.yml'}}")
+            with patch.object(action_pins, "WORKFLOW_DIR", root):
+                action_pins.main()
+                (root / "bad.yml").write_text(
+                    "jobs: {bad: {uses: 'owner/action@main'}}"
+                )
+                with self.assertRaisesRegex(SystemExit, "Unpinned references"):
+                    action_pins.main()
+
+
+class WorkflowSourceTests(unittest.TestCase):
+    """The metadata-only workflow must execute exactly the tested coordinator."""
+
+    def test_embedded_coordinator_matches_tested_source(self) -> None:
+        """Prevent divergence without a privileged repository checkout."""
+        root = Path(__file__).resolve().parents[1]
+        workflow = yaml.safe_load(
+            (root / "workflows/coderabbit-after-checks.yml").read_text()
+        )
+        steps = workflow["jobs"]["review"]["steps"]
+        self.assertEqual(len(steps), 1)
+        source = (root / "scripts/quality-review.cjs").read_text()
+        expected = (
+            source.rsplit("module.exports = ", 1)[0]
+            + "await run({ github, context, core });\n"
+        )
+        self.assertEqual(steps[0]["with"]["script"], expected)
+
 
 if __name__ == "__main__":
     unittest.main()

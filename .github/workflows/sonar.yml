@@ -73,6 +73,13 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.metadata.outputs.source-run-id }}
           repository: ${{ github.repository }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: workflow-tooling-coverage
+          path: ${{ runner.temp }}/analysis-inputs/coverage-workflow
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.metadata.outputs.source-run-id }}
+          repository: ${{ github.repository }}
       - name: Validate scan inputs and install trusted settings
         env:
           INPUTS: ${{ runner.temp }}/analysis-inputs
@@ -83,10 +90,11 @@ jobs:
             sonar.organization=timlaing
             sonar.sources=custom_components/modbus_local_gateway
             sonar.tests=tests
-            sonar.python.coverage.reportPaths=.coverage/coverage.xml
+            sonar.python.coverage.reportPaths=.coverage/coverage.xml,.coverage/coverage-workflow/python.xml
             sonar.python.version=3.14
             sonar.projectName=modbus_local_gateway
             sonar.qualitygate.wait=true
+            sonar.javascript.lcov.reportPaths=.coverage/coverage-workflow/javascript.lcov
           HEAD_SHA: ${{ steps.metadata.outputs.head-sha }}
           RUN_EVENT: ${{ steps.metadata.outputs.event }}
           PR_NUMBER: ${{ steps.metadata.outputs.number }}
