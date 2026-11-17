@@ -36,7 +36,9 @@ from scripts.check_device_configs import (
         },
         {"control": "binary_sensor", "device_class": "problem"},
         {"control": "switch", "device_class": "outlet"},
+        {"control": "select", "options": {0: "stopped", 1: "running"}},
         {"string": True},
+        {"string": True, "options": None},
         {
             "string": True,
             "device_class": "enum",
@@ -96,6 +98,22 @@ def test_valid_metadata(data: dict[str, Any]) -> None:
         ({"string": True, "state_class": "measurement"}, "string values"),
         ({"string": True, "device_class": "voltage"}, "numeric classes"),
         ({"string": True, "unit_of_measurement": "%"}, "cannot declare units"),
+        (
+            {"string": True, "options": ["running"]},
+            "sensor options require device_class 'enum'",
+        ),
+        (
+            {"string": True, "device_class": None, "options": []},
+            "sensor options require device_class 'enum'",
+        ),
+        (
+            {"options": ["running"]},
+            "sensor options require device_class 'enum'",
+        ),
+        (
+            {"device_class": "voltage", "unit_of_measurement": "V", "options": []},
+            "sensor options require device_class 'enum'",
+        ),
         (
             {
                 "string": True,

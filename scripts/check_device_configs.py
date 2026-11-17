@@ -96,6 +96,7 @@ def validate_entity(key: str, data: dict[str, Any], default: str) -> list[str]:
         ):
             errors.append(f"invalid device_class {device_class!r} for {control}")
             return errors
+    errors.extend(_validate_sensor_options(data, control, device_class))
     if control not in ("sensor", "number"):
         return errors
     return errors + _validate_measurement(
@@ -106,6 +107,19 @@ def validate_entity(key: str, data: dict[str, Any], default: str) -> list[str]:
         device_class,
         mapping.get(STATE_CLASS, DEFAULT_STATE_CLASS),
     )
+
+
+def _validate_sensor_options(
+    data: dict[str, Any], control: str, device_class: str | None
+) -> list[str]:
+    """Only enum sensors may provide options; select options are independent."""
+    if (
+        control == "sensor"
+        and data.get("options") is not None
+        and device_class != SensorDeviceClass.ENUM
+    ):
+        return ["sensor options require device_class 'enum'"]
+    return []
 
 
 def _validate_measurement(
