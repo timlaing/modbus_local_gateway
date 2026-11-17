@@ -92,6 +92,7 @@ read_write_word:
       max: 100
     unit_of_measurement: "%"
   discharge_stop_soc:
+    device_class: battery
     name: Discharge Stop SoC (Grid First)
     address: 1071
     control: number
@@ -102,6 +103,7 @@ read_write_word:
       max: 100
     unit_of_measurement: "%"
   charge_stop_soc:
+    device_class: battery
     name: Charge Stop SoC (Battery First)
     address: 1090
     control: number

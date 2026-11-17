@@ -216,6 +216,7 @@ read_write_word:
     entity_category: diagnostic
 
   debit_correction:
+    device_class: volume_flow_rate
     name: "débit correction(40005)"
     address: 4
     signed: true
@@ -241,7 +242,6 @@ read_write_word:
     name: "débit faible(40007)"
     address: 6
     unit_of_measurement: "m³/h"
-    state_class: measurement
     device_class: volume_flow_rate
     icon: mdi:fan-minus
     control: number
@@ -253,7 +253,6 @@ read_write_word:
     name: "débit haut(40008)"
     address: 7
     unit_of_measurement: "m³/h"
-    state_class: measurement
     device_class: volume_flow_rate
     icon: mdi:fan-plus
     control: number
@@ -265,7 +264,6 @@ read_write_word:
     name: "débit freecooling(40009)"
     address: 8
     unit_of_measurement: "m³/h"
-    state_class: measurement
     device_class: volume_flow_rate
     icon: mdi:wind-power
     control: number
@@ -307,7 +305,6 @@ read_write_word:
     name: "RH mini (40023)"
     address: 22
     unit_of_measurement: "%"
-    state_class: measurement
     device_class: humidity
     icon: mdi:water-percent
     control: number
@@ -319,7 +316,6 @@ read_write_word:
     name: "RH maxi (40029)"
     address: 28
     unit_of_measurement: "%"
-    state_class: measurement
     device_class: humidity
     icon: mdi:water-percent
     control: number

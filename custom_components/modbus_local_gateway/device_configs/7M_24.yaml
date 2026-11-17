@@ -65,6 +65,7 @@ read_only_word:
     size: 2
 
   Power Factor:
+    device_class: power_factor
     address: 2554
     name: Power Factor
     precision: 2

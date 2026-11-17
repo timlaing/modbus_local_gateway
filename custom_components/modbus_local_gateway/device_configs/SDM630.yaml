@@ -162,6 +162,7 @@ read_only_word:
     size: 2
 
   Phase 1 Power Factor:
+    device_class: power_factor
     address: 30
     name: Phase 1 Power Factor
     precision: 2
@@ -170,6 +171,7 @@ read_only_word:
     size: 2
 
   Phase 2 Power Factor:
+    device_class: power_factor
     address: 32 # Note: Was duplicate "address: 34" like below, corrected to "address: 32"
     name: Phase 2 Power Factor
     precision: 2
@@ -178,6 +180,7 @@ read_only_word:
     size: 2
 
   Phase 3 Power Factor:
+    device_class: power_factor
     address: 34
     name: Phase 3 Power Factor
     precision: 2
@@ -249,6 +252,7 @@ read_only_word:
     size: 2
 
   Total System VA:
+    device_class: apparent_power
     address: 56
     name: Total System VA
     unit_of_measurement: VA
@@ -267,6 +271,7 @@ read_only_word:
     size: 2
 
   Total System Power factor:
+    device_class: power_factor
     address: 62
     name: Total System Power factor
     precision: 2
@@ -317,9 +322,10 @@ read_only_word:
     max_change: 500.0
 
   Total Import Reactive Energy:
+    device_class: reactive_energy
     address: 76
     name: Total Import Reactive Energy
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
     state_class: total_increasing
@@ -327,9 +333,10 @@ read_only_word:
     never_resets: false
 
   Total Export Reactive Energy:
+    device_class: reactive_energy
     address: 78
     name: Total Export Reactive Energy
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
     state_class: total_increasing
@@ -376,6 +383,7 @@ read_only_word:
     never_resets: true
 
   Total System VA demand:
+    device_class: apparent_power
     address: 100
     name: Total System VA demand
     unit_of_measurement: VA
@@ -385,6 +393,7 @@ read_only_word:
     size: 2
 
   Maximum Total System VA demand:
+    device_class: apparent_power
     address: 102
     name: Maximum Total System VA demand
     unit_of_measurement: VA
@@ -598,12 +607,13 @@ read_only_word:
     size: 2
 
   Total kVArh:
+    device_class: reactive_energy
     address: 344
     name: Total kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L1 Import Energy:
@@ -697,84 +707,93 @@ read_only_word:
     size: 2
 
   L1 Import kVArh:
+    device_class: reactive_energy
     address: 364
     name: L1 Import kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L2 Import kVArh:
+    device_class: reactive_energy
     address: 366
     name: L2 Import kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L3 Import kVArh:
+    device_class: reactive_energy
     address: 368
     name: L3 Import kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L1 Export kVArh:
+    device_class: reactive_energy
     address: 370
     name: L1 Export kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L2 Export kVArh:
+    device_class: reactive_energy
     address: 372
     name: L2 Export kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L3 Export kVArh:
+    device_class: reactive_energy
     address: 374
     name: L3 Export kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L1 Total kVArh:
+    device_class: reactive_energy
     address: 376
     name: L1 Total kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L2 Total kVArh:
+    device_class: reactive_energy
     address: 378
     name: L2 Total kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
   L3 Total kVArh:
+    device_class: reactive_energy
     address: 380
     name: L3 Total kVArh
-    unit_of_measurement: kVArh
+    unit_of_measurement: kvarh
     precision: 2
     float: true
-    state_class: measurement
+    state_class: total_increasing
     size: 2
 
 read_write_boolean:

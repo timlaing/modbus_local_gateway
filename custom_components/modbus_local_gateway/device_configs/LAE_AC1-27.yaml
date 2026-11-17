@@ -146,9 +146,9 @@ read_write_word:
       mode: box
     scan_interval: 5
     device_class: temperature
-    state_class: measurement
 
   1HY:
+    device_class: temperature_delta
     address: 204
     name: "Change-over hysteresis channel 1 (1HY)"
     unit_of_measurement: "°C"
@@ -165,6 +165,7 @@ read_write_word:
     entity_category: config
 
   1T0:
+    device_class: duration
     address: 205
     name: "Minimum time in OFF channel 1 (1T0)"
     unit_of_measurement: "min"
@@ -180,6 +181,7 @@ read_write_word:
     entity_category: config
 
   1T1:
+    device_class: duration
     address: 206
     name: "Minimum time in ON channel 1 (1T1)"
     unit_of_measurement: "min"
@@ -195,6 +197,7 @@ read_write_word:
     entity_category: config
 
   1PB:
+    device_class: temperature_delta
     address: 207
     name: "Proportional band channel 1 (1PB)"
     unit_of_measurement: "°C"
@@ -211,6 +214,7 @@ read_write_word:
     entity_category: config
 
   1IT:
+    device_class: duration
     address: 208
     name: "Integral action time channel 1 (1IT)"
     unit_of_measurement: "s"
@@ -226,6 +230,7 @@ read_write_word:
     entity_category: config
 
   1DT:
+    device_class: duration
     address: 209
     name: "Derivative action time channel 1 (1DT)"
     unit_of_measurement: "s"
@@ -256,6 +261,7 @@ read_write_word:
     entity_category: config
 
   1CT:
+    device_class: duration
     address: 211
     name: "Cycle time channel 1 (1CT)"
     unit_of_measurement: "s"
@@ -297,9 +303,9 @@ read_write_word:
       step: 0.1
       mode: box
     device_class: temperature
-    state_class: measurement
 
   2DF:
+    device_class: temperature_delta
     address: 214
     name: "Differential setpoint referred to 1SP (2DF)"
     unit_of_measurement: "°C"
@@ -316,6 +322,7 @@ read_write_word:
     entity_category: config
 
   2HY:
+    device_class: temperature_delta
     address: 215
     name: "Change-over hysteresis channel 2 (2HY)"
     unit_of_measurement: "°C"
@@ -332,6 +339,7 @@ read_write_word:
     entity_category: config
 
   2T0:
+    device_class: duration
     address: 216
     name: "Minimum time in OFF channel 2 (2T0)"
     unit_of_measurement: "min"
@@ -347,6 +355,7 @@ read_write_word:
     entity_category: config
 
   2T1:
+    device_class: duration
     address: 217
     name: "Minimum time in ON channel 2 (2T1)"
     unit_of_measurement: "min"
@@ -407,6 +416,7 @@ read_write_word:
     entity_category: config
 
   ALR:
+    device_class: temperature_delta
     address: 221
     name: "Low temperature alarm differential (ALR)"
     unit_of_measurement: "°C"
@@ -423,6 +433,7 @@ read_write_word:
     entity_category: config
 
   AHR:
+    device_class: temperature_delta
     address: 222
     name: "High temperature alarm differential (AHR)"
     unit_of_measurement: "°C"
@@ -439,6 +450,7 @@ read_write_word:
     entity_category: config
 
   ATD:
+    device_class: duration
     address: 223
     name: "Temperature alarm delay (ATD)"
     unit_of_measurement: "min"
@@ -471,6 +483,7 @@ read_write_word:
     entity_category: config
 
   RLO:
+    device_class: temperature
     address: 225
     name: "Probe Low reference (RLO)"
     unit_of_measurement: "°C"
@@ -487,6 +500,7 @@ read_write_word:
     entity_category: config
 
   RHI:
+    device_class: temperature
     address: 226
     name: "Probe High reference (RHI)"
     unit_of_measurement: "°C"
@@ -503,6 +517,7 @@ read_write_word:
     entity_category: config
 
   OS1:
+    device_class: temperature_delta
     address: 227
     name: "Probe 1 offset (OS1)"
     unit_of_measurement: "°C"
@@ -519,6 +534,7 @@ read_write_word:
     entity_category: config
 
   TLD:
+    device_class: duration
     address: 228
     name: "Logging temp. delay (TLD)"
     unit_of_measurement: "min"

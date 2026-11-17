@@ -435,7 +435,8 @@ read_only_word:
     precision: 2
     multiplier: 0.1
   IPF:
-    name: Inverter output Power Factor
+    # Protocol v1.20 p53: encoded 0-20000; no physical scale is specified.
+    name: Inverter output PF register (raw)
     address: 3100
     state_class: measurement
   RealOPPercent:

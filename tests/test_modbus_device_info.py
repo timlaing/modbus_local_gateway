@@ -5,8 +5,15 @@ import contextlib
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
+from homeassistant.components.sensor.const import (
+    DEVICE_CLASS_STATE_CLASSES,
+    DEVICE_CLASS_UNITS,
+    SensorDeviceClass,
+    SensorStateClass,
+)
 from homeassistant.core import HomeAssistant
+from pymodbus.client.mixin import ModbusClientMixin
+from pymodbus.pdu.register_message import ReadInputRegistersResponse
 import pytest
 import yaml
 
@@ -14,6 +21,7 @@ if TYPE_CHECKING:
     from _pytest.logging import LogCaptureFixture
 
 
+from custom_components.modbus_local_gateway.conversion import Conversion
 from custom_components.modbus_local_gateway.entity_management import modbus_device_info
 from custom_components.modbus_local_gateway.entity_management.base import (
     ModbusSensorEntityDescription,
@@ -590,3 +598,95 @@ def test_entity_invalid_write_with(
     descriptions = _load_write_with(section, {"test": entity}, caplog)
     assert not descriptions
     assert expected_log in caplog.text
+
+
+async def test_device_sensor_classes_and_units_are_valid(hass: HomeAssistant) -> None:
+    """Shipped sensors use HA classes with compatible units and statistics."""
+    devices = await load_devices(hass=hass)
+    for name, device in devices.items():
+        for entity in device.entity_descriptions:
+            if not isinstance(entity, ModbusSensorEntityDescription):
+                continue
+            if entity.device_class is None:
+                continue
+            context = f"{name}: {entity.key}"
+            assert entity.device_class in SensorDeviceClass, context
+            assert entity.native_unit_of_measurement in DEVICE_CLASS_UNITS.get(
+                entity.device_class, {None}
+            ), context
+            if entity.state_class is not None:
+                assert (
+                    entity.state_class
+                    in DEVICE_CLASS_STATE_CLASSES[entity.device_class]
+                ), context
+
+
+def test_classless_sensor_preserves_explicit_statistics() -> None:
+    """Classless measurements retain statistics without classifying status codes."""
+    entities = _load_write_with(
+        "read_only_word",
+        {
+            "thd": {
+                "address": 1,
+                "unit_of_measurement": "%",
+                "state_class": "measurement",
+            },
+            "status": {"address": 2},
+        },
+    )
+    assert isinstance(entities[0], ModbusSensorEntityDescription)
+    assert isinstance(entities[1], ModbusSensorEntityDescription)
+    assert entities[0].device_class is None
+    assert entities[0].state_class == SensorStateClass.MEASUREMENT
+    assert entities[1].state_class is None
+
+
+def test_enum_string_sensor_preserves_options() -> None:
+    """Valid enum string metadata survives loading without numeric statistics."""
+    entities = _load_write_with(
+        "read_only_word",
+        {
+            "status": {
+                "address": 1,
+                "string": True,
+                "device_class": "enum",
+                "options": ["running", "stopped"],
+            }
+        },
+    )
+    assert len(entities) == 1
+    entity = entities[0]
+    assert isinstance(entity, ModbusSensorEntityDescription)
+    assert entity.device_class == SensorDeviceClass.ENUM
+    assert entity.options == ["running", "stopped"]
+    assert entity.native_unit_of_measurement is None
+    assert entity.state_class is None
+
+
+@pytest.mark.parametrize(
+    "filename",
+    ["MIC-2500TL-X", "MIN-6000TL-XH", "MOD-10KTL3-XH", "MOD-6000TL-X"],
+)
+def test_growatt_ipf_remains_raw(filename: str) -> None:
+    """Do not classify an encoded register as an unscaled physical power factor."""
+    device = modbus_device_info.ModbusDeviceInfo(f"{filename}.yaml")
+    entity = next(
+        entity for entity in device.entity_descriptions if entity.key == "IPF"
+    )
+    assert isinstance(entity, ModbusSensorEntityDescription)
+    assert entity.register_address == 3100
+    assert entity.name == "Inverter output PF register (raw)"
+    assert entity.device_class is None
+    assert entity.native_unit_of_measurement is None
+    assert entity.state_class == SensorStateClass.MEASUREMENT
+    assert entity.conv_multiplier is None
+    assert entity.conv_offset is None
+    conversion = Conversion(client=ModbusClientMixin)
+    # Include the readings observed on MIC/MIN and intermediate encoded values.
+    for raw in (0, 8000, 10000, 18000, 20000):
+        assert (
+            conversion.convert_from_response(
+                response=ReadInputRegistersResponse(registers=[raw]), desc=entity
+            )
+            == raw
+        )

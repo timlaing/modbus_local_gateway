@@ -192,6 +192,7 @@ read_only_word:
     size: 2
 
   L1 Power Factor:
+    device_class: power_factor
     address: 2554
     name: L1 Power Factor
     precision: 2
@@ -200,6 +201,7 @@ read_only_word:
     size: 2
 
   L2 Power Factor:
+    device_class: power_factor
     address: 2556
     name: L2 Power Factor
     precision: 2
@@ -208,6 +210,7 @@ read_only_word:
     size: 2
 
   L3 Power Factor:
+    device_class: power_factor
     address: 2558
     name: L3 Power Factor
     precision: 2
@@ -216,6 +219,7 @@ read_only_word:
     size: 2
 
   Total Power Factor:
+    device_class: power_factor
     address: 2560
     name: Total Power Factor
     precision: 2

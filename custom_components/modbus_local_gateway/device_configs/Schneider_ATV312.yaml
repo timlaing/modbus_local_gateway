@@ -343,6 +343,7 @@ read_write_word:
 
   # R/WS: writable only when drive is stopped.
   sfr_switching_frequency:
+    device_class: frequency
     name: "SFr Switching Frequency"
     address: 3102
     multiplier: 0.1
@@ -564,6 +565,7 @@ read_write_word:
     entity_registry_enabled_default: False
 
   rth_operating_time:
+    device_class: duration
     name: "rtH Operating Time"
     address: 3231
     precision: 0

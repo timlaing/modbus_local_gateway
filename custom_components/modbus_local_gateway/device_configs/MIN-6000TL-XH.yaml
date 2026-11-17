@@ -77,6 +77,7 @@ read_write_word:
       min: 1
       max: 255
   GridFirstStopSOC:
+    device_class: battery
     name: Stop Discharge SOC (Grid First)
     address: 3037
     control: number
@@ -96,6 +97,7 @@ read_write_word:
       min: 1
       max: 100
   BatFirstStopSOC:
+    device_class: battery
     name: Stop Charge SOC (Bat First)
     address: 3048
     control: number
@@ -650,7 +652,8 @@ read_only_word:
     precision: 2
     multiplier: 0.1
   IPF:
-    name: Inverter output Power Factor
+    # Protocol v1.20 p53: encoded 0-20000; no physical scale is specified.
+    name: Inverter output PF register (raw)
     address: 3100
     state_class: measurement
   RealOPPercent:

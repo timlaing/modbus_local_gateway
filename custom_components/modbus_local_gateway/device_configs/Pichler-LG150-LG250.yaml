@@ -82,6 +82,7 @@ read_write_word: # Holding registers
   # Numbers
 
   volumenstrom_luftungsstufe_1_number:
+    device_class: volume_flow_rate
     name: Luftstrom Lüftungsstufe 1
     address: 9
     control: number
@@ -94,6 +95,7 @@ read_write_word: # Holding registers
     entity_category: config
 
   volumenstrom_luftungsstufe_2_number:
+    device_class: volume_flow_rate
     name: Luftstrom Lüftungsstufe 2
     address: 10
     control: number
@@ -106,6 +108,7 @@ read_write_word: # Holding registers
     entity_category: config
 
   volumenstrom_luftungsstufe_3_number:
+    device_class: volume_flow_rate
     name: Luftstrom Lüftungsstufe 3
     address: 11
     control: number
@@ -118,6 +121,7 @@ read_write_word: # Holding registers
     entity_category: config
 
   volumenstrom_grundluftung_number:
+    device_class: volume_flow_rate
     name: Luftstrom Grundlüftung
     address: 12
     control: number
@@ -130,13 +134,14 @@ read_write_word: # Holding registers
     entity_category: config
 
   timer_luftungsstufe_3_number:
+    device_class: duration
     name: Lüftungsstufe 3 Timer
     address: 70
     control: number
     number:
       min: 0
       max: 65000
-    unit_of_measurement: minutes
+    unit_of_measurement: min
     icon: mdi:fan-clock
     entity_category: config
 
@@ -203,7 +208,7 @@ read_write_word: # Holding registers
       min: 800
       max: 2000
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     icon: mdi:thermometer
     entity_category: config
     entity_registry_enabled_default: False
@@ -378,7 +383,7 @@ read_write_word: # Holding registers
   #   control: sensor
   #   multiplier: 1
   #   unit_of_measurement: ppm
-  #   device_class: co2
+  #   device_class: carbon_dioxide
   #   icon: mdi:thermometer
   #   entity_category: diagnostic
   #   entity_registry_enabled_default: False
@@ -488,6 +493,7 @@ read_only_word: # Input registers
     icon: mdi:fan
 
   zuluftvolumenstrom:
+    device_class: volume_flow_rate
     name: Zuluft Luftstrom
     address: 46
     unit_of_measurement: m³/h
@@ -495,6 +501,7 @@ read_only_word: # Input registers
     icon: mdi:air-filter
 
   abluftvolumenstrom:
+    device_class: volume_flow_rate
     name: Abluft Luftstrom
     address: 47
     unit_of_measurement: m³/h
@@ -515,6 +522,7 @@ read_only_word: # Input registers
     icon: mdi:state-machine
 
   filter_reststandzeit:
+    device_class: duration
     name: Filter Reststandzeit
     address: 50
     unit_of_measurement: h
@@ -535,6 +543,7 @@ read_only_word: # Input registers
     icon: mdi:stairs
 
   lufter_1_stunden:
+    device_class: duration
     name: Lüfter 1 Stunden
     address: 87
     unit_of_measurement: h
@@ -542,6 +551,7 @@ read_only_word: # Input registers
     icon: mdi:timer-sand
 
   lufter_2_stunden:
+    device_class: duration
     name: Lüfter 2 Stunden
     address: 81
     unit_of_measurement: h
@@ -549,6 +559,7 @@ read_only_word: # Input registers
     icon: mdi:timer-sand
 
   lufter_3_stunden:
+    device_class: duration
     name: Lüfter 3 Stunden
     address: 82
     unit_of_measurement: h
@@ -556,6 +567,7 @@ read_only_word: # Input registers
     icon: mdi:timer-sand
 
   lufter_grund_stunden:
+    device_class: duration
     name: Lüfter Grund Stunden
     address: 83
     unit_of_measurement: h
@@ -563,6 +575,7 @@ read_only_word: # Input registers
     icon: mdi:timer-sand
 
   heizelement_stunden:
+    device_class: duration
     name: Heizelement Stunden
     address: 85
     unit_of_measurement: h
@@ -602,7 +615,7 @@ read_only_word: # Input registers
     name: CO2 Sensor 1
     address: 89
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     state_class: measurement
     icon: mdi:water
     entity_registry_enabled_default: False
@@ -611,7 +624,7 @@ read_only_word: # Input registers
     name: CO2 Sensor 2
     address: 90
     unit_of_measurement: ppm
-    device_class: co2
+    device_class: carbon_dioxide
     state_class: measurement
     icon: mdi:water
     entity_registry_enabled_default: False

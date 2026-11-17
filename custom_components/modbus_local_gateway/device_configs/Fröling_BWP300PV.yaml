@@ -139,7 +139,7 @@ read_only_word:
     name: "Abwesenheit: Verbleibend"
     icon: mdi:calendar-clock
     address: 17
-    unit_of_measurement: "Tag/e"
+    unit_of_measurement: d
     device_class: duration
     state_class: measurement
     entity_category: diagnostic
@@ -406,6 +406,7 @@ read_write_word:
     entity_registry_enabled_default: false
 
   abw_tage:
+    device_class: duration
     name: "Abwesenheit: Manuell"
     icon: mdi:calendar
     address: 21
@@ -557,6 +558,7 @@ read_write_word:
     entity_registry_enabled_default: false
 
   legi_tage:
+    device_class: duration
     name: "Legionellenfunktion: Intervall"
     icon: mdi:calendar-sync
     address: 33

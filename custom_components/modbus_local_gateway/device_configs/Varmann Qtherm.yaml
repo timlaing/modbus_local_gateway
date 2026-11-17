@@ -13,6 +13,7 @@ read_write_word:
       min: 1
       max: 240
   tmp_ntc:
+    device_class: temperature
     address: 1
     name: Temperature NTC
     icon: mdi:thermometer
@@ -20,6 +21,7 @@ read_write_word:
     precision: 1
     multiplier: 0.1
   ust_tmp:
+    device_class: temperature
     address: 2
     name: Required Temperature
     icon: mdi:thermometer
@@ -39,6 +41,7 @@ read_write_word:
       1: Cooling
       2: Auto
   timereg:
+    device_class: duration
     entity_category: config
     address: 4
     name: Integration time
@@ -81,6 +84,7 @@ read_write_word:
       "off": 0
       "on": 1
   tmp_out:
+    device_class: temperature
     address: 9
     icon: mdi:thermometer
     name: Incoming temperature
@@ -91,6 +95,7 @@ read_write_word:
       max: 500
     multiplier: 0.1
   time_lan:
+    device_class: duration
     entity_category: config
     address: 10
     icon: mdi:lan-pending
@@ -159,14 +164,17 @@ read_write_word:
     name: Motor drive frequency
     unit_of_measurement: "Hz"
   amp_sin:
+    device_class: voltage
     address: 21
     name: Motor drive amplitude
     unit_of_measurement: "V"
   ishunt:
+    device_class: current
     address: 22
     name: Motor current
     unit_of_measurement: "A"
   inorm:
+    device_class: current
     address: 23
     name: Motor nominal current
     unit_of_measurement: "A"

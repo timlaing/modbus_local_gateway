@@ -4,6 +4,7 @@ device:
 
 read_only_word:
   UnderfloorForward:
+    device_class: temperature
     address: 0
     name: Water feed out to underfloor
     unit_of_measurement: °C
@@ -13,6 +14,7 @@ read_only_word:
     size: 1
 
   HeatCarrierReturn:
+    device_class: temperature
     address: 1
     name: HP Internal heat carrier return
     unit_of_measurement: °C
@@ -22,6 +24,7 @@ read_only_word:
     size: 1
 
   HeatCarrierForward:
+    device_class: temperature
     address: 2
     name: HP internal heat supply forward
     unit_of_measurement: °C
@@ -31,6 +34,7 @@ read_only_word:
     size: 1
 
   BrineIn:
+    device_class: temperature
     address: 3
     name: From ground loops
     unit_of_measurement: °C
@@ -40,6 +44,7 @@ read_only_word:
     size: 1
 
   BrineOut:
+    device_class: temperature
     address: 4
     name: To ground loops
     unit_of_measurement: °C
@@ -49,6 +54,7 @@ read_only_word:
     size: 1
 
   Outdoor:
+    device_class: temperature
     address: 5
     name: Outdoor Temperature
     unit_of_measurement: °C
@@ -58,6 +64,7 @@ read_only_word:
     size: 1
 
   Indoor:
+    device_class: temperature
     address: 6
     name: Indoor Temperature
     unit_of_measurement: °C
@@ -66,6 +73,7 @@ read_only_word:
     size: 1
 
   HotWaterActual:
+    device_class: temperature
     address: 9
     name: DHW Actual Temperature
     unit_of_measurement: °C
@@ -74,6 +82,7 @@ read_only_word:
     size: 1
 
   HotWaterTarget:
+    device_class: temperature
     address: 27
     name: DHW Target Temperature
     unit_of_measurement: °C

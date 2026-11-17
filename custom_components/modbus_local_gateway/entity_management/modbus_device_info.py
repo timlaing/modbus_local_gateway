@@ -587,7 +587,7 @@ class ModbusDeviceInfo:
 
         # Add state_class for sensors only and not for strings
         if (
-            device_class is None
+            (device_class is None and STATE_CLASS not in data)
             or data.get(IS_STRING, False)
             or control_type != ControlType.SENSOR
         ):
