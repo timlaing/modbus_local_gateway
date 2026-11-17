@@ -1,37 +1,13 @@
 # Reviews and dependency auto-merge
 
-CodeRabbit approvals are enabled explicitly. Configuration inheritance preserves
-repository and organization preferences. Automatic and incremental reviews stay
-disabled: **CodeRabbit after checks** requests reviews after successful CI.
-Dependabot is excluded from that workflow and does not depend on CodeRabbit approval.
+CodeRabbit automatic and incremental push reviews are disabled. The metadata-only **CodeRabbit after checks** coordinator waits for the validation checks in `workflow-policy.json` and every other reported check before requesting review. Conditional skipped jobs are allowed only when they are not required checks.
 
-The gate checks the current PR head and merge commit, reported jobs and commit
-statuses, workflow runs, and configured and live required check names. Failed,
-pending, neutral, cancelled, or missing required checks withhold reviews.
-Conditional skipped jobs/workflows do not block unless their check is required.
-A 90-second settling window allows chained CI to start. Per-commit markers avoid
-repeated requests; the gate rechecks after workflows and every 15 minutes.
+`Review passed` requires CodeRabbit approval of the exact current head. A request, a successful CodeRabbit check, an old approval, or an approval from another account cannot satisfy this gate. Review event notifications re-evaluate readiness and withdrawn approval through the trusted coordinator. Merge-commit results take precedence over matching head-only reruns.
+
+The coordinator never checks out PR code or submits a GitHub Actions approval. Its normal token reads metadata and writes the gate status. An optional dedicated requester credential can post review commands; without it a maintainer requests review after validation succeeds. See [the workflow policy](WORKFLOW_POLICY.md) for setup and recovery.
 
 ## Dependabot
 
-**Dependabot Auto Merge** uses the built-in GitHub Actions token. No separate
-GitHub App, personal token, or added secret is needed.
+Only same-repository patch/minor Dependabot updates targeting main qualify for native auto-merge. The workflow verifies that the intended required checks are enforced before enabling auto-merge. GitHub still requires checks and reviews to pass, and expected-head checks protect against revision changes. Already-mergeable updates use the native merge API under the same protection.
 
-A PR branch update runs the official metadata action. Only patch/minor updates
-from same-repository Dependabot PRs receive a commit-specific eligibility marker.
-Major updates, drafts, human PRs, forks, stale markers, and untrusted comments do
-not qualify. Existing Dependabot PRs need a branch update or reopening once after
-this workflow is installed.
-
-After CI completes, the worker rechecks reported checks, statuses, workflow runs,
-and required check names, with the same settling window. A scheduled fallback
-handles external checks. It approves the exact head using `github-actions[bot]`,
-then merges with an expected-head SHA or queues GitHub auto-merge. No required CI
-or branch protection is bypassed. With no CI checks configured, eligible updates
-can merge after the settling window and any remaining GitHub branch requirements.
-
-Repository auto-merge and Actions approval permission must be enabled. Built-in
-Actions approvals need an ordinary approval policy; latest-push or code-owner
-approval requirements can leave a PR awaiting another reviewer. A failed approval
-request does not prevent queueing auto-merge. GitHub still enforces its rules.
-The worker reads trusted inline code only and never checks out PR code.
+Dependabot remains subject to the same CodeRabbit approval gate. The workflow never creates an approval, checks out PR code, or bypasses branch protection. Repository-wide workflow approval permission is preserved by the settings migration.
