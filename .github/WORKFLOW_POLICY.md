@@ -25,3 +25,7 @@ For unattended explicit CodeRabbit requests, configure `REVIEW_REQUEST_TOKEN` as
 Without the secret, automatic reviews are disabled to preserve validation ordering; a maintainer must request review after checks pass. The gate never treats a missing request credential as approval. Rotate the token before expiry.
 
 The migration accepts only an explicit main-only ruleset; shared or wildcard branch targets require a separate main policy. Review event notifications contain no checkout or credentials and trigger trusted re-evaluation of readiness and revoked approvals. Polling is bounded to 45 one-minute attempts.
+
+Review command markers are deduplicated per requester, revision and run attempt. A requester may post at most three requests for one revision. Once exhausted, a maintainer requests review manually; after current-head CodeRabbit approval arrives, rerunning the coordinator can pass. A new revision resets the count.
+
+The required `Review notifier policy` commit status is written by a checkout-free `pull_request_target` worker from the default branch. It checks the complete notification structure, regular Git file modes, and the trusted enforcement/receiver files as data. Pinned action updates must belong to the official action repository. Changes to security-policy logic need a maintainer-reviewed trusted baseline update; the PR cannot rewrite its own automatic validator. The coordinator requires the actual status, so a same-named PR check cannot replace it.

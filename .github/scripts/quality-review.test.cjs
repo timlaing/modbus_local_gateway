@@ -548,3 +548,84 @@ test("review-event notifications invalidate withdrawn approval and restore a val
   await run(options);
   assert.equal(data.states.at(-1), "success");
 });
+
+test("different Apps cannot overwrite or hide another App's failing check", () => {
+  const failed = {
+    id: 1,
+    name: "Security",
+    app: { slug: "trusted" },
+    status: "completed",
+    conclusion: "failure",
+  };
+  const foreign = {
+    ...failed,
+    id: 2,
+    app: { slug: "other" },
+    conclusion: "success",
+  };
+  assert.deepEqual(readiness([], [failed, foreign], []), ["Security"]);
+  assert.equal(mergeChecks([foreign], [failed]).length, 2);
+  assert.deepEqual(
+    readiness(
+      [],
+      [],
+      [
+        {
+          id: 1,
+          context: "External",
+          creator: { login: "trusted" },
+          state: "failure",
+        },
+        {
+          id: 2,
+          context: "External",
+          creator: { login: "other" },
+          state: "success",
+        },
+      ],
+    ),
+    ["External"],
+  );
+});
+
+test("a fake CheckRun cannot replace the trusted notifier commit status", () => {
+  const check = {
+    id: 1,
+    name: "Review notifier policy",
+    app: { slug: "github-actions" },
+    status: "completed",
+    conclusion: "success",
+  };
+  assert.deepEqual(readiness([check.name], [check], []), [check.name]);
+  assert.deepEqual(
+    readiness(
+      [check.name],
+      [check],
+      [
+        {
+          id: 1,
+          context: check.name,
+          creator: { login: "github-actions[bot]" },
+          state: "success",
+        },
+      ],
+    ),
+    [],
+  );
+});
+test("trusted PR-target events resolve the current head without a checkout", async () => {
+  const { data, options } = fixture();
+  options.context.eventName = "pull_request_target";
+  options.context.payload = { pull_request: structuredClone(data.current) };
+  data.reviews.push({
+    user: { login: "coderabbitai[bot]" },
+    commit_id: sha,
+    state: "APPROVED",
+  });
+  await run(options);
+  assert.deepEqual(data.states, ["pending", "success"]);
+  data.states.length = 0;
+  data.current = { ...data.current, head: { sha: "c".repeat(40) } };
+  await run(options);
+  assert.deepEqual(data.states, []);
+});

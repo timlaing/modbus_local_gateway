@@ -1,5 +1,9 @@
 /** Trusted metadata-only coordination. Never execute the pull request checkout. */
 const reviewBot = "coderabbitai[bot]";
+const checkKey = (check) =>
+  `${check.app?.id ?? check.app?.slug ?? "unknown"}:${check.name}`;
+const statusKey = (status) =>
+  `${status.creator?.id ?? status.creator?.login ?? "unknown"}:${status.context}`;
 function approved(reviews, sha) {
   const latest = reviews.findLast(
     (review) =>
@@ -9,31 +13,27 @@ function approved(reviews, sha) {
   );
   return latest?.state === "APPROVED";
 }
-function readiness(required, checks, statuses) {
-  const passed = new Set();
-  for (const name of required) {
-    const check = checks
-      .filter(
-        (item) => item.name === name && item.app?.slug === "github-actions",
-      )
-      .sort((left, right) => right.id - left.id)[0];
-    if (check) {
-      if (check.status === "completed" && check.conclusion === "success")
-        passed.add(name);
-      continue;
-    }
-    const status = statuses
+function requiredPassed(name, checks, statuses) {
+  const statusPassed = () =>
+    statuses
       .filter(
         (item) =>
           item.context === name &&
           item.creator?.login === "github-actions[bot]",
       )
-      .sort((left, right) => right.id - left.id)[0];
-    if (status?.state === "success") passed.add(name);
-  }
+      .sort((left, right) => right.id - left.id)[0]?.state === "success";
+  if (name === "Review notifier policy") return statusPassed();
+  const check = checks
+    .filter((item) => item.name === name && item.app?.slug === "github-actions")
+    .sort((left, right) => right.id - left.id)[0];
+  if (check)
+    return check.status === "completed" && check.conclusion === "success";
+  return statusPassed();
+}
+function readiness(required, checks, statuses) {
   return [
     ...new Set([
-      ...required.filter((name) => !passed.has(name)),
+      ...required.filter((name) => !requiredPassed(name, checks, statuses)),
       ...unsuccessfulChecks(checks, statuses),
     ]),
   ];
@@ -49,8 +49,9 @@ function unsuccessfulChecks(checks, statuses) {
   ]);
   const latestChecks = new Map();
   for (const check of [...checks].sort((left, right) => left.id - right.id))
-    latestChecks.set(check.name, check);
-  for (const [name, check] of latestChecks) {
+    latestChecks.set(checkKey(check), check);
+  for (const check of latestChecks.values()) {
+    const name = check.name;
     if (reviewNames.has(name)) continue;
     if (
       check.status !== "completed" ||
@@ -60,16 +61,40 @@ function unsuccessfulChecks(checks, statuses) {
   }
   const latestStatuses = new Map();
   for (const status of [...statuses].sort((left, right) => left.id - right.id))
-    latestStatuses.set(status.context, status);
-  for (const [name, status] of latestStatuses)
-    if (!reviewNames.has(name) && status.state !== "success") missing.add(name);
+    latestStatuses.set(statusKey(status), status);
+  for (const status of latestStatuses.values())
+    if (!reviewNames.has(status.context) && status.state !== "success")
+      missing.add(status.context);
   return [...missing];
 }
 function mergeChecks(merge, head) {
-  const names = new Set(merge.map((check) => check.name));
-  return [...merge, ...head.filter((check) => !names.has(check.name))];
+  const names = new Set(merge.map(checkKey));
+  return [...merge, ...head.filter((check) => !names.has(checkKey(check)))];
+}
+function eligiblePull(pull, fullName) {
+  return (
+    pull.state === "open" &&
+    !pull.draft &&
+    pull.base.ref === "main" &&
+    pull.base.repo.full_name === fullName
+  );
+}
+async function eventPull(github, context) {
+  const expected = context.payload.pull_request;
+  const { data: current } = await github.rest.pulls.get({
+    ...context.repo,
+    pull_number: expected.number,
+  });
+  if (
+    current.head.sha !== expected.head.sha ||
+    !eligiblePull(current, context.repo.owner + "/" + context.repo.repo)
+  )
+    return;
+  return current;
 }
 async function currentPull(github, context) {
+  if (context.eventName === "pull_request_target")
+    return eventPull(github, context);
   const upstream = context.payload.workflow_run;
   if (
     upstream &&
@@ -86,10 +111,7 @@ async function currentPull(github, context) {
   const fullName = `${context.repo.owner}/${context.repo.repo}`;
   const matches = pulls.filter(
     (pull) =>
-      pull.state === "open" &&
-      !pull.draft &&
-      pull.base.repo.full_name === fullName &&
-      pull.base.ref === "main" &&
+      eligiblePull(pull, fullName) &&
       (pull.head.sha === sha || pull.merge_commit_sha === sha),
   );
   if (matches.length > 1)
