@@ -18,7 +18,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 -m pip install "--only-binary=:all:" --disable-pip-version-check PyYAML==6.0.3
-      - run: node --test .github/scripts/quality-review.test.cjs
+      - run: node --test .github/scripts/quality-review.test.cjs .github/scripts/dependabot-merge.test.cjs
       - run: python3 -I .github/scripts/test_workflow_policy.py
       - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2
       - run: python3 -I -m unittest discover -s .github/scripts -p test_action_pins.py -v

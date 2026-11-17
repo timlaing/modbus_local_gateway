@@ -137,7 +137,7 @@ class WorkflowSourceTests(unittest.TestCase):
                     str(path),
                 )
                 if job.get("container"):
-                    self.assertNotIn("${{ runner.temp }}", step["env"]["SETTINGS"])
+                    self.assertNotIn("${{ runner.temp }}", settings)
 
 
 if __name__ == "__main__":

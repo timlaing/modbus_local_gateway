@@ -49,9 +49,13 @@ jobs:
             }
             // Native merge APIs enforce protection for this Actions token.
             if (current.mergeable_state === 'clean') {
-              await github.rest.pulls.merge({ ...context.repo, pull_number: current.number,
-                sha: current.head.sha, merge_method: 'squash' });
-              return;
+              try {
+                const { data: merged } = await github.rest.pulls.merge({ ...context.repo, pull_number: current.number,
+                  sha: current.head.sha, merge_method: 'squash' });
+                if (merged.merged) return;
+              } catch (error) {
+                if (error.status !== 405) throw error;
+              }
             }
 
             await github.graphql(`mutation($id: ID!, $oid: GitObjectID!) {
