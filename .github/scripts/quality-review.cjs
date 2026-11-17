@@ -31,7 +31,15 @@ function readiness(required, checks, statuses) {
       .sort((left, right) => right.id - left.id)[0];
     if (status?.state === "success") passed.add(name);
   }
-  const missing = new Set(required.filter((name) => !passed.has(name)));
+  return [
+    ...new Set([
+      ...required.filter((name) => !passed.has(name)),
+      ...unsuccessfulChecks(checks, statuses),
+    ]),
+  ];
+}
+function unsuccessfulChecks(checks, statuses) {
+  const missing = new Set();
   // Review jobs and their own status must not wait on themselves. Every other
   // reported check must finish successfully (conditionally skipped jobs are OK).
   const reviewNames = new Set([
