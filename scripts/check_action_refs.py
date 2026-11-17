@@ -15,19 +15,13 @@ import sys
 WORKFLOW_DIR = Path(".github/workflows")
 
 USES_PATTERN = re.compile(
-    r"uses:\s*(?P<action>[\w.\-]+(?:/[\w.\-]+)+)@(?P<ref>[\w.\-]+)"
+    r"^[^#]*['\"]?uses['\"]?\s*:\s*['\"]?"
+    r"(?P<action>[\w.\-]+(?:/[\w.\-]+)+)@(?P<ref>[^\s'\"]+)['\"]?"
 )
 
-SHA_PATTERN = re.compile(r"^[0-9a-f]{7,40}$")
+FULL_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
-VERSION_PATTERN = re.compile(r"^v?\d+(?:\.\d+)*$")
-
-# Actions that only publish on a branch: home-assistant/actions has no tags for
-# its hassfest sub-action, and hacs/action has not published a tag since 22.5.0.
-BRANCH_ALLOWLIST = {
-    "hacs/action@main",
-    "home-assistant/actions/hassfest@master",
-}
+VERSION_COMMENT_PATTERN = re.compile(r"#\s*v?\d+(?:\.\d+)*\s*$")
 
 IN_CI = "GITHUB_ACTIONS" in os.environ
 
@@ -40,6 +34,7 @@ class Reference:
     ref: str
     path: Path
     line: int
+    line_text: str
 
 
 def collect_references(paths: list[Path]) -> list[Reference]:
@@ -61,6 +56,7 @@ def collect_references(paths: list[Path]) -> list[Reference]:
                     ref=match["ref"],
                     path=path,
                     line=number,
+                    line_text=text,
                 )
             )
 
@@ -94,21 +90,37 @@ def report(level: str, message: str, reference: Reference) -> None:
 
 
 def check_sha_pins(references: list[Reference]) -> int:
-    """Fail when an action is pinned to a commit SHA instead of a tag."""
+    """Require immutable, full-length commit SHAs for every remote action."""
     failures = 0
-
     for reference in references:
-        if SHA_PATTERN.match(reference.ref):
-            report(
-                "error",
-                f"{reference.action} is pinned to commit {reference.ref}. Use a "
-                "version tag (for example @v4) so Dependabot can raise version "
-                "update pull requests",
-                reference,
-            )
-            failures += 1
-
+        if FULL_SHA_PATTERN.fullmatch(reference.ref):
+            continue
+        report(
+            "error",
+            f"{reference.action}@{reference.ref} must use a full "
+            "40-character commit SHA",
+            reference,
+        )
+        failures += 1
     return failures
+
+
+def check_sha_annotations(references: list[Reference]) -> None:
+    """Warn when a full-SHA pin lacks the version comment Dependabot reads."""
+    for reference in references:
+        if not FULL_SHA_PATTERN.match(reference.ref):
+            continue
+
+        if VERSION_COMMENT_PATTERN.search(reference.line_text):
+            continue
+
+        report(
+            "warning",
+            f"{reference.action} is pinned to commit {reference.ref} without a "
+            "trailing `# vX.Y.Z` comment; add one so Dependabot can raise "
+            "version update pull requests",
+            reference,
+        )
 
 
 def check_consistent_refs(references: list[Reference]) -> int:
@@ -137,23 +149,6 @@ def check_consistent_refs(references: list[Reference]) -> int:
                 failures += 1
 
     return failures
-
-
-def check_version_tags(references: list[Reference]) -> None:
-    """Warn when an action tracks a branch instead of a version tag."""
-    for reference in references:
-        if VERSION_PATTERN.match(reference.ref) or SHA_PATTERN.match(reference.ref):
-            continue
-
-        if f"{reference.action}@{reference.ref}" in BRANCH_ALLOWLIST:
-            continue
-
-        report(
-            "warning",
-            f"{reference.action} tracks the branch {reference.ref}. Prefer a "
-            "version tag where the action publishes one",
-            reference,
-        )
 
 
 def main() -> int:
@@ -185,7 +180,7 @@ def main() -> int:
 
     references = collect_references(paths)
 
-    check_version_tags(references)
+    check_sha_annotations(references)
 
     failures = check_sha_pins(references) + check_consistent_refs(references)
 
@@ -196,7 +191,7 @@ def main() -> int:
         )
         return 1
 
-    print(f"{len(references)} action references use version tags")
+    print(f"{len(references)} action references use full-SHA pins")
 
     return 0
 

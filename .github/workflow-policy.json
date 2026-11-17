@@ -1,0 +1,26 @@
+{
+  "default_workflow_permissions": "read",
+  "required_checks": [
+    "Validate action-refs",
+    "Validate codeql",
+    "Validate hacs-validate",
+    "Validate hassfest-validate",
+    "Validate linting",
+    "Validate tests",
+    "Analysis passed",
+    "Workflow policy",
+    "Review passed"
+  ],
+  "review_gate_requires_main": true,
+  "sha_pinning_required": true,
+  "validation_checks": [
+    "Validate action-refs",
+    "Validate codeql",
+    "Validate hacs-validate",
+    "Validate hassfest-validate",
+    "Validate linting",
+    "Validate tests",
+    "Analysis passed",
+    "Workflow policy"
+  ]
+}

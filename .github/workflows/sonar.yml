@@ -1,126 +1,179 @@
 name: SonarQube
-
-on:
+"on":
   workflow_run:
-    workflows: [Tests]
-    types: [completed]
-
+    workflows:
+      - Tests
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful CI/analysis-input run to scan (bootstrap or recovery)
+        required: true
+        type: string
+permissions: {}
+concurrency:
+  group: sonar-${{ github.event.workflow_run.head_sha || inputs.source_run_id }}
+  cancel-in-progress: false
 jobs:
-  sonarqube:
-    if: github.event.workflow_run.conclusion == 'success'
+  analysis:
+    name: SonarQube quality gate
+    if:
+      github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event
+      == 'pull_request' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch ==
+      'main')))
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
-      actions: read
       contents: read
-      pull-requests: write
-    env:
-      SONAR_HOST_URL: https://sonarcloud.io
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      actions: read
+      pull-requests: read
+      statuses: write
     steps:
-      - uses: actions/checkout@v7
+      - name: Resolve current PR metadata
+        id: metadata
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
+          script: |
+            const run = context.payload.workflow_run || (await github.rest.actions.getWorkflowRun({
+              ...context.repo, run_id: Number(process.env.SOURCE_RUN_ID)
+            })).data;
+            if (run.path !== '.github/workflows/tests.yml' || run.conclusion !== 'success' ||
+                !['push', 'pull_request'].includes(run.event) || (run.event === 'push' && run.head_branch !== 'main'))
+              throw new Error('Analysis must consume successful validation from the expected workflow');
+            core.setOutput('head-sha', run.head_sha);
+            core.setOutput('source-run-id', run.id);
+            core.setOutput('event', run.event);
+            if (!/^[0-9a-f]{40}$/.test(run.head_sha)) throw new Error('Invalid run SHA');
+            const pulls = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit,
+              { ...context.repo, commit_sha: run.head_sha, per_page: 100 });
+            if (run.event === 'pull_request') {
+              const matches = pulls.filter(p => p.state === 'open' && p.head.sha === run.head_sha &&
+                p.base.ref === 'main' && p.base.repo.full_name === `${context.repo.owner}/${context.repo.repo}`);
+              if (matches.length !== 1) throw new Error('No unique current PR for analysis');
+              const pr = matches[0];
+              core.setOutput('number', pr.number);
+              core.setOutput('branch', pr.head.ref);
+              core.setOutput('base', pr.base.ref);
+            }
+            await github.rest.repos.createCommitStatus({ ...context.repo, sha: run.head_sha,
+              context: 'Analysis passed', state: 'pending', description: 'Analysis in progress' });
+        env:
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.metadata.outputs.head-sha }}
           fetch-depth: 0
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - name: Require SonarQube credentials
-        if: env.SONAR_TOKEN == ''
-        run: exit 1
-
-      - name: Download coverage report
-        uses: actions/download-artifact@v8
+          allow-unsafe-pr-checkout: true
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: coverage-report
-          path: .coverage
+          path: ${{ runner.temp }}/analysis-inputs
           github-token: ${{ github.token }}
+          run-id: ${{ steps.metadata.outputs.source-run-id }}
           repository: ${{ github.repository }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Remove pull-request-controlled scanner configuration
-        run: rm -f sonar-project.properties
-
-      - name: Validate coverage report
-        run: |
-          set -euo pipefail
-          test -f .coverage/coverage.xml || { echo "Coverage report missing"; exit 1; }
-          python3 -c "import sys, xml.etree.ElementTree as ET; ET.parse(sys.argv[1])" .coverage/coverage.xml
-
-      - name: Validate run metadata
-        id: validate
+      - name: Validate scan inputs and install trusted settings
         env:
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          RUN_EVENT: ${{ github.event.workflow_run.event }}
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER_RAW: ${{ github.event.workflow_run.pull_requests[0].number }}
-          HEAD_REF_RAW: ${{ github.event.workflow_run.pull_requests[0].head.ref }}
-          BASE_REF_RAW: ${{ github.event.workflow_run.pull_requests[0].base.ref }}
+          INPUTS: ${{ runner.temp }}/analysis-inputs
+          DEST: .coverage
+          SETTINGS: ${{ runner.temp }}/analysis.properties
+          SCANNER_SETTINGS: |
+            sonar.projectKey=timlaing_modbus_local_gateway
+            sonar.organization=timlaing
+            sonar.sources=custom_components/modbus_local_gateway
+            sonar.tests=tests
+            sonar.python.coverage.reportPaths=.coverage/coverage.xml
+            sonar.python.version=3.14
+            sonar.projectName=modbus_local_gateway
+            sonar.qualitygate.wait=true
+          HEAD_SHA: ${{ steps.metadata.outputs.head-sha }}
+          RUN_EVENT: ${{ steps.metadata.outputs.event }}
+          PR_NUMBER: ${{ steps.metadata.outputs.number }}
+          PR_BRANCH: ${{ steps.metadata.outputs.branch }}
+          BASE_BRANCH: ${{ steps.metadata.outputs.base }}
+          REQUIRE_REVISION: "true"
         run: |
-          set -euo pipefail
-          [[ "$HEAD_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "Invalid HEAD_SHA"; exit 1; }
-          echo "head-sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-          if [[ "$RUN_EVENT" != "pull_request" ]]; then
-            exit 0
-          fi
-          PR_NUMBER=""
-          HEAD_REF=""
-          BASE_REF=""
-          if [[ -n "$PR_NUMBER_RAW" ]]; then
-            PR_NUMBER="$PR_NUMBER_RAW"
-            HEAD_REF="$HEAD_REF_RAW"
-            BASE_REF="$BASE_REF_RAW"
-          else
-            # workflow_run.pull_requests is empty for fork PRs; resolve via the API.
-            PR_FILE="$(mktemp)"
-            gh pr list --state open --json number,headRefName,headRefOid,baseRefName > "$PR_FILE"
-            PR_MATCH="$(jq -c ".[] | select(.headRefOid == \"$HEAD_SHA\")" "$PR_FILE" | head -n 1)"
-            if [[ -n "$PR_MATCH" ]]; then
-              PR_NUMBER="$(jq -r '.number' <<< "$PR_MATCH")"
-              HEAD_REF="$(jq -r '.headRefName' <<< "$PR_MATCH")"
-              BASE_REF="$(jq -r '.baseRefName' <<< "$PR_MATCH")"
-            fi
-          fi
-          if [[ -z "$PR_NUMBER" || -z "$HEAD_REF" || -z "$BASE_REF" ]]; then
-            echo "Could not resolve pull request metadata for $HEAD_SHA"; exit 1
-          fi
-          [[ "$PR_NUMBER" =~ ^[0-9]+$ ]] || { echo "Invalid PR number"; exit 1; }
-          [[ "$HEAD_REF" =~ ^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$ ]] || { echo "Invalid head branch"; exit 1; }
-          [[ "$BASE_REF" =~ ^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$ ]] || { echo "Invalid base branch"; exit 1; }
-          echo "pr-number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "head-ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
-          echo "base-ref=$BASE_REF" >> "$GITHUB_OUTPUT"
-
-      - name: SonarQube Scan (branch)
-        if: github.event.workflow_run.event == 'push'
-        uses: SonarSource/sonarqube-scan-action@v8
+          python3 -I - <<'PY'
+          import os, re, shutil
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path('.')
+          for directory, dirs, files in os.walk(root):
+              if Path(directory) == root:
+                  dirs[:] = [name for name in dirs if name != '.git']
+              for name in dirs + files:
+                  if (Path(directory) / name).is_symlink():
+                      raise SystemExit('Symlink is not a scan input')
+          inputs = Path(os.environ['INPUTS'])
+          allowed = re.compile(r'(?:coverage(?:[/-].*)?|coverage\.xml|coverage\.out|lcov\.info|gcov/.*|build/compile_commands\.json|dist/.*|coverage-revision\.txt)')
+          size = 0
+          if os.environ.get('REQUIRE_REVISION') == 'true':
+              marker = inputs / 'coverage-revision.txt'
+              if marker.is_symlink() or not marker.is_file() or marker.stat().st_size > 100:
+                  raise SystemExit('Invalid coverage revision marker')
+              revision = marker.read_text().strip()
+              if revision != os.environ['HEAD_SHA']:
+                  raise SystemExit('Coverage revision does not match the tested source')
+          for source in inputs.rglob('*'):
+              if source.is_symlink():
+                  raise SystemExit('Symlinked analysis artifact')
+              if not source.is_file():
+                  continue
+              rel = source.relative_to(inputs).as_posix()
+              if not allowed.fullmatch(rel):
+                  raise SystemExit('Unexpected analysis artifact path: ' + rel)
+              size += source.stat().st_size
+              if source.stat().st_size > 10_000_000 or size > 100_000_000:
+                  raise SystemExit('Analysis artifact exceeds size limit')
+              if source.suffix == '.xml':
+                  text = source.read_bytes().decode('utf-8-sig')
+                  if '\x00' in text or re.search(r'<!ENTITY', text, re.I):
+                      raise SystemExit('Invalid coverage XML')
+                  ET.fromstring(text)
+              target = root / os.environ['DEST'] / rel
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(source, target)
+          Path('sonar-project.properties').unlink(missing_ok=True)
+          settings = os.environ['SCANNER_SETTINGS']
+          if os.environ['RUN_EVENT'] == 'pull_request':
+              for key, value in [('key', os.environ['PR_NUMBER']), ('branch', os.environ['PR_BRANCH']), ('base', os.environ['BASE_BRANCH'])]:
+                  value = value.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r')
+                  settings += 'sonar.pullrequest.' + key + '=' + value + '\n'
+          Path(os.environ['SETTINGS']).write_text(settings)
+          PY
+      - name: Scan branch
+        if: steps.metadata.outputs.event == 'push'
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
+        env:
+          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          args: >-
-            -Dsonar.projectKey=timlaing_modbus_local_gateway
-            -Dsonar.organization=timlaing
-            -Dsonar.projectName=modbus_local_gateway
-            -Dsonar.sources=custom_components/modbus_local_gateway
-            -Dsonar.tests=tests
-            -Dsonar.python.coverage.reportPaths=.coverage/coverage.xml
-            -Dsonar.python.version=3.14
-            -Dsonar.scm.revision=${{ steps.validate.outputs.head-sha }}
-            -Dsonar.qualitygate.wait=true
-
-      - name: SonarQube Scan (pull request)
-        if: github.event.workflow_run.event == 'pull_request'
-        uses: SonarSource/sonarqube-scan-action@v8
+          args:
+            -Dproject.settings=${{ runner.temp }}/analysis.properties -Dsonar.scm.revision=${{ steps.metadata.outputs.head-sha
+            }} -Dsonar.working.directory=${{ runner.temp }}/sonar-work -Dsonar.branch.name=main
+      - name: Scan pull request
+        if: steps.metadata.outputs.event == 'pull_request'
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
+        env:
+          SONAR_HOST_URL: https://sonarcloud.io
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          args: >-
-            -Dsonar.projectKey=timlaing_modbus_local_gateway
-            -Dsonar.organization=timlaing
-            -Dsonar.projectName=modbus_local_gateway
-            -Dsonar.sources=custom_components/modbus_local_gateway
-            -Dsonar.tests=tests
-            -Dsonar.python.coverage.reportPaths=.coverage/coverage.xml
-            -Dsonar.python.version=3.14
-            -Dsonar.scm.revision=${{ steps.validate.outputs.head-sha }}
-            -Dsonar.pullrequest.key=${{ steps.validate.outputs.pr-number }}
-            -Dsonar.pullrequest.branch=${{ steps.validate.outputs.head-ref }}
-            -Dsonar.pullrequest.base=${{ steps.validate.outputs.base-ref }}
-            -Dsonar.pullrequest.provider=github
-            -Dsonar.pullrequest.github.repository=${{ github.repository }}
-            -Dsonar.qualitygate.wait=true
+          args:
+            -Dproject.settings=${{ runner.temp }}/analysis.properties -Dsonar.scm.revision=${{ steps.metadata.outputs.head-sha
+            }} -Dsonar.working.directory=${{ runner.temp }}/sonar-work
+      - name: Publish analysis result
+        if: always() && steps.metadata.outputs.head-sha != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          RESULT: ${{ job.status }}
+          HEAD_SHA: ${{ steps.metadata.outputs.head-sha }}
+        with:
+          script: |
+            const success = process.env.RESULT === 'success';
+            await github.rest.repos.createCommitStatus({ ...context.repo,
+              sha: process.env.HEAD_SHA, context: 'Analysis passed',
+              state: success ? 'success' : 'failure',
+              description: success ? 'Sonar quality gate passed' : 'Analysis incomplete or quality gate failed',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` });
+            if (!success) core.setFailed('Analysis must complete successfully');
