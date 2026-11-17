@@ -147,8 +147,15 @@ async function run({
               c.body?.includes(marker),
           )
         ) {
-          const prior = comments.filter((c) => c.user?.login === "github-actions[bot]" && c.body?.includes(prefix));
-          if (prior.length >= 3) throw new Error("Three review requests failed for this revision; request review manually");
+          const prior = comments.filter(
+            (c) =>
+              c.user?.login === "github-actions[bot]" &&
+              c.body?.includes(prefix),
+          );
+          if (prior.length >= 3)
+            throw new Error(
+              "Three review requests failed for this revision; request review manually",
+            );
           await github.rest.issues.createComment({
             owner,
             repo,
