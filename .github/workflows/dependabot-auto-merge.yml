@@ -17,9 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Classify dependency update
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3
+        with:
+          github-token: ${{ github.token }}
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         with:
           script: |
+            // Preserve the existing unattended patch/minor policy.
+            if (!["version-update:semver-patch", "version-update:semver-minor"].includes(process.env.UPDATE_TYPE)) return;
             const pr = context.payload.pull_request;
             const { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
             if (current.state !== 'open' || current.head.sha !== pr.head.sha || current.user.login !== 'dependabot[bot]')
