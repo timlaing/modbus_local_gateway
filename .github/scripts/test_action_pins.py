@@ -90,11 +90,44 @@ class WorkflowSourceTests(unittest.TestCase):
         steps = workflow["jobs"]["review"]["steps"]
         self.assertEqual(len(steps), 1)
         source = (root / "scripts/quality-review.cjs").read_text()
-        expected = (
-            source.rsplit("module.exports = ", 1)[0]
-            + "await run({ github, context, core });\n"
+        expected = source.rsplit("module.exports = ", 1)[0] + (
+            "const reviewClient = process.env.REVIEW_REQUEST_TOKEN\n"
+            "  ? new github.constructor({ auth: "
+            "process.env.REVIEW_REQUEST_TOKEN })\n"
+            "  : null;\n"
+            "await run({ github, context, core, reviewClient });\n"
         )
         self.assertEqual(steps[0]["with"]["script"], expected)
+
+    def test_sonar_settings_have_unique_keys_and_disjoint_test_roots(self) -> None:
+        """Avoid duplicate indexing and host paths passed to container scanners."""
+        root = Path(__file__).resolve().parents[1] / "workflows"
+        for path in root.glob("sonar*.y*ml"):
+            document = yaml.safe_load(path.read_text())
+            job = document.get("jobs", {}).get("analysis", {})
+            for step in job.get("steps", []):
+                settings = step.get("env", {}).get("SCANNER_SETTINGS")
+                if settings is None:
+                    continue
+                entries = [
+                    line.split("=", 1) for line in settings.splitlines() if "=" in line
+                ]
+                properties = dict(entries)
+                self.assertEqual(len(properties), len(entries), str(path))
+                roots = properties.get("sonar.tests", "").split(",")
+                self.assertFalse(
+                    any(
+                        parent != child
+                        and (
+                            parent == "." or child.startswith(parent.rstrip("/") + "/")
+                        )
+                        for parent in roots
+                        for child in roots
+                    ),
+                    str(path),
+                )
+                if job.get("container"):
+                    self.assertNotIn("${{ runner.temp }}", step["env"]["SETTINGS"])
 
 
 if __name__ == "__main__":

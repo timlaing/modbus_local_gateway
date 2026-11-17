@@ -112,6 +112,7 @@ test("a changed PR head fails instead of approving the previous commit", async (
   await assert.rejects(
     run({
       github,
+      reviewClient: github,
       context: {
         repo: { owner: "owner", repo: "repo" },
         payload: { workflow_run: { event: "pull_request", head_sha: sha } },
@@ -176,6 +177,7 @@ test("review is requested only after validation, then approval completes the gat
   let tick = 0;
   await run({
     github,
+    reviewClient: github,
     context: {
       repo: { owner: "owner", repo: "repo" },
       payload: { workflow_run: { event: "pull_request", head_sha: sha } },
@@ -288,6 +290,7 @@ function fixture() {
   };
   const options = {
     github,
+    reviewClient: github,
     context: {
       repo: { owner: "owner", repo: "repo" },
       payload: { workflow_run: { event: "pull_request", head_sha: sha } },
@@ -368,4 +371,80 @@ test("review retries are deduplicated and bounded across workflow runs", async (
   options.context.runId = 43;
   await assert.rejects(run(options), /Three review requests/);
   assert.equal(data.requests, 1);
+});
+
+test("dedicated requester posts as the maintainer and ignores earlier bot requests", async () => {
+  const { data, options } = fixture();
+  data.comments.push(
+    ...[1, 2, 3].map((id) => ({
+      user: { login: "github-actions[bot]" },
+      body: `<!-- quality-review:${sha}:${id}:1 -->`,
+    })),
+  );
+  let lookups = 0,
+    requests = 0,
+    ticks = 0;
+  options.reviewClient = {
+    rest: {
+      users: {
+        getAuthenticated: async () => {
+          lookups++;
+          return { data: { login: "maintainer" } };
+        },
+      },
+      issues: {
+        createComment: async (value) => {
+          requests++;
+          data.comments.push({
+            user: { login: "maintainer" },
+            body: value.body,
+          });
+        },
+      },
+    },
+  };
+  options.attempts = 3;
+  options.sleep = async () => {
+    ticks++;
+    if (ticks === 2)
+      data.reviews.push({
+        user: { login: "coderabbitai[bot]" },
+        commit_id: sha,
+        state: "APPROVED",
+      });
+  };
+  await run(options);
+  assert.equal(lookups, 1);
+  assert.equal(requests, 1);
+  assert.equal(data.requests, 0);
+  assert.deepEqual(data.states, ["pending", "success"]);
+});
+test("without a requester, manual approval can pass but no bot request is posted", async () => {
+  const { data, options } = fixture();
+  options.reviewClient = null;
+  options.attempts = 2;
+  options.sleep = async () =>
+    data.reviews.push({
+      user: { login: "coderabbitai[bot]" },
+      commit_id: sha,
+      state: "APPROVED",
+    });
+  await run(options);
+  assert.equal(data.requests, 0);
+  assert.deepEqual(data.states, ["pending", "success"]);
+});
+test("an invalid request token cannot publish a successful review gate", async () => {
+  const { data, options } = fixture();
+  options.reviewClient = {
+    rest: {
+      users: {
+        getAuthenticated: async () => {
+          throw new Error("Requester authentication failed");
+        },
+      },
+    },
+  };
+  await assert.rejects(run(options), /Requester authentication failed/);
+  assert.deepEqual(data.states, ["pending", "failure"]);
+  assert.equal(data.requests, 0);
 });

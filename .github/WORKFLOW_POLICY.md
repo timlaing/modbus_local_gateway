@@ -17,3 +17,9 @@ After the analysis-input or test workflow passes on this PR, dispatch the Sonar 
 ## Apply the matching repository policy
 
 After merging, run `python3 .github/scripts/apply-workflow-policy.py` to inspect the exact ruleset change, then run it with `--apply`. The script refuses to apply an unmerged policy, preserves unrelated rules and bypass actors, binds checks to GitHub Actions, enables SHA enforcement and the replacement automation, and verifies the result. Repository settings shared with the existing workflows can be corrected before merge; new check names and action enforcement must wait for their producing workflows.
+
+## Explicit review requester
+
+For unattended explicit CodeRabbit requests, configure `REVIEW_REQUEST_TOKEN` as a dedicated maintainer-owned fine-grained token with Issues write, Pull requests read and Metadata read, limited to this repository. The trusted metadata-only coordinator uses that client only to identify the requester and post the fixed review command. Its normal GitHub Actions client retains check/status duties and has no PR/issue write permission. The workflow does not check out repository code. Request markers are deduplicated per authenticated requester and revision.
+
+Without the secret, automatic CodeRabbit reviews may still run where the provider permits them; otherwise a maintainer must request review. The gate never treats a missing request credential as approval. Rotate the token before expiry.

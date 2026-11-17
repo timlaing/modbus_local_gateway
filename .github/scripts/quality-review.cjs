@@ -89,7 +89,11 @@ async function validation(github, context, pull, required) {
   );
   return readiness(required, checks, statuses);
 }
-async function requestReview(github, context, pull) {
+async function requestReview(github, context, pull, request) {
+  if (!request.login) {
+    const { data } = await request.client.rest.users.getAuthenticated();
+    request.login = data.login;
+  }
   const prefix = `<!-- quality-review:${pull.head.sha}:`;
   const marker = `${prefix}${context.runId}:${process.env.GITHUB_RUN_ATTEMPT || "1"} -->`;
   const comments = await github.paginate(github.rest.issues.listComments, {
@@ -99,21 +103,20 @@ async function requestReview(github, context, pull) {
   });
   const requests = comments.filter(
     (comment) =>
-      comment.user?.login === "github-actions[bot]" &&
-      comment.body?.includes(prefix),
+      comment.user?.login === request.login && comment.body?.includes(prefix),
   );
   if (requests.some((comment) => comment.body.includes(marker))) return;
   if (requests.length >= 3)
     throw new Error(
       "Three review requests failed for this revision; request review manually",
     );
-  await github.rest.issues.createComment({
+  await request.client.rest.issues.createComment({
     ...context.repo,
     issue_number: pull.number,
     body: `@coderabbitai review\n\n${marker}`,
   });
 }
-async function checkApproval(github, context, core, pull, required) {
+async function checkApproval(github, context, core, pull, required, request) {
   const missing = await validation(github, context, pull, required);
   if (missing.length) {
     core.info(`PR ${pull.number}: waiting for ${missing.join(", ")}`);
@@ -125,7 +128,11 @@ async function checkApproval(github, context, core, pull, required) {
     per_page: 100,
   });
   if (approved(reviews, pull.head.sha)) return true;
-  await requestReview(github, context, pull);
+  if (request.client) await requestReview(github, context, pull, request);
+  else
+    core.info(
+      "Configure REVIEW_REQUEST_TOKEN or request a maintainer review manually",
+    );
   core.info(
     `PR ${pull.number}: waiting for CodeRabbit approval of ${pull.head.sha}`,
   );
@@ -146,6 +153,7 @@ async function run({
   core,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   attempts = 150,
+  reviewClient = null,
 }) {
   const pull = await currentPull(github, context);
   if (!pull) {
@@ -167,9 +175,13 @@ async function run({
     "pending",
     "Waiting for validation and current-commit CodeRabbit approval",
   );
+  const request = {
+    client: reviewClient,
+    login: reviewClient === github ? "github-actions[bot]" : null,
+  };
   try {
     await poll(
-      () => checkApproval(github, context, core, pull, required),
+      () => checkApproval(github, context, core, pull, required, request),
       sleep,
       attempts,
     );

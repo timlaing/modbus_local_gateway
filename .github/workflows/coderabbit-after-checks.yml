@@ -31,8 +31,8 @@ jobs:
       actions: read
       checks: read
       statuses: write
-      pull-requests: write
-      issues: write
+      pull-requests: read
+      issues: read
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
@@ -40,6 +40,7 @@ jobs:
             '["Validate action-refs", "Validate codeql", "Validate hacs-validate", "Validate hassfest-validate",
             "Validate linting", "Validate tests", "Analysis passed", "Workflow policy"]'
           REVISION: ${{ inputs.revision }}
+          REVIEW_REQUEST_TOKEN: ${{ secrets.REVIEW_REQUEST_TOKEN }}
         with:
           script: |
             /** Trusted metadata-only coordination. Never execute the pull request checkout. */
@@ -133,7 +134,11 @@ jobs:
               );
               return readiness(required, checks, statuses);
             }
-            async function requestReview(github, context, pull) {
+            async function requestReview(github, context, pull, request) {
+              if (!request.login) {
+                const { data } = await request.client.rest.users.getAuthenticated();
+                request.login = data.login;
+              }
               const prefix = `<!-- quality-review:${pull.head.sha}:`;
               const marker = `${prefix}${context.runId}:${process.env.GITHUB_RUN_ATTEMPT || "1"} -->`;
               const comments = await github.paginate(github.rest.issues.listComments, {
@@ -143,21 +148,20 @@ jobs:
               });
               const requests = comments.filter(
                 (comment) =>
-                  comment.user?.login === "github-actions[bot]" &&
-                  comment.body?.includes(prefix),
+                  comment.user?.login === request.login && comment.body?.includes(prefix),
               );
               if (requests.some((comment) => comment.body.includes(marker))) return;
               if (requests.length >= 3)
                 throw new Error(
                   "Three review requests failed for this revision; request review manually",
                 );
-              await github.rest.issues.createComment({
+              await request.client.rest.issues.createComment({
                 ...context.repo,
                 issue_number: pull.number,
                 body: `@coderabbitai review\n\n${marker}`,
               });
             }
-            async function checkApproval(github, context, core, pull, required) {
+            async function checkApproval(github, context, core, pull, required, request) {
               const missing = await validation(github, context, pull, required);
               if (missing.length) {
                 core.info(`PR ${pull.number}: waiting for ${missing.join(", ")}`);
@@ -169,7 +173,11 @@ jobs:
                 per_page: 100,
               });
               if (approved(reviews, pull.head.sha)) return true;
-              await requestReview(github, context, pull);
+              if (request.client) await requestReview(github, context, pull, request);
+              else
+                core.info(
+                  "Configure REVIEW_REQUEST_TOKEN or request a maintainer review manually",
+                );
               core.info(
                 `PR ${pull.number}: waiting for CodeRabbit approval of ${pull.head.sha}`,
               );
@@ -190,6 +198,7 @@ jobs:
               core,
               sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
               attempts = 150,
+              reviewClient = null,
             }) {
               const pull = await currentPull(github, context);
               if (!pull) {
@@ -211,9 +220,13 @@ jobs:
                 "pending",
                 "Waiting for validation and current-commit CodeRabbit approval",
               );
+              const request = {
+                client: reviewClient,
+                login: reviewClient === github ? "github-actions[bot]" : null,
+              };
               try {
                 await poll(
-                  () => checkApproval(github, context, core, pull, required),
+                  () => checkApproval(github, context, core, pull, required, request),
                   sleep,
                   attempts,
                 );
@@ -229,4 +242,7 @@ jobs:
                 throw error;
               }
             }
-            await run({ github, context, core });
+            const reviewClient = process.env.REVIEW_REQUEST_TOKEN
+              ? new github.constructor({ auth: process.env.REVIEW_REQUEST_TOKEN })
+              : null;
+            await run({ github, context, core, reviewClient });
