@@ -11,9 +11,13 @@ name: SonarQube
         description: Successful CI/analysis-input run to scan (bootstrap or recovery)
         required: true
         type: string
+      source_revision:
+        description: Full head SHA of the successful producing run
+        required: true
+        type: string
 permissions: {}
 concurrency:
-  group: sonar-${{ github.event.workflow_run.head_sha || inputs.source_run_id }}
+  group: sonar-${{ github.event.workflow_run.head_sha || inputs.source_revision || inputs.source_run_id }}
   cancel-in-progress: false
 jobs:
   analysis:
@@ -38,6 +42,8 @@ jobs:
             const run = context.payload.workflow_run || (await github.rest.actions.getWorkflowRun({
               ...context.repo, run_id: Number(process.env.SOURCE_RUN_ID)
             })).data;
+            if (context.eventName === 'workflow_dispatch' && process.env.SOURCE_REVISION !== run.head_sha)
+              throw new Error('Source revision does not match the validated producing run');
             if (run.path !== '.github/workflows/tests.yml' || run.conclusion !== 'success' ||
                 !['push', 'pull_request'].includes(run.event) || (run.event === 'push' && run.head_branch !== 'main'))
               throw new Error('Analysis must consume successful validation from the expected workflow');
@@ -60,6 +66,7 @@ jobs:
               context: 'Analysis passed', state: 'pending', description: 'Analysis in progress' });
         env:
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          SOURCE_REVISION: ${{ inputs.source_revision }}
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ steps.metadata.outputs.head-sha }}

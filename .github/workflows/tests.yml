@@ -97,7 +97,7 @@ jobs:
           mkdir -p coverage-workflow
           python3 -m coverage run --branch --source=.github/scripts -m unittest discover -s .github/scripts
           python3 -m coverage xml -o coverage-workflow/python.xml
-          node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage-workflow/javascript.lcov .github/scripts/quality-review.test.cjs
+          node --test --experimental-test-coverage --test-reporter=lcov --test-reporter-destination=coverage-workflow/javascript.lcov .github/scripts/*.test.cjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: workflow-tooling-coverage
