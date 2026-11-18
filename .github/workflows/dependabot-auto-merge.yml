@@ -24,7 +24,7 @@ jobs:
           github-token: ${{ github.token }}
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         env:
-          REQUIRED_CHECKS: '["Validate action-refs", "Validate codeql", "Validate hacs-validate", "Validate hassfest-validate", "Validate linting", "Validate tests", "Analysis passed", "Workflow policy", "Review passed"]'
+          REQUIRED_CHECKS: '["Validate action-refs", "Validate codeql", "Validate hacs-validate", "Validate hassfest-validate", "Validate linting", "Validate tests", "Analysis passed", "Workflow policy", "Review passed", "Review notifier policy"]'
           UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
         with:
           script: |
@@ -58,8 +58,19 @@ jobs:
               }
             }
 
-            await github.graphql(`mutation($id: ID!, $oid: GitObjectID!) {
+            try {
+              await github.graphql(`mutation($id: ID!, $oid: GitObjectID!) {
               enablePullRequestAutoMerge(input: {pullRequestId: $id, expectedHeadOid: $oid, mergeMethod: SQUASH}) {
                 pullRequest { number }
               }
             }`, { id: current.node_id, oid: current.head.sha });
+            } catch (error) {
+              if (!/pull request is in clean status/i.test(error.message || '')) throw error;
+              const { data: refreshed } = await github.rest.pulls.get({ ...context.repo, pull_number: current.number });
+              if (refreshed.state !== 'open' || refreshed.head.sha !== current.head.sha || refreshed.base.ref !== 'main')
+                throw new Error('Dependabot revision changed before merge');
+              if (refreshed.mergeable_state !== 'clean') throw error;
+              const { data: merged } = await github.rest.pulls.merge({ ...context.repo, pull_number: current.number,
+                sha: current.head.sha, merge_method: 'squash' });
+              if (!merged.merged) throw new Error('Native merge did not complete');
+            }

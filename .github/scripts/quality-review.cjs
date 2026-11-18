@@ -1,3 +1,42 @@
+/** Verify the actual validator run; the shared Actions bot identity is insufficient. */
+async function notifierProof(github, context, pull, statuses) {
+  const status = statuses
+    .filter(
+      (item) =>
+        item.context === "Review notifier policy" &&
+        item.creator?.login === "github-actions[bot]",
+    )
+    .sort((left, right) => right.id - left.id)[0];
+  if (status?.state !== "success") return false;
+  const prefix = `${context.serverUrl || "https://github.com"}/${context.repo.owner}/${context.repo.repo}/actions/runs/`;
+  if (!status.target_url?.startsWith(prefix)) return false;
+  const runId = status.target_url.slice(prefix.length);
+  if (!/^[1-9][0-9]*$/.test(runId)) return false;
+  const [{ data: run }, { data: workflow }, { data: repository }] =
+    await Promise.all([
+      github.rest.actions.getWorkflowRun({ ...context.repo, run_id: runId }),
+      github.rest.actions.getWorkflow({
+        ...context.repo,
+        workflow_id: "review-notifier-policy.yml",
+      }),
+      github.rest.repos.get({ ...context.repo }),
+    ]);
+  if (
+    run.workflow_id !== workflow.id ||
+    workflow.path !== ".github/workflows/review-notifier-policy.yml" ||
+    run.status !== "completed" ||
+    run.conclusion !== "success" ||
+    run.display_title !== `Review notifier policy / ${pull.head.sha}`
+  )
+    return false;
+  if (run.event === "pull_request_target") return true;
+  if (run.event !== "workflow_dispatch") return false;
+  if (run.head_branch === repository.default_branch) return true;
+  // Explicit owner-reviewed bootstrap/recovery: writer access alone never authorizes this.
+  return (
+    run.actor?.login === context.repo.owner && run.head_sha === pull.head.sha
+  );
+}
 /** Trusted metadata-only coordination. Never execute the pull request checkout. */
 const reviewBot = "coderabbitai[bot]";
 const checkKey = (check) =>
@@ -124,8 +163,7 @@ async function validation(github, context, pull, required) {
     pull_number: pull.number,
   });
   if (
-    current.state !== "open" ||
-    current.draft ||
+    !eligiblePull(current, `${context.repo.owner}/${context.repo.repo}`) ||
     current.head.sha !== pull.head.sha
   )
     throw new Error("PR revision changed; validate the new revision");
@@ -148,7 +186,13 @@ async function validation(github, context, pull, required) {
     github.rest.repos.listCommitStatusesForRef,
     { ...context.repo, ref: pull.head.sha, per_page: 100 },
   );
-  return readiness(required, checks, statuses);
+  const missing = readiness(required, checks, statuses);
+  if (
+    required.includes("Review notifier policy") &&
+    !(await notifierProof(github, context, pull, statuses))
+  )
+    missing.push("Review notifier policy provenance");
+  return [...new Set(missing)];
 }
 async function requestReview(github, context, pull, request) {
   if (request.sent) return;
@@ -253,6 +297,26 @@ async function run({
       "Validation and current-commit CodeRabbit approval passed",
     );
   } catch (error) {
+    let currentApproval = false;
+    try {
+      currentApproval = await checkApproval(
+        github,
+        context,
+        core,
+        pull,
+        required,
+        { ...request, sent: true },
+      );
+    } catch (recheckError) {
+      core.info(`Final validation failed: ${recheckError.message}`);
+    }
+    if (currentApproval) {
+      await status(
+        "success",
+        "Validation and current-commit CodeRabbit approval passed",
+      );
+      return;
+    }
     await status(
       "failure",
       "Validation or review incomplete; inspect this run and rerun after resolution",
@@ -260,4 +324,4 @@ async function run({
     throw error;
   }
 }
-module.exports = { approved, readiness, mergeChecks, run };
+module.exports = { approved, readiness, mergeChecks, notifierProof, run };

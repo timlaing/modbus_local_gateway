@@ -629,3 +629,28 @@ test("trusted PR-target events resolve the current head without a checkout", asy
   await run(options);
   assert.deepEqual(data.states, []);
 });
+
+test("retargeting away from main cannot publish approval", async () => {
+  const { data, options } = fixture();
+  data.current = {
+    ...data.current,
+    base: { ref: "other", repo: { full_name: "owner/repo" } },
+  };
+  await assert.rejects(run(options), /revision changed/);
+  assert.ok(!data.states.includes("success"));
+});
+
+test("an older polling timeout cannot overwrite a fresh current-head approval", async () => {
+  const { data, options } = fixture();
+  options.sleep = async () => {
+    data.reviews = [
+      {
+        user: { login: "coderabbitai[bot]" },
+        commit_id: sha,
+        state: "APPROVED",
+      },
+    ];
+  };
+  await run(options);
+  assert.deepEqual(data.states, ["pending", "success"]);
+});

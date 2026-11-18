@@ -19,6 +19,9 @@ const execute = new (Object.getPrototypeOf(async function () {}).constructor)(
   "process",
   script,
 );
+const required = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "../workflow-policy.json"), "utf8"),
+).required_checks;
 function fixture(status, enforced = true) {
   const calls = [];
   const sha = "a".repeat(40);
@@ -48,7 +51,13 @@ function fixture(status, enforced = true) {
           type: "required_status_checks",
           parameters: {
             required_status_checks: enforced
-              ? [{ context: "Review passed", integration_id: 15368 }]
+              ? required
+                  .filter(
+                    (name) =>
+                      enforced !== "missing-notifier" ||
+                      name !== "Review notifier policy",
+                  )
+                  .map((context) => ({ context, integration_id: 15368 }))
               : [],
           },
         },
@@ -64,11 +73,11 @@ function fixture(status, enforced = true) {
       {
         env: {
           UPDATE_TYPE: "version-update:semver-patch",
-          REQUIRED_CHECKS: '["Review passed"]',
+          REQUIRED_CHECKS: JSON.stringify(required),
         },
       },
     );
-  return { run, calls, sha };
+  return { run, calls, sha, pr, github };
 }
 test("an already-clean PR merges natively with the checked head", async () => {
   const f = fixture();
@@ -99,5 +108,34 @@ test("a changed head is never queued after a failed direct merge", async () => {
 test("no merge path activates before the intended gates are enforced", async () => {
   const f = fixture(undefined, false);
   await f.run();
+  assert.deepEqual(f.calls, []);
+});
+
+test("partial enforcement without notifier policy cannot activate merging", async () => {
+  const f = fixture(undefined, "missing-notifier");
+  await f.run();
+  assert.deepEqual(f.calls, []);
+});
+test("a PR becoming clean during auto-merge activation is re-read and merged at the same SHA", async () => {
+  const f = fixture();
+  f.pr.mergeable_state = "blocked";
+  f.github.graphql = async () => {
+    f.pr.mergeable_state = "clean";
+    throw new Error("Pull request is in clean status");
+  };
+  await f.run();
+  assert.deepEqual(
+    f.calls.map((call) => call[0]),
+    ["merge"],
+  );
+  assert.equal(f.calls[0][1].sha, f.sha);
+});
+test("an unrelated auto-merge error is never converted into a direct merge", async () => {
+  const f = fixture();
+  f.pr.mergeable_state = "blocked";
+  f.github.graphql = async () => {
+    throw new Error("Permission denied");
+  };
+  await assert.rejects(f.run(), /Permission denied/);
   assert.deepEqual(f.calls, []);
 });

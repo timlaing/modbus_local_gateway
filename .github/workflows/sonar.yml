@@ -85,6 +85,7 @@ jobs:
           INPUTS: ${{ runner.temp }}/analysis-inputs
           DEST: .coverage
           SETTINGS: ${{ runner.temp }}/analysis.properties
+          REQUIRED_REPORTS: '["coverage.xml", "coverage-workflow/python.xml", "coverage-workflow/javascript.lcov"]'
           SCANNER_SETTINGS: |
             sonar.projectKey=timlaing_modbus_local_gateway
             sonar.organization=timlaing
@@ -95,6 +96,7 @@ jobs:
             sonar.python.version=3.14
             sonar.projectName=modbus_local_gateway
             sonar.qualitygate.wait=true
+            sonar.sca.enabled=false
             sonar.javascript.lcov.reportPaths=.coverage/coverage-workflow/javascript.lcov
           HEAD_SHA: ${{ steps.metadata.outputs.head-sha }}
           RUN_EVENT: ${{ steps.metadata.outputs.event }}
@@ -104,7 +106,7 @@ jobs:
           REQUIRE_REVISION: "true"
         run: |
           python3 -I - <<'PY'
-          import os, re, shutil
+          import json, os, re, shutil
           from pathlib import Path
           import xml.etree.ElementTree as ET
           root = Path('.')
@@ -124,6 +126,10 @@ jobs:
               revision = marker.read_text().strip()
               if revision != os.environ['HEAD_SHA']:
                   raise SystemExit('Coverage revision does not match the tested source')
+          for required in json.loads(os.environ.get('REQUIRED_REPORTS', '[]')):
+              report = inputs / required
+              if report.is_symlink() or not report.is_file():
+                  raise SystemExit('Required coverage report missing: ' + required)
           for source in inputs.rglob('*'):
               if source.is_symlink():
                   raise SystemExit('Symlinked analysis artifact')
