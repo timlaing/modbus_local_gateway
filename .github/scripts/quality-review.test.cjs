@@ -2,6 +2,7 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const {
   approved,
+  checkApproval,
   readiness,
   mergeChecks,
   run,
@@ -333,7 +334,7 @@ test("non-PR events and stale, draft or foreign PRs cannot publish success", asy
 test("ambiguous revisions and an empty policy fail before requesting reviews", async () => {
   const { data, options } = fixture();
   data.pulls.push(data.pulls[0]);
-  await assert.rejects(run(options), /unique current PR/);
+  await assert.rejects(run(options), /one eligible PR/);
   data.pulls.pop();
   process.env.REQUIRED_CHECKS = "[]";
   await assert.rejects(run(options), /policy is empty/);
@@ -502,7 +503,14 @@ test("optional checks also block review until successful", () => {
         required,
         { ...extra, name: "CodeRabbit after checks", status: "in_progress" },
       ],
-      [{ id: 1, context: "Review passed", state: "pending" }],
+      [
+        {
+          id: 1,
+          context: "Review passed",
+          creator: { login: "github-actions[bot]" },
+          state: "pending",
+        },
+      ],
     ),
     [],
   );
@@ -653,4 +661,122 @@ test("an older polling timeout cannot overwrite a fresh current-head approval", 
   };
   await run(options);
   assert.deepEqual(data.states, ["pending", "success"]);
+});
+
+test("review-name exclusions never ignore a foreign producer", () => {
+  assert.deepEqual(
+    readiness(
+      [],
+      [
+        {
+          id: 1,
+          name: "CodeRabbit after checks",
+          app: { slug: "other" },
+          status: "completed",
+          conclusion: "failure",
+        },
+      ],
+      [],
+    ),
+    ["CodeRabbit after checks"],
+  );
+  assert.deepEqual(
+    readiness(
+      [],
+      [],
+      [
+        {
+          id: 1,
+          context: "Review passed",
+          creator: { login: "other" },
+          state: "failure",
+        },
+      ],
+    ),
+    ["Review passed"],
+  );
+});
+test("review exclusions are specific to their actual result type", () => {
+  assert.deepEqual(
+    readiness(
+      [],
+      [
+        {
+          id: 1,
+          name: "Review passed",
+          app: { slug: "github-actions" },
+          status: "completed",
+          conclusion: "failure",
+        },
+      ],
+      [],
+    ),
+    ["Review passed"],
+  );
+  assert.deepEqual(
+    readiness(
+      [],
+      [],
+      [
+        {
+          id: 1,
+          context: "CodeRabbit after checks",
+          creator: { login: "github-actions[bot]" },
+          state: "failure",
+        },
+      ],
+    ),
+    ["CodeRabbit after checks"],
+  );
+});
+test("two eligible PRs sharing a head invalidate the shared approval gate", async () => {
+  const { data, options } = fixture();
+  options.context.eventName = "pull_request_target";
+  options.context.payload = { pull_request: structuredClone(data.current) };
+  data.pulls.push({ ...data.current, number: 10 });
+  await assert.rejects(run(options), /one eligible PR/);
+  assert.ok(data.states.includes("failure"));
+  assert.equal(data.requests, 0);
+});
+test("a failure reported only on the test merge revision blocks review", async () => {
+  const { data, options } = fixture();
+  const original = options.github.paginate;
+  options.github.paginate = async (method, args) =>
+    method === options.github.rest.repos.listCommitStatusesForRef &&
+    args.ref === data.current.merge_commit_sha
+      ? [
+          {
+            id: 7,
+            context: "Merge-only analysis",
+            creator: { login: "external" },
+            state: "failure",
+          },
+        ]
+      : original(method, args);
+  await assert.rejects(run(options), /incomplete/);
+  assert.equal(data.requests, 0);
+});
+test("a changed merge revision cannot complete the old validation iteration", async () => {
+  const { data, options } = fixture();
+  data.reviews = [
+    { user: { login: "coderabbitai[bot]" }, commit_id: sha, state: "APPROVED" },
+  ];
+  let reads = 0;
+  options.github.rest.pulls.get = async () => ({
+    data: {
+      ...data.current,
+      merge_commit_sha: (++reads > 1 ? "c" : "b").repeat(40),
+    },
+  });
+  assert.equal(
+    await checkApproval(
+      options.github,
+      options.context,
+      options.core,
+      data.current,
+      ["Validate ci"],
+      { sent: true },
+    ),
+    false,
+  );
 });

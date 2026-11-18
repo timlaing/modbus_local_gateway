@@ -12,11 +12,11 @@ The `workflow_run` coordinator and scanner use the default-branch workflow. The 
 
 ## Bootstrap and recovery
 
-After the Tests workflow passes on this PR, dispatch the Sonar workflow on the PR branch with `source_run_id` set to that successful run. It verifies the source workflow, result, revision and current PR before scanning. Dispatch `coderabbit-after-checks.yml` on the PR branch with its current head `revision`; the coordinator loads policy from its own workflow revision. This tests the privileged flow before the first merge without disabling protection.
+After `Tests` (`tests.yml`) succeeds on the current PR head, dispatch `sonar.yml` on the reviewed branch with `source_run_id` set to that successful run. It validates the producing workflow, result, revision and PR before scanning. Complete the owner-attested notifier bootstrap below, then dispatch `coderabbit-after-checks.yml` with the full current `revision` once validation and analysis succeed.
 
 ## Apply the matching repository policy
 
-After merging, run `python3 .github/scripts/apply-workflow-policy.py` to inspect the exact ruleset change, then run it with `--apply`. The script refuses to apply an unmerged policy, preserves unrelated rules and bypass actors, binds checks to GitHub Actions, enables SHA enforcement and the replacement automation, and verifies the result. Repository settings shared with the existing workflows can be corrected before merge; new check names and action enforcement must wait for their producing workflows.
+After merging, run `python3 .github/scripts/apply-workflow-policy.py` to inspect the exact ruleset change, then run it with `--apply --validated-head <full-PR-head-SHA>`. The script refuses to apply an unmerged policy, preserves unrelated rules and bypass actors, binds checks to GitHub Actions, enables SHA enforcement and the replacement automation, and verifies the result. Repository settings shared with the existing workflows can be corrected before merge; new check names and action enforcement must wait for their producing workflows.
 
 ## Explicit review requester
 
@@ -35,3 +35,5 @@ The required `Review notifier policy` commit status is written by a checkout-fre
 After the harmless PR registration job has registered the workflow, the repository owner must inspect the exact workflow revision and dispatch `review-notifier-policy.yml` on the reviewed PR branch with `revision` set to the full current head SHA. Wait for its successful `Review notifier policy` status before dispatching the coordinator. This initial dispatch is an explicit owner attestation of the reviewed baseline; arbitrary writers are not authorized to attest a feature-branch validator. Normal validation uses the default-branch `pull_request_target` workflow. A status from another workflow, revision, failed run or untrusted feature-branch actor must not satisfy this gate.
 
 Privileged Sonar workers perform static source/report analysis only, with `sonar.sca.enabled=false` preventing implicit dependency/build-tool execution. Fork-triggered CI never receives the scanner token; the trusted receiver consumes validated source and coverage without running fork-selected commands. Existing dependency audits and Dependabot protection remain independent. Every configured coverage report must be present before scanning.
+
+Settings activation enables replacement workflows first, then verifies successful hosted replacement checks on the explicit reviewed PR head before writing required-check rules. Keep existing protection until that proof exists; failed enablement or missing proof leaves the rules unchanged.

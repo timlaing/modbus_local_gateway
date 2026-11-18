@@ -77,21 +77,29 @@ function readiness(required, checks, statuses) {
     ]),
   ];
 }
+function reviewCheck(check) {
+  const producer = {
+    CodeRabbit: "coderabbitai",
+    "CodeRabbit after checks": "github-actions",
+  }[check.name];
+  return producer !== undefined && check.app?.slug === producer;
+}
+function reviewStatus(status) {
+  return (
+    status.context === "Review passed" &&
+    status.creator?.login === "github-actions[bot]"
+  );
+}
 function unsuccessfulChecks(checks, statuses) {
   const missing = new Set();
   // Review jobs and their own status must not wait on themselves. Every other
   // reported check must finish successfully (conditionally skipped jobs are OK).
-  const reviewNames = new Set([
-    "CodeRabbit",
-    "Review passed",
-    "CodeRabbit after checks",
-  ]);
   const latestChecks = new Map();
   for (const check of [...checks].sort((left, right) => left.id - right.id))
     latestChecks.set(checkKey(check), check);
   for (const check of latestChecks.values()) {
     const name = check.name;
-    if (reviewNames.has(name)) continue;
+    if (reviewCheck(check)) continue;
     if (
       check.status !== "completed" ||
       !["success", "skipped"].includes(check.conclusion)
@@ -102,7 +110,7 @@ function unsuccessfulChecks(checks, statuses) {
   for (const status of [...statuses].sort((left, right) => left.id - right.id))
     latestStatuses.set(statusKey(status), status);
   for (const status of latestStatuses.values())
-    if (!reviewNames.has(status.context) && status.state !== "success")
+    if (!reviewStatus(status) && status.state !== "success")
       missing.add(status.context);
   return [...missing];
 }
@@ -118,6 +126,27 @@ function eligiblePull(pull, fullName) {
     pull.base.repo.full_name === fullName
   );
 }
+async function ensureUniqueHead(github, context, pull) {
+  const associated = await github.paginate(
+    github.rest.repos.listPullRequestsAssociatedWithCommit,
+    { ...context.repo, commit_sha: pull.head.sha, per_page: 100 },
+  );
+  const matches = associated.filter(
+    (item) =>
+      eligiblePull(item, context.repo.owner + "/" + context.repo.repo) &&
+      item.head.sha === pull.head.sha,
+  );
+  if (matches.length !== 1 || matches[0].number !== pull.number) {
+    await github.rest.repos.createCommitStatus({
+      ...context.repo,
+      sha: pull.head.sha,
+      context: "Review passed",
+      state: "failure",
+      description: "Ambiguous PR head; use a unique revision per PR",
+    });
+    throw new Error("Expected one eligible PR for this head");
+  }
+}
 async function eventPull(github, context) {
   const expected = context.payload.pull_request;
   const { data: current } = await github.rest.pulls.get({
@@ -129,6 +158,7 @@ async function eventPull(github, context) {
     !eligiblePull(current, context.repo.owner + "/" + context.repo.repo)
   )
     return;
+  await ensureUniqueHead(github, context, current);
   return current;
 }
 async function currentPull(github, context) {
@@ -153,6 +183,7 @@ async function currentPull(github, context) {
       eligiblePull(pull, fullName) &&
       (pull.head.sha === sha || pull.merge_commit_sha === sha),
   );
+  if (matches.length > 1) await ensureUniqueHead(github, context, matches[0]);
   if (matches.length > 1)
     throw new Error("Trigger does not identify a unique current PR");
   return matches[0];
@@ -167,6 +198,7 @@ async function validation(github, context, pull, required) {
     current.head.sha !== pull.head.sha
   )
     throw new Error("PR revision changed; validate the new revision");
+  await ensureUniqueHead(github, context, current);
   // PR checks can attach to the current merge revision or head. Analysis statuses use the head.
   const refs = [
     ...new Set([current.merge_commit_sha, current.head.sha].filter(Boolean)),
@@ -182,17 +214,34 @@ async function validation(github, context, pull, required) {
     ),
   );
   const checks = mergeChecks(groups[0], groups[1] || []);
-  const statuses = await github.paginate(
-    github.rest.repos.listCommitStatusesForRef,
-    { ...context.repo, ref: pull.head.sha, per_page: 100 },
+  const statusGroups = await Promise.all(
+    refs.map((ref) =>
+      github.paginate(github.rest.repos.listCommitStatusesForRef, {
+        ...context.repo,
+        ref,
+        per_page: 100,
+      }),
+    ),
   );
+  const headStatuses = statusGroups[refs.indexOf(current.head.sha)];
+  const mergeStatusNames = new Set(statusGroups[0].map(statusKey));
+  const combined = [
+    ...statusGroups[0],
+    ...(statusGroups[1] || []).filter(
+      (item) => !mergeStatusNames.has(statusKey(item)),
+    ),
+  ];
+  const statuses = [
+    ...combined.filter((item) => item.context !== "Review notifier policy"),
+    ...headStatuses.filter((item) => item.context === "Review notifier policy"),
+  ];
   const missing = readiness(required, checks, statuses);
   if (
     required.includes("Review notifier policy") &&
-    !(await notifierProof(github, context, pull, statuses))
+    !(await notifierProof(github, context, pull, headStatuses))
   )
     missing.push("Review notifier policy provenance");
-  return [...new Set(missing)];
+  return { missing: [...new Set(missing)], merge: current.merge_commit_sha };
 }
 async function requestReview(github, context, pull, request) {
   if (request.sent) return;
@@ -224,7 +273,7 @@ async function requestReview(github, context, pull, request) {
   request.sent = true;
 }
 async function checkApproval(github, context, core, pull, required, request) {
-  const missing = await validation(github, context, pull, required);
+  const { missing, merge } = await validation(github, context, pull, required);
   if (missing.length) {
     core.info(`PR ${pull.number}: waiting for ${missing.join(", ")}`);
     return false;
@@ -234,6 +283,16 @@ async function checkApproval(github, context, core, pull, required, request) {
     pull_number: pull.number,
     per_page: 100,
   });
+  const { data: final } = await github.rest.pulls.get({
+    ...context.repo,
+    pull_number: pull.number,
+  });
+  if (
+    !eligiblePull(final, `${context.repo.owner}/${context.repo.repo}`) ||
+    final.head.sha !== pull.head.sha
+  )
+    throw new Error("PR revision changed during validation");
+  if (final.merge_commit_sha !== merge) return false;
   if (approved(reviews, pull.head.sha)) return true;
   if (request.client) await requestReview(github, context, pull, request);
   else
@@ -324,4 +383,11 @@ async function run({
     throw error;
   }
 }
-module.exports = { approved, readiness, mergeChecks, notifierProof, run };
+module.exports = {
+  approved,
+  readiness,
+  mergeChecks,
+  notifierProof,
+  checkApproval,
+  run,
+};

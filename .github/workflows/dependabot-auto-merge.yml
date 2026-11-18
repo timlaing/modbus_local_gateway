@@ -31,7 +31,7 @@ jobs:
             // Preserve the existing unattended patch/minor policy.
             if (!["version-update:semver-patch", "version-update:semver-minor"].includes(process.env.UPDATE_TYPE)) return;
             const pr = context.payload.pull_request;
-            const { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
+            let { data: current } = await github.rest.pulls.get({ ...context.repo, pull_number: pr.number });
             if (current.state !== 'open' || current.head.sha !== pr.head.sha || current.user.login !== 'dependabot[bot]')
               throw new Error('Dependabot revision changed');
             if (current.base.ref !== 'main') return;
@@ -47,6 +47,10 @@ jobs:
               core.notice('Workflow policy not yet enforced; leaving auto-merge inactive');
               return;
             }
+            const { data: boundary } = await github.rest.pulls.get({...context.repo, pull_number: current.number});
+            if (boundary.state !== 'open' || boundary.head.sha !== current.head.sha || boundary.base.ref !== 'main')
+              throw new Error('Dependabot base or revision changed at merge boundary');
+            current = boundary;
             // Native merge APIs enforce protection for this Actions token.
             if (current.mergeable_state === 'clean') {
               try {
