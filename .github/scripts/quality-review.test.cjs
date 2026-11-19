@@ -780,3 +780,33 @@ test("a changed merge revision cannot complete the old validation iteration", as
     false,
   );
 });
+
+test("approval dismissed during the final PR read cannot publish success", async () => {
+  const { data, options } = fixture();
+  data.reviews = [
+    { user: { login: "coderabbitai[bot]" }, commit_id: sha, state: "APPROVED" },
+  ];
+  let reads = 0;
+  options.github.rest.pulls.get = async () => {
+    if (++reads > 1)
+      data.reviews = [
+        {
+          user: { login: "coderabbitai[bot]" },
+          commit_id: sha,
+          state: "DISMISSED",
+        },
+      ];
+    return { data: { ...data.current } };
+  };
+  assert.equal(
+    await checkApproval(
+      options.github,
+      options.context,
+      options.core,
+      data.current,
+      ["Validate ci"],
+      { sent: true },
+    ),
+    false,
+  );
+});

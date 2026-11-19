@@ -37,3 +37,5 @@ After the harmless PR registration job has registered the workflow, the reposito
 Privileged Sonar workers perform static source/report analysis only, with `sonar.sca.enabled=false` preventing implicit dependency/build-tool execution. Fork-triggered CI never receives the scanner token; the trusted receiver consumes validated source and coverage without running fork-selected commands. Existing dependency audits and Dependabot protection remain independent. Every configured coverage report must be present before scanning.
 
 Settings activation enables replacement workflows first, then verifies successful hosted replacement checks on the explicit reviewed PR head before writing required-check rules. Keep existing protection until that proof exists; failed enablement or missing proof leaves the rules unchanged.
+
+During activation, serialize repository-settings changes: run one activation at a time and do not edit rulesets concurrently. The updater re-reads protections immediately before writing and aborts if they changed during hosted validation.

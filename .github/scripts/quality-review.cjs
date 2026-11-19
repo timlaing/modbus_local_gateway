@@ -278,11 +278,6 @@ async function checkApproval(github, context, core, pull, required, request) {
     core.info(`PR ${pull.number}: waiting for ${missing.join(", ")}`);
     return false;
   }
-  const reviews = await github.paginate(github.rest.pulls.listReviews, {
-    ...context.repo,
-    pull_number: pull.number,
-    per_page: 100,
-  });
   const { data: final } = await github.rest.pulls.get({
     ...context.repo,
     pull_number: pull.number,
@@ -293,6 +288,11 @@ async function checkApproval(github, context, core, pull, required, request) {
   )
     throw new Error("PR revision changed during validation");
   if (final.merge_commit_sha !== merge) return false;
+  const reviews = await github.paginate(github.rest.pulls.listReviews, {
+    ...context.repo,
+    pull_number: pull.number,
+    per_page: 100,
+  });
   if (approved(reviews, pull.head.sha)) return true;
   if (request.client) await requestReview(github, context, pull, request);
   else
