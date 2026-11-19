@@ -12,22 +12,13 @@ from pathlib import Path
 import re
 import sys
 
+import yaml
+
 WORKFLOW_DIR = Path(".github/workflows")
 
-USES_PATTERN = re.compile(
-    r"uses:\s*(?P<action>[\w.\-]+(?:/[\w.\-]+)+)@(?P<ref>[\w.\-]+)"
-)
+FULL_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
-SHA_PATTERN = re.compile(r"^[0-9a-f]{7,40}$")
-
-VERSION_PATTERN = re.compile(r"^v?\d+(?:\.\d+)*$")
-
-# Actions that only publish on a branch: home-assistant/actions has no tags for
-# its hassfest sub-action, and hacs/action has not published a tag since 22.5.0.
-BRANCH_ALLOWLIST = {
-    "hacs/action@main",
-    "home-assistant/actions/hassfest@master",
-}
+VERSION_COMMENT_PATTERN = re.compile(r"#\s*v?\d+(?:\.\d+)*\s*$")
 
 IN_CI = "GITHUB_ACTIONS" in os.environ
 
@@ -40,30 +31,53 @@ class Reference:
     ref: str
     path: Path
     line: int
+    line_text: str
+
+
+def mapping_value(node: yaml.Node | None, name: str) -> yaml.Node | None:
+    """Read a mapping entry without treating script text as YAML references."""
+    if not isinstance(node, yaml.MappingNode):
+        return None
+    return next((value for key, value in node.value if key.value == name), None)
+
+
+def reference_nodes(document: yaml.Node | None) -> list[yaml.ScalarNode]:
+    """Select only job-level and step-level action invocations."""
+    jobs = mapping_value(document, "jobs")
+    if not isinstance(jobs, yaml.MappingNode):
+        return []
+    references: list[yaml.ScalarNode] = []
+    for _, job in jobs.value:
+        entries = [mapping_value(job, "uses")]
+        steps = mapping_value(job, "steps")
+        if isinstance(steps, yaml.SequenceNode):
+            entries.extend(mapping_value(step, "uses") for step in steps.value)
+        references.extend(node for node in entries if isinstance(node, yaml.ScalarNode))
+    return references
 
 
 def collect_references(paths: list[Path]) -> list[Reference]:
-    """Collect every remote action reference from the given workflow files."""
+    """Parse remote references as complete YAML values and retain line anchors."""
     references: list[Reference] = []
-
     for path in paths:
-        for number, text in enumerate(
-            path.read_text(encoding="utf-8").splitlines(), start=1
-        ):
-            match = USES_PATTERN.search(text)
-
-            if match is None:
+        text = path.read_text(encoding="utf-8")
+        lines = text.splitlines()
+        for node in reference_nodes(yaml.compose(text, Loader=yaml.SafeLoader)):
+            action, separator, ref = node.value.partition("@")
+            if not separator or node.value.startswith("./"):
                 continue
-
+            if re.fullmatch(r"[\w.-]+(?:/[\w.-]+)+", action) is None:
+                continue
+            number = node.start_mark.line + 1
             references.append(
                 Reference(
-                    action=match["action"],
-                    ref=match["ref"],
+                    action=action,
+                    ref=ref,
                     path=path,
                     line=number,
+                    line_text=lines[number - 1],
                 )
             )
-
     return references
 
 
@@ -94,21 +108,37 @@ def report(level: str, message: str, reference: Reference) -> None:
 
 
 def check_sha_pins(references: list[Reference]) -> int:
-    """Fail when an action is pinned to a commit SHA instead of a tag."""
+    """Require immutable, full-length commit SHAs for every remote action."""
     failures = 0
-
     for reference in references:
-        if SHA_PATTERN.match(reference.ref):
-            report(
-                "error",
-                f"{reference.action} is pinned to commit {reference.ref}. Use a "
-                "version tag (for example @v4) so Dependabot can raise version "
-                "update pull requests",
-                reference,
-            )
-            failures += 1
-
+        if FULL_SHA_PATTERN.fullmatch(reference.ref):
+            continue
+        report(
+            "error",
+            f"{reference.action}@{reference.ref} must use a full "
+            "40-character commit SHA",
+            reference,
+        )
+        failures += 1
     return failures
+
+
+def check_sha_annotations(references: list[Reference]) -> None:
+    """Warn when a full-SHA pin lacks the version comment Dependabot reads."""
+    for reference in references:
+        if not FULL_SHA_PATTERN.match(reference.ref):
+            continue
+
+        if VERSION_COMMENT_PATTERN.search(reference.line_text):
+            continue
+
+        report(
+            "warning",
+            f"{reference.action} is pinned to commit {reference.ref} without a "
+            "trailing `# vX.Y.Z` comment; add one so Dependabot can raise "
+            "version update pull requests",
+            reference,
+        )
 
 
 def check_consistent_refs(references: list[Reference]) -> int:
@@ -131,29 +161,12 @@ def check_consistent_refs(references: list[Reference]) -> int:
                     "error",
                     f"{owner_repo} is referenced with mixed versions ({rendered}). "
                     f"This file uses {reference.ref}; pin every step of an action "
-                    "to the same tag so they cannot resolve to different releases",
+                    "to the same commit so they cannot resolve to different releases",
                     reference,
                 )
                 failures += 1
 
     return failures
-
-
-def check_version_tags(references: list[Reference]) -> None:
-    """Warn when an action tracks a branch instead of a version tag."""
-    for reference in references:
-        if VERSION_PATTERN.match(reference.ref) or SHA_PATTERN.match(reference.ref):
-            continue
-
-        if f"{reference.action}@{reference.ref}" in BRANCH_ALLOWLIST:
-            continue
-
-        report(
-            "warning",
-            f"{reference.action} tracks the branch {reference.ref}. Prefer a "
-            "version tag where the action publishes one",
-            reference,
-        )
 
 
 def main() -> int:
@@ -185,7 +198,7 @@ def main() -> int:
 
     references = collect_references(paths)
 
-    check_version_tags(references)
+    check_sha_annotations(references)
 
     failures = check_sha_pins(references) + check_consistent_refs(references)
 
@@ -196,7 +209,7 @@ def main() -> int:
         )
         return 1
 
-    print(f"{len(references)} action references use version tags")
+    print(f"{len(references)} action references use full-SHA pins")
 
     return 0
 

@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Get latest Home Assistant dev commit
         id: hass
@@ -24,7 +24,7 @@ jobs:
           echo "Home Assistant dev commit: $LATEST" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.14"
 
@@ -58,9 +58,14 @@ jobs:
           PY
           pip install -r requirements.txt -r requirements_dev_ha_dev_base.txt
           pip install "git+https://github.com/home-assistant/core.git@${{ steps.hass.outputs.latest }}"
-          if [ -n "${{ steps.deps.outputs.pytest_hacc_spec }}" ]; then
-            pip install --no-deps "${{ steps.deps.outputs.pytest_hacc_spec }}"
-            echo "Installed pytest extension without dependency resolution: ${{ steps.deps.outputs.pytest_hacc_spec }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install selected pytest extension
+        env:
+          PYTEST_HACC_SPEC: ${{ steps.deps.outputs.pytest_hacc_spec }}
+        run: |
+          if [ -n "$PYTEST_HACC_SPEC" ]; then
+            pip install --no-deps "$PYTEST_HACC_SPEC"
+            echo "Installed pytest extension without dependency resolution: $PYTEST_HACC_SPEC" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No pytest-homeassistant-custom-component spec found in requirements_dev.txt" >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -164,12 +169,12 @@ jobs:
       - name: Validate with hassfest
         id: hassfest
         if: always()
-        uses: home-assistant/actions/hassfest@master
+        uses: home-assistant/actions/hassfest@86d4564712fa02543c808e3a693dd04f9d3f8361
 
       - name: Validate with HACS
         id: hacs
         if: always()
-        uses: hacs/action@main
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa
         with:
           category: integration
           ignore: wheels
@@ -183,7 +188,7 @@ jobs:
             steps.hassfest.outcome == 'failure' ||
             steps.hacs.outcome == 'failure'
           )
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const owner = context.repo.owner;
@@ -260,7 +265,7 @@ jobs:
           steps.lint.outcome != 'failure' &&
           steps.hassfest.outcome != 'failure' &&
           steps.hacs.outcome != 'failure'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const owner = context.repo.owner;
