@@ -1,3 +1,3 @@
 -r requirements.txt
 -r requirements_dev.txt
-tox==4.67.15
+tox==4.67.16
